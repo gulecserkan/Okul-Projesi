@@ -1,0 +1,11 @@
+{% extends "admin/index.html" %}
+
+{% block content %}
+  {{ block.super }}
+  <div class="module">
+    <h2>Sistem Araçları</h2>
+    <ul>
+      <li><a href="{% url 'admin:system-settings' %}">Sistem Ayarları (Yedekle/Geri Yükle)</a></li>
+    </ul>
+  </div>
+{% endblock %}

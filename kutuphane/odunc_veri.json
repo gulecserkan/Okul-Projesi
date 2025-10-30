@@ -1,0 +1,2082 @@
+[
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 1,
+    "fields": {
+      "ogrenci": 67,
+      "kitap_nusha": 147,
+      "odunc_tarihi": "2025-07-20T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-08-04T09:35:58.976771+00:00",
+      "teslim_tarihi": "2025-08-01T09:35:58.976771+00:00",
+      "durum": "teslim",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 2,
+    "fields": {
+      "ogrenci": 91,
+      "kitap_nusha": 97,
+      "odunc_tarihi": "2025-07-18T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-08-02T09:35:58.976771+00:00",
+      "teslim_tarihi": "2025-07-30T09:35:58.976771+00:00",
+      "durum": "teslim",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 3,
+    "fields": {
+      "ogrenci": 117,
+      "kitap_nusha": 6,
+      "odunc_tarihi": "2025-04-12T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-04-27T09:35:58.976771+00:00",
+      "teslim_tarihi": "2025-04-24T09:35:58.976771+00:00",
+      "durum": "teslim",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 4,
+    "fields": {
+      "ogrenci": 57,
+      "kitap_nusha": 42,
+      "odunc_tarihi": "2025-07-05T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-07-20T09:35:58.976771+00:00",
+      "teslim_tarihi": "2025-07-16T09:35:58.976771+00:00",
+      "durum": "teslim",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 5,
+    "fields": {
+      "ogrenci": 50,
+      "kitap_nusha": 58,
+      "odunc_tarihi": "2025-05-06T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-05-21T09:35:58.976771+00:00",
+      "teslim_tarihi": "2025-05-29T09:35:58.976771+00:00",
+      "durum": "teslim",
+      "gecikme_cezasi": "4.00"
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 6,
+    "fields": {
+      "ogrenci": 26,
+      "kitap_nusha": 25,
+      "odunc_tarihi": "2025-08-22T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-09-06T09:35:58.976771+00:00",
+      "teslim_tarihi": "2025-09-11T09:35:58.976771+00:00",
+      "durum": "teslim",
+      "gecikme_cezasi": "2.50"
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 7,
+    "fields": {
+      "ogrenci": 81,
+      "kitap_nusha": 131,
+      "odunc_tarihi": "2025-08-25T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-09-09T09:35:58.976771+00:00",
+      "teslim_tarihi": "2025-09-12T09:35:58.976771+00:00",
+      "durum": "teslim",
+      "gecikme_cezasi": "1.50"
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 8,
+    "fields": {
+      "ogrenci": 11,
+      "kitap_nusha": 105,
+      "odunc_tarihi": "2025-05-17T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-06-01T09:35:58.976771+00:00",
+      "teslim_tarihi": "2025-06-10T09:35:58.976771+00:00",
+      "durum": "teslim",
+      "gecikme_cezasi": "4.50"
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 9,
+    "fields": {
+      "ogrenci": 13,
+      "kitap_nusha": 151,
+      "odunc_tarihi": "2025-09-07T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-09-22T09:35:58.976771+00:00",
+      "teslim_tarihi": "2025-09-28T09:35:58.976771+00:00",
+      "durum": "teslim",
+      "gecikme_cezasi": "3.00"
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 10,
+    "fields": {
+      "ogrenci": 100,
+      "kitap_nusha": 129,
+      "odunc_tarihi": "2025-06-01T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-06-16T09:35:58.976771+00:00",
+      "teslim_tarihi": "2025-06-12T09:35:58.976771+00:00",
+      "durum": "teslim",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 11,
+    "fields": {
+      "ogrenci": 67,
+      "kitap_nusha": 26,
+      "odunc_tarihi": "2025-09-04T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-09-19T09:35:58.976771+00:00",
+      "teslim_tarihi": "2025-09-25T09:35:58.976771+00:00",
+      "durum": "teslim",
+      "gecikme_cezasi": "3.00"
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 12,
+    "fields": {
+      "ogrenci": 23,
+      "kitap_nusha": 109,
+      "odunc_tarihi": "2025-04-13T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-04-28T09:35:58.976771+00:00",
+      "teslim_tarihi": "2025-04-28T09:35:58.976771+00:00",
+      "durum": "teslim",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 13,
+    "fields": {
+      "ogrenci": 57,
+      "kitap_nusha": 83,
+      "odunc_tarihi": "2025-09-11T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-09-26T09:35:58.976771+00:00",
+      "teslim_tarihi": "2025-09-22T09:35:58.976771+00:00",
+      "durum": "teslim",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 14,
+    "fields": {
+      "ogrenci": 15,
+      "kitap_nusha": 98,
+      "odunc_tarihi": "2025-05-01T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-05-16T09:35:58.976771+00:00",
+      "teslim_tarihi": "2025-05-14T09:35:58.976771+00:00",
+      "durum": "teslim",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 15,
+    "fields": {
+      "ogrenci": 56,
+      "kitap_nusha": 75,
+      "odunc_tarihi": "2025-05-29T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-06-13T09:35:58.976771+00:00",
+      "teslim_tarihi": "2025-06-13T09:35:58.976771+00:00",
+      "durum": "teslim",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 16,
+    "fields": {
+      "ogrenci": 11,
+      "kitap_nusha": 21,
+      "odunc_tarihi": "2025-04-11T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-04-26T09:35:58.976771+00:00",
+      "teslim_tarihi": "2025-04-30T09:35:58.976771+00:00",
+      "durum": "teslim",
+      "gecikme_cezasi": "2.00"
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 17,
+    "fields": {
+      "ogrenci": 102,
+      "kitap_nusha": 143,
+      "odunc_tarihi": "2025-06-22T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-07-07T09:35:58.976771+00:00",
+      "teslim_tarihi": "2025-07-06T09:35:58.976771+00:00",
+      "durum": "teslim",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 18,
+    "fields": {
+      "ogrenci": 91,
+      "kitap_nusha": 8,
+      "odunc_tarihi": "2025-07-07T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-07-22T09:35:58.976771+00:00",
+      "teslim_tarihi": "2025-07-22T09:35:58.976771+00:00",
+      "durum": "teslim",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 19,
+    "fields": {
+      "ogrenci": 97,
+      "kitap_nusha": 145,
+      "odunc_tarihi": "2025-06-10T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-06-25T09:35:58.976771+00:00",
+      "teslim_tarihi": "2025-06-24T09:35:58.976771+00:00",
+      "durum": "teslim",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 20,
+    "fields": {
+      "ogrenci": 76,
+      "kitap_nusha": 58,
+      "odunc_tarihi": "2025-07-12T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-07-27T09:35:58.976771+00:00",
+      "teslim_tarihi": "2025-07-23T09:35:58.976771+00:00",
+      "durum": "teslim",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 21,
+    "fields": {
+      "ogrenci": 88,
+      "kitap_nusha": 130,
+      "odunc_tarihi": "2025-08-18T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-09-02T09:35:58.976771+00:00",
+      "teslim_tarihi": "2025-08-29T09:35:58.976771+00:00",
+      "durum": "teslim",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 22,
+    "fields": {
+      "ogrenci": 29,
+      "kitap_nusha": 178,
+      "odunc_tarihi": "2025-05-09T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-05-24T09:35:58.976771+00:00",
+      "teslim_tarihi": "2025-05-29T09:35:58.976771+00:00",
+      "durum": "teslim",
+      "gecikme_cezasi": "2.50"
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 23,
+    "fields": {
+      "ogrenci": 28,
+      "kitap_nusha": 135,
+      "odunc_tarihi": "2025-06-04T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-06-19T09:35:58.976771+00:00",
+      "teslim_tarihi": "2025-06-15T09:35:58.976771+00:00",
+      "durum": "teslim",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 24,
+    "fields": {
+      "ogrenci": 2,
+      "kitap_nusha": 43,
+      "odunc_tarihi": "2025-05-05T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-05-20T09:35:58.976771+00:00",
+      "teslim_tarihi": "2025-05-17T09:35:58.976771+00:00",
+      "durum": "teslim",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 25,
+    "fields": {
+      "ogrenci": 73,
+      "kitap_nusha": 148,
+      "odunc_tarihi": "2025-05-11T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-05-26T09:35:58.976771+00:00",
+      "teslim_tarihi": "2025-05-31T09:35:58.976771+00:00",
+      "durum": "teslim",
+      "gecikme_cezasi": "2.50"
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 26,
+    "fields": {
+      "ogrenci": 108,
+      "kitap_nusha": 125,
+      "odunc_tarihi": "2025-05-22T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-06-06T09:35:58.976771+00:00",
+      "teslim_tarihi": "2025-06-04T09:35:58.976771+00:00",
+      "durum": "teslim",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 27,
+    "fields": {
+      "ogrenci": 33,
+      "kitap_nusha": 76,
+      "odunc_tarihi": "2025-07-21T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-08-05T09:35:58.976771+00:00",
+      "teslim_tarihi": "2025-08-04T09:35:58.976771+00:00",
+      "durum": "teslim",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 28,
+    "fields": {
+      "ogrenci": 41,
+      "kitap_nusha": 95,
+      "odunc_tarihi": "2025-04-21T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-05-06T09:35:58.976771+00:00",
+      "teslim_tarihi": "2025-05-02T09:35:58.976771+00:00",
+      "durum": "teslim",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 29,
+    "fields": {
+      "ogrenci": 115,
+      "kitap_nusha": 144,
+      "odunc_tarihi": "2025-07-29T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-08-13T09:35:58.976771+00:00",
+      "teslim_tarihi": "2025-08-13T09:35:58.976771+00:00",
+      "durum": "teslim",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 30,
+    "fields": {
+      "ogrenci": 120,
+      "kitap_nusha": 4,
+      "odunc_tarihi": "2025-04-30T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-05-15T09:35:58.976771+00:00",
+      "teslim_tarihi": "2025-05-12T09:35:58.976771+00:00",
+      "durum": "teslim",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 31,
+    "fields": {
+      "ogrenci": 36,
+      "kitap_nusha": 155,
+      "odunc_tarihi": "2025-06-02T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-06-17T09:35:58.976771+00:00",
+      "teslim_tarihi": "2025-06-20T09:35:58.976771+00:00",
+      "durum": "teslim",
+      "gecikme_cezasi": "1.50"
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 32,
+    "fields": {
+      "ogrenci": 39,
+      "kitap_nusha": 18,
+      "odunc_tarihi": "2025-09-15T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-09-30T09:35:58.976771+00:00",
+      "teslim_tarihi": "2025-09-28T09:35:58.976771+00:00",
+      "durum": "teslim",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 33,
+    "fields": {
+      "ogrenci": 25,
+      "kitap_nusha": 44,
+      "odunc_tarihi": "2025-09-20T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-10-05T09:35:58.976771+00:00",
+      "teslim_tarihi": "2025-10-02T09:35:58.976771+00:00",
+      "durum": "teslim",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 34,
+    "fields": {
+      "ogrenci": 71,
+      "kitap_nusha": 149,
+      "odunc_tarihi": "2025-06-15T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-06-30T09:35:58.976771+00:00",
+      "teslim_tarihi": "2025-06-29T09:35:58.976771+00:00",
+      "durum": "teslim",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 35,
+    "fields": {
+      "ogrenci": 28,
+      "kitap_nusha": 70,
+      "odunc_tarihi": "2025-05-13T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-05-28T09:35:58.976771+00:00",
+      "teslim_tarihi": "2025-06-02T09:35:58.976771+00:00",
+      "durum": "teslim",
+      "gecikme_cezasi": "2.50"
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 36,
+    "fields": {
+      "ogrenci": 81,
+      "kitap_nusha": 72,
+      "odunc_tarihi": "2025-04-25T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-05-10T09:35:58.976771+00:00",
+      "teslim_tarihi": "2025-05-05T09:35:58.976771+00:00",
+      "durum": "teslim",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 37,
+    "fields": {
+      "ogrenci": 4,
+      "kitap_nusha": 18,
+      "odunc_tarihi": "2025-04-22T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-05-07T09:35:58.976771+00:00",
+      "teslim_tarihi": "2025-05-14T09:35:58.976771+00:00",
+      "durum": "teslim",
+      "gecikme_cezasi": "3.50"
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 38,
+    "fields": {
+      "ogrenci": 2,
+      "kitap_nusha": 122,
+      "odunc_tarihi": "2025-09-03T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-09-18T09:35:58.976771+00:00",
+      "teslim_tarihi": "2025-09-18T09:35:58.976771+00:00",
+      "durum": "teslim",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 39,
+    "fields": {
+      "ogrenci": 83,
+      "kitap_nusha": 5,
+      "odunc_tarihi": "2025-07-27T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-08-11T09:35:58.976771+00:00",
+      "teslim_tarihi": "2025-08-11T09:35:58.976771+00:00",
+      "durum": "teslim",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 40,
+    "fields": {
+      "ogrenci": 35,
+      "kitap_nusha": 17,
+      "odunc_tarihi": "2025-09-09T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-09-24T09:35:58.976771+00:00",
+      "teslim_tarihi": "2025-10-01T09:35:58.976771+00:00",
+      "durum": "teslim",
+      "gecikme_cezasi": "3.50"
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 41,
+    "fields": {
+      "ogrenci": 120,
+      "kitap_nusha": 147,
+      "odunc_tarihi": "2025-04-21T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-05-06T09:35:58.976771+00:00",
+      "teslim_tarihi": "2025-05-04T09:35:58.976771+00:00",
+      "durum": "teslim",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 42,
+    "fields": {
+      "ogrenci": 104,
+      "kitap_nusha": 13,
+      "odunc_tarihi": "2025-09-21T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-10-06T09:35:58.976771+00:00",
+      "teslim_tarihi": "2025-10-06T09:35:58.976771+00:00",
+      "durum": "teslim",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 43,
+    "fields": {
+      "ogrenci": 13,
+      "kitap_nusha": 170,
+      "odunc_tarihi": "2025-07-14T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-07-29T09:35:58.976771+00:00",
+      "teslim_tarihi": "2025-08-01T09:35:58.976771+00:00",
+      "durum": "teslim",
+      "gecikme_cezasi": "1.50"
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 44,
+    "fields": {
+      "ogrenci": 82,
+      "kitap_nusha": 51,
+      "odunc_tarihi": "2025-09-16T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-10-01T09:35:58.976771+00:00",
+      "teslim_tarihi": "2025-09-28T09:35:58.976771+00:00",
+      "durum": "teslim",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 45,
+    "fields": {
+      "ogrenci": 46,
+      "kitap_nusha": 41,
+      "odunc_tarihi": "2025-08-02T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-08-17T09:35:58.976771+00:00",
+      "teslim_tarihi": "2025-08-16T09:35:58.976771+00:00",
+      "durum": "teslim",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 46,
+    "fields": {
+      "ogrenci": 64,
+      "kitap_nusha": 4,
+      "odunc_tarihi": "2025-05-08T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-05-23T09:35:58.976771+00:00",
+      "teslim_tarihi": "2025-05-23T09:35:58.976771+00:00",
+      "durum": "teslim",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 47,
+    "fields": {
+      "ogrenci": 108,
+      "kitap_nusha": 179,
+      "odunc_tarihi": "2025-07-23T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-08-07T09:35:58.976771+00:00",
+      "teslim_tarihi": "2025-08-11T09:35:58.976771+00:00",
+      "durum": "teslim",
+      "gecikme_cezasi": "2.00"
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 48,
+    "fields": {
+      "ogrenci": 10,
+      "kitap_nusha": 37,
+      "odunc_tarihi": "2025-06-26T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-07-11T09:35:58.976771+00:00",
+      "teslim_tarihi": "2025-07-12T09:35:58.976771+00:00",
+      "durum": "teslim",
+      "gecikme_cezasi": "0.50"
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 49,
+    "fields": {
+      "ogrenci": 80,
+      "kitap_nusha": 154,
+      "odunc_tarihi": "2025-04-15T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-04-30T09:35:58.976771+00:00",
+      "teslim_tarihi": "2025-04-28T09:35:58.976771+00:00",
+      "durum": "teslim",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 50,
+    "fields": {
+      "ogrenci": 21,
+      "kitap_nusha": 46,
+      "odunc_tarihi": "2025-05-30T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-06-14T09:35:58.976771+00:00",
+      "teslim_tarihi": "2025-06-21T09:35:58.976771+00:00",
+      "durum": "teslim",
+      "gecikme_cezasi": "3.50"
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 51,
+    "fields": {
+      "ogrenci": 28,
+      "kitap_nusha": 64,
+      "odunc_tarihi": "2025-07-11T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-07-26T09:35:58.976771+00:00",
+      "teslim_tarihi": "2025-07-31T09:35:58.976771+00:00",
+      "durum": "teslim",
+      "gecikme_cezasi": "2.50"
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 52,
+    "fields": {
+      "ogrenci": 57,
+      "kitap_nusha": 163,
+      "odunc_tarihi": "2025-08-23T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-09-07T09:35:58.976771+00:00",
+      "teslim_tarihi": "2025-09-07T09:35:58.976771+00:00",
+      "durum": "teslim",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 53,
+    "fields": {
+      "ogrenci": 63,
+      "kitap_nusha": 185,
+      "odunc_tarihi": "2025-05-08T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-05-23T09:35:58.976771+00:00",
+      "teslim_tarihi": "2025-05-22T09:35:58.976771+00:00",
+      "durum": "teslim",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 54,
+    "fields": {
+      "ogrenci": 97,
+      "kitap_nusha": 13,
+      "odunc_tarihi": "2025-05-21T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-06-05T09:35:58.976771+00:00",
+      "teslim_tarihi": "2025-06-09T09:35:58.976771+00:00",
+      "durum": "teslim",
+      "gecikme_cezasi": "2.00"
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 55,
+    "fields": {
+      "ogrenci": 49,
+      "kitap_nusha": 67,
+      "odunc_tarihi": "2025-08-24T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-09-08T09:35:58.976771+00:00",
+      "teslim_tarihi": "2025-09-03T09:35:58.976771+00:00",
+      "durum": "teslim",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 56,
+    "fields": {
+      "ogrenci": 110,
+      "kitap_nusha": 106,
+      "odunc_tarihi": "2025-04-05T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-04-20T09:35:58.976771+00:00",
+      "teslim_tarihi": "2025-04-17T09:35:58.976771+00:00",
+      "durum": "teslim",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 57,
+    "fields": {
+      "ogrenci": 97,
+      "kitap_nusha": 42,
+      "odunc_tarihi": "2025-08-26T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-09-10T09:35:58.976771+00:00",
+      "teslim_tarihi": "2025-09-07T09:35:58.976771+00:00",
+      "durum": "teslim",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 58,
+    "fields": {
+      "ogrenci": 56,
+      "kitap_nusha": 51,
+      "odunc_tarihi": "2025-09-08T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-09-23T09:35:58.976771+00:00",
+      "teslim_tarihi": "2025-09-22T09:35:58.976771+00:00",
+      "durum": "teslim",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 59,
+    "fields": {
+      "ogrenci": 90,
+      "kitap_nusha": 18,
+      "odunc_tarihi": "2025-08-31T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-09-15T09:35:58.976771+00:00",
+      "teslim_tarihi": "2025-09-12T09:35:58.976771+00:00",
+      "durum": "teslim",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 60,
+    "fields": {
+      "ogrenci": 45,
+      "kitap_nusha": 121,
+      "odunc_tarihi": "2025-07-20T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-08-04T09:35:58.976771+00:00",
+      "teslim_tarihi": "2025-08-02T09:35:58.976771+00:00",
+      "durum": "teslim",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 61,
+    "fields": {
+      "ogrenci": 73,
+      "kitap_nusha": 74,
+      "odunc_tarihi": "2025-04-28T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-05-13T09:35:58.976771+00:00",
+      "teslim_tarihi": "2025-05-15T09:35:58.976771+00:00",
+      "durum": "teslim",
+      "gecikme_cezasi": "1.00"
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 62,
+    "fields": {
+      "ogrenci": 72,
+      "kitap_nusha": 58,
+      "odunc_tarihi": "2025-05-02T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-05-17T09:35:58.976771+00:00",
+      "teslim_tarihi": "2025-05-15T09:35:58.976771+00:00",
+      "durum": "teslim",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 63,
+    "fields": {
+      "ogrenci": 59,
+      "kitap_nusha": 19,
+      "odunc_tarihi": "2025-05-03T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-05-18T09:35:58.976771+00:00",
+      "teslim_tarihi": "2025-05-15T09:35:58.976771+00:00",
+      "durum": "teslim",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 64,
+    "fields": {
+      "ogrenci": 108,
+      "kitap_nusha": 62,
+      "odunc_tarihi": "2025-07-11T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-07-26T09:35:58.976771+00:00",
+      "teslim_tarihi": "2025-07-30T09:35:58.976771+00:00",
+      "durum": "teslim",
+      "gecikme_cezasi": "2.00"
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 65,
+    "fields": {
+      "ogrenci": 32,
+      "kitap_nusha": 93,
+      "odunc_tarihi": "2025-08-08T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-08-23T09:35:58.976771+00:00",
+      "teslim_tarihi": "2025-08-23T09:35:58.976771+00:00",
+      "durum": "teslim",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 66,
+    "fields": {
+      "ogrenci": 92,
+      "kitap_nusha": 53,
+      "odunc_tarihi": "2025-05-26T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-06-10T09:35:58.976771+00:00",
+      "teslim_tarihi": "2025-06-19T09:35:58.976771+00:00",
+      "durum": "teslim",
+      "gecikme_cezasi": "4.50"
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 67,
+    "fields": {
+      "ogrenci": 34,
+      "kitap_nusha": 161,
+      "odunc_tarihi": "2025-07-14T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-07-29T09:35:58.976771+00:00",
+      "teslim_tarihi": "2025-07-25T09:35:58.976771+00:00",
+      "durum": "teslim",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 68,
+    "fields": {
+      "ogrenci": 2,
+      "kitap_nusha": 46,
+      "odunc_tarihi": "2025-05-16T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-05-31T09:35:58.976771+00:00",
+      "teslim_tarihi": "2025-06-03T09:35:58.976771+00:00",
+      "durum": "teslim",
+      "gecikme_cezasi": "1.50"
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 69,
+    "fields": {
+      "ogrenci": 29,
+      "kitap_nusha": 184,
+      "odunc_tarihi": "2025-08-26T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-09-10T09:35:58.976771+00:00",
+      "teslim_tarihi": "2025-09-07T09:35:58.976771+00:00",
+      "durum": "teslim",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 70,
+    "fields": {
+      "ogrenci": 2,
+      "kitap_nusha": 188,
+      "odunc_tarihi": "2025-08-04T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-08-19T09:35:58.976771+00:00",
+      "teslim_tarihi": "2025-08-16T09:35:58.976771+00:00",
+      "durum": "teslim",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 71,
+    "fields": {
+      "ogrenci": 75,
+      "kitap_nusha": 105,
+      "odunc_tarihi": "2025-06-06T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-06-21T09:35:58.976771+00:00",
+      "teslim_tarihi": "2025-06-20T09:35:58.976771+00:00",
+      "durum": "teslim",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 72,
+    "fields": {
+      "ogrenci": 118,
+      "kitap_nusha": 160,
+      "odunc_tarihi": "2025-09-06T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-09-21T09:35:58.976771+00:00",
+      "teslim_tarihi": "2025-09-17T09:35:58.976771+00:00",
+      "durum": "teslim",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 73,
+    "fields": {
+      "ogrenci": 52,
+      "kitap_nusha": 189,
+      "odunc_tarihi": "2025-04-09T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-04-24T09:35:58.976771+00:00",
+      "teslim_tarihi": "2025-04-22T09:35:58.976771+00:00",
+      "durum": "teslim",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 74,
+    "fields": {
+      "ogrenci": 73,
+      "kitap_nusha": 145,
+      "odunc_tarihi": "2025-09-08T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-09-23T09:35:58.976771+00:00",
+      "teslim_tarihi": "2025-09-28T09:35:58.976771+00:00",
+      "durum": "teslim",
+      "gecikme_cezasi": "2.50"
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 75,
+    "fields": {
+      "ogrenci": 42,
+      "kitap_nusha": 62,
+      "odunc_tarihi": "2025-05-30T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-06-14T09:35:58.976771+00:00",
+      "teslim_tarihi": "2025-06-12T09:35:58.976771+00:00",
+      "durum": "teslim",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 76,
+    "fields": {
+      "ogrenci": 62,
+      "kitap_nusha": 154,
+      "odunc_tarihi": "2025-06-27T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-07-12T09:35:58.976771+00:00",
+      "teslim_tarihi": "2025-07-09T09:35:58.976771+00:00",
+      "durum": "teslim",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 77,
+    "fields": {
+      "ogrenci": 63,
+      "kitap_nusha": 42,
+      "odunc_tarihi": "2025-04-25T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-05-10T09:35:58.976771+00:00",
+      "teslim_tarihi": "2025-05-10T09:35:58.976771+00:00",
+      "durum": "teslim",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 78,
+    "fields": {
+      "ogrenci": 6,
+      "kitap_nusha": 22,
+      "odunc_tarihi": "2025-04-12T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-04-27T09:35:58.976771+00:00",
+      "teslim_tarihi": "2025-04-26T09:35:58.976771+00:00",
+      "durum": "teslim",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 79,
+    "fields": {
+      "ogrenci": 7,
+      "kitap_nusha": 155,
+      "odunc_tarihi": "2025-07-21T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-08-05T09:35:58.976771+00:00",
+      "teslim_tarihi": "2025-08-01T09:35:58.976771+00:00",
+      "durum": "teslim",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 80,
+    "fields": {
+      "ogrenci": 87,
+      "kitap_nusha": 62,
+      "odunc_tarihi": "2025-06-22T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-07-07T09:35:58.976771+00:00",
+      "teslim_tarihi": "2025-07-05T09:35:58.976771+00:00",
+      "durum": "teslim",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 81,
+    "fields": {
+      "ogrenci": 36,
+      "kitap_nusha": 69,
+      "odunc_tarihi": "2025-07-29T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-08-13T09:35:58.976771+00:00",
+      "teslim_tarihi": "2025-08-13T09:35:58.976771+00:00",
+      "durum": "teslim",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 82,
+    "fields": {
+      "ogrenci": 54,
+      "kitap_nusha": 77,
+      "odunc_tarihi": "2025-06-16T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-07-01T09:35:58.976771+00:00",
+      "teslim_tarihi": "2025-06-26T09:35:58.976771+00:00",
+      "durum": "teslim",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 83,
+    "fields": {
+      "ogrenci": 91,
+      "kitap_nusha": 14,
+      "odunc_tarihi": "2025-09-24T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-10-09T09:35:58.976771+00:00",
+      "teslim_tarihi": "2025-10-17T09:35:58.976771+00:00",
+      "durum": "teslim",
+      "gecikme_cezasi": "4.00"
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 84,
+    "fields": {
+      "ogrenci": 119,
+      "kitap_nusha": 157,
+      "odunc_tarihi": "2025-04-10T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-04-25T09:35:58.976771+00:00",
+      "teslim_tarihi": "2025-04-24T09:35:58.976771+00:00",
+      "durum": "teslim",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 85,
+    "fields": {
+      "ogrenci": 20,
+      "kitap_nusha": 69,
+      "odunc_tarihi": "2025-06-03T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-06-18T09:35:58.976771+00:00",
+      "teslim_tarihi": "2025-06-16T09:35:58.976771+00:00",
+      "durum": "teslim",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 86,
+    "fields": {
+      "ogrenci": 31,
+      "kitap_nusha": 54,
+      "odunc_tarihi": "2025-06-25T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-07-10T09:35:58.976771+00:00",
+      "teslim_tarihi": "2025-07-19T09:35:58.976771+00:00",
+      "durum": "teslim",
+      "gecikme_cezasi": "4.50"
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 87,
+    "fields": {
+      "ogrenci": 70,
+      "kitap_nusha": 31,
+      "odunc_tarihi": "2025-07-12T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-07-27T09:35:58.976771+00:00",
+      "teslim_tarihi": "2025-07-25T09:35:58.976771+00:00",
+      "durum": "teslim",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 88,
+    "fields": {
+      "ogrenci": 62,
+      "kitap_nusha": 89,
+      "odunc_tarihi": "2025-06-12T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-06-27T09:35:58.976771+00:00",
+      "teslim_tarihi": "2025-07-01T09:35:58.976771+00:00",
+      "durum": "teslim",
+      "gecikme_cezasi": "2.00"
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 89,
+    "fields": {
+      "ogrenci": 39,
+      "kitap_nusha": 19,
+      "odunc_tarihi": "2025-08-21T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-09-05T09:35:58.976771+00:00",
+      "teslim_tarihi": "2025-09-03T09:35:58.976771+00:00",
+      "durum": "teslim",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 90,
+    "fields": {
+      "ogrenci": 28,
+      "kitap_nusha": 155,
+      "odunc_tarihi": "2025-05-16T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-05-31T09:35:58.976771+00:00",
+      "teslim_tarihi": "2025-06-02T09:35:58.976771+00:00",
+      "durum": "teslim",
+      "gecikme_cezasi": "1.00"
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 91,
+    "fields": {
+      "ogrenci": 66,
+      "kitap_nusha": 162,
+      "odunc_tarihi": "2025-04-23T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-05-08T09:35:58.976771+00:00",
+      "teslim_tarihi": "2025-05-05T09:35:58.976771+00:00",
+      "durum": "teslim",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 92,
+    "fields": {
+      "ogrenci": 33,
+      "kitap_nusha": 113,
+      "odunc_tarihi": "2025-08-02T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-08-17T09:35:58.976771+00:00",
+      "teslim_tarihi": "2025-08-15T09:35:58.976771+00:00",
+      "durum": "teslim",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 93,
+    "fields": {
+      "ogrenci": 30,
+      "kitap_nusha": 176,
+      "odunc_tarihi": "2025-09-11T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-09-26T09:35:58.976771+00:00",
+      "teslim_tarihi": "2025-10-06T09:35:58.976771+00:00",
+      "durum": "teslim",
+      "gecikme_cezasi": "5.00"
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 94,
+    "fields": {
+      "ogrenci": 117,
+      "kitap_nusha": 68,
+      "odunc_tarihi": "2025-08-27T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-09-11T09:35:58.976771+00:00",
+      "teslim_tarihi": "2025-09-07T09:35:58.976771+00:00",
+      "durum": "teslim",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 95,
+    "fields": {
+      "ogrenci": 7,
+      "kitap_nusha": 21,
+      "odunc_tarihi": "2025-05-27T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-06-11T09:35:58.976771+00:00",
+      "teslim_tarihi": "2025-06-06T09:35:58.976771+00:00",
+      "durum": "teslim",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 96,
+    "fields": {
+      "ogrenci": 19,
+      "kitap_nusha": 135,
+      "odunc_tarihi": "2025-05-17T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-06-01T09:35:58.976771+00:00",
+      "teslim_tarihi": "2025-05-28T09:35:58.976771+00:00",
+      "durum": "teslim",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 97,
+    "fields": {
+      "ogrenci": 62,
+      "kitap_nusha": 128,
+      "odunc_tarihi": "2025-09-26T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-10-11T09:35:58.976771+00:00",
+      "teslim_tarihi": null,
+      "durum": "oduncte",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 98,
+    "fields": {
+      "ogrenci": 87,
+      "kitap_nusha": 129,
+      "odunc_tarihi": "2025-09-21T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-10-06T09:35:58.976771+00:00",
+      "teslim_tarihi": null,
+      "durum": "oduncte",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 99,
+    "fields": {
+      "ogrenci": 65,
+      "kitap_nusha": 3,
+      "odunc_tarihi": "2025-09-13T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-09-28T09:35:58.976771+00:00",
+      "teslim_tarihi": null,
+      "durum": "oduncte",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 100,
+    "fields": {
+      "ogrenci": 31,
+      "kitap_nusha": 132,
+      "odunc_tarihi": "2025-09-03T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-09-18T09:35:58.976771+00:00",
+      "teslim_tarihi": null,
+      "durum": "oduncte",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 101,
+    "fields": {
+      "ogrenci": 56,
+      "kitap_nusha": 5,
+      "odunc_tarihi": "2025-09-25T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-10-10T09:35:58.976771+00:00",
+      "teslim_tarihi": null,
+      "durum": "oduncte",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 102,
+    "fields": {
+      "ogrenci": 90,
+      "kitap_nusha": 8,
+      "odunc_tarihi": "2025-09-12T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-09-27T09:35:58.976771+00:00",
+      "teslim_tarihi": null,
+      "durum": "oduncte",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 103,
+    "fields": {
+      "ogrenci": 89,
+      "kitap_nusha": 9,
+      "odunc_tarihi": "2025-09-04T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-09-19T09:35:58.976771+00:00",
+      "teslim_tarihi": null,
+      "durum": "oduncte",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 104,
+    "fields": {
+      "ogrenci": 6,
+      "kitap_nusha": 10,
+      "odunc_tarihi": "2025-09-05T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-09-20T09:35:58.976771+00:00",
+      "teslim_tarihi": null,
+      "durum": "oduncte",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 105,
+    "fields": {
+      "ogrenci": 33,
+      "kitap_nusha": 11,
+      "odunc_tarihi": "2025-09-03T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-09-18T09:35:58.976771+00:00",
+      "teslim_tarihi": null,
+      "durum": "oduncte",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 106,
+    "fields": {
+      "ogrenci": 86,
+      "kitap_nusha": 13,
+      "odunc_tarihi": "2025-09-14T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-09-29T09:35:58.976771+00:00",
+      "teslim_tarihi": null,
+      "durum": "oduncte",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 107,
+    "fields": {
+      "ogrenci": 42,
+      "kitap_nusha": 142,
+      "odunc_tarihi": "2025-09-09T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-09-24T09:35:58.976771+00:00",
+      "teslim_tarihi": null,
+      "durum": "oduncte",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 108,
+    "fields": {
+      "ogrenci": 73,
+      "kitap_nusha": 143,
+      "odunc_tarihi": "2025-09-26T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-10-11T09:35:58.976771+00:00",
+      "teslim_tarihi": null,
+      "durum": "oduncte",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 109,
+    "fields": {
+      "ogrenci": 107,
+      "kitap_nusha": 146,
+      "odunc_tarihi": "2025-09-05T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-09-20T09:35:58.976771+00:00",
+      "teslim_tarihi": null,
+      "durum": "oduncte",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 110,
+    "fields": {
+      "ogrenci": 67,
+      "kitap_nusha": 20,
+      "odunc_tarihi": "2025-09-18T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-10-03T09:35:58.976771+00:00",
+      "teslim_tarihi": null,
+      "durum": "oduncte",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 111,
+    "fields": {
+      "ogrenci": 21,
+      "kitap_nusha": 21,
+      "odunc_tarihi": "2025-09-19T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-10-04T09:35:58.976771+00:00",
+      "teslim_tarihi": null,
+      "durum": "oduncte",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 112,
+    "fields": {
+      "ogrenci": 40,
+      "kitap_nusha": 152,
+      "odunc_tarihi": "2025-09-15T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-09-30T09:35:58.976771+00:00",
+      "teslim_tarihi": null,
+      "durum": "oduncte",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 113,
+    "fields": {
+      "ogrenci": 15,
+      "kitap_nusha": 26,
+      "odunc_tarihi": "2025-09-29T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-10-14T09:35:58.976771+00:00",
+      "teslim_tarihi": null,
+      "durum": "oduncte",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 114,
+    "fields": {
+      "ogrenci": 27,
+      "kitap_nusha": 155,
+      "odunc_tarihi": "2025-09-06T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-09-21T09:35:58.976771+00:00",
+      "teslim_tarihi": null,
+      "durum": "oduncte",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 115,
+    "fields": {
+      "ogrenci": 53,
+      "kitap_nusha": 157,
+      "odunc_tarihi": "2025-09-27T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-10-12T09:35:58.976771+00:00",
+      "teslim_tarihi": null,
+      "durum": "oduncte",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 116,
+    "fields": {
+      "ogrenci": 26,
+      "kitap_nusha": 158,
+      "odunc_tarihi": "2025-09-24T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-10-09T09:35:58.976771+00:00",
+      "teslim_tarihi": null,
+      "durum": "oduncte",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 117,
+    "fields": {
+      "ogrenci": 119,
+      "kitap_nusha": 31,
+      "odunc_tarihi": "2025-09-08T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-09-23T09:35:58.976771+00:00",
+      "teslim_tarihi": null,
+      "durum": "oduncte",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 118,
+    "fields": {
+      "ogrenci": 97,
+      "kitap_nusha": 160,
+      "odunc_tarihi": "2025-09-07T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-09-22T09:35:58.976771+00:00",
+      "teslim_tarihi": null,
+      "durum": "oduncte",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 119,
+    "fields": {
+      "ogrenci": 69,
+      "kitap_nusha": 161,
+      "odunc_tarihi": "2025-09-24T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-10-09T09:35:58.976771+00:00",
+      "teslim_tarihi": null,
+      "durum": "oduncte",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 120,
+    "fields": {
+      "ogrenci": 92,
+      "kitap_nusha": 34,
+      "odunc_tarihi": "2025-09-09T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-09-24T09:35:58.976771+00:00",
+      "teslim_tarihi": null,
+      "durum": "oduncte",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 121,
+    "fields": {
+      "ogrenci": 69,
+      "kitap_nusha": 29,
+      "odunc_tarihi": "2025-09-22T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-10-07T09:35:58.976771+00:00",
+      "teslim_tarihi": null,
+      "durum": "oduncte",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 122,
+    "fields": {
+      "ogrenci": 73,
+      "kitap_nusha": 36,
+      "odunc_tarihi": "2025-09-16T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-10-01T09:35:58.976771+00:00",
+      "teslim_tarihi": null,
+      "durum": "oduncte",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 123,
+    "fields": {
+      "ogrenci": 72,
+      "kitap_nusha": 37,
+      "odunc_tarihi": "2025-09-27T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-10-12T09:35:58.976771+00:00",
+      "teslim_tarihi": null,
+      "durum": "oduncte",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 124,
+    "fields": {
+      "ogrenci": 67,
+      "kitap_nusha": 38,
+      "odunc_tarihi": "2025-09-22T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-10-07T09:35:58.976771+00:00",
+      "teslim_tarihi": null,
+      "durum": "oduncte",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 125,
+    "fields": {
+      "ogrenci": 14,
+      "kitap_nusha": 39,
+      "odunc_tarihi": "2025-09-08T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-09-23T09:35:58.976771+00:00",
+      "teslim_tarihi": null,
+      "durum": "oduncte",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 126,
+    "fields": {
+      "ogrenci": 71,
+      "kitap_nusha": 40,
+      "odunc_tarihi": "2025-09-17T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-10-02T09:35:58.976771+00:00",
+      "teslim_tarihi": null,
+      "durum": "oduncte",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 127,
+    "fields": {
+      "ogrenci": 46,
+      "kitap_nusha": 168,
+      "odunc_tarihi": "2025-09-29T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-10-14T09:35:58.976771+00:00",
+      "teslim_tarihi": null,
+      "durum": "oduncte",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 128,
+    "fields": {
+      "ogrenci": 3,
+      "kitap_nusha": 170,
+      "odunc_tarihi": "2025-09-07T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-09-22T09:35:58.976771+00:00",
+      "teslim_tarihi": null,
+      "durum": "oduncte",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 129,
+    "fields": {
+      "ogrenci": 23,
+      "kitap_nusha": 43,
+      "odunc_tarihi": "2025-09-15T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-09-30T09:35:58.976771+00:00",
+      "teslim_tarihi": null,
+      "durum": "oduncte",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 130,
+    "fields": {
+      "ogrenci": 76,
+      "kitap_nusha": 171,
+      "odunc_tarihi": "2025-09-21T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-10-06T09:35:58.976771+00:00",
+      "teslim_tarihi": null,
+      "durum": "oduncte",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 131,
+    "fields": {
+      "ogrenci": 82,
+      "kitap_nusha": 41,
+      "odunc_tarihi": "2025-09-25T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-10-10T09:35:58.976771+00:00",
+      "teslim_tarihi": null,
+      "durum": "oduncte",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 132,
+    "fields": {
+      "ogrenci": 35,
+      "kitap_nusha": 174,
+      "odunc_tarihi": "2025-09-24T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-10-09T09:35:58.976771+00:00",
+      "teslim_tarihi": null,
+      "durum": "oduncte",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 133,
+    "fields": {
+      "ogrenci": 34,
+      "kitap_nusha": 46,
+      "odunc_tarihi": "2025-09-21T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-10-06T09:35:58.976771+00:00",
+      "teslim_tarihi": null,
+      "durum": "oduncte",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 134,
+    "fields": {
+      "ogrenci": 33,
+      "kitap_nusha": 175,
+      "odunc_tarihi": "2025-09-09T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-09-24T09:35:58.976771+00:00",
+      "teslim_tarihi": null,
+      "durum": "oduncte",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 135,
+    "fields": {
+      "ogrenci": 59,
+      "kitap_nusha": 49,
+      "odunc_tarihi": "2025-09-02T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-09-17T09:35:58.976771+00:00",
+      "teslim_tarihi": null,
+      "durum": "oduncte",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 136,
+    "fields": {
+      "ogrenci": 2,
+      "kitap_nusha": 181,
+      "odunc_tarihi": "2025-09-30T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-10-15T09:35:58.976771+00:00",
+      "teslim_tarihi": null,
+      "durum": "oduncte",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 137,
+    "fields": {
+      "ogrenci": 111,
+      "kitap_nusha": 183,
+      "odunc_tarihi": "2025-09-20T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-10-05T09:35:58.976771+00:00",
+      "teslim_tarihi": null,
+      "durum": "oduncte",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 138,
+    "fields": {
+      "ogrenci": 57,
+      "kitap_nusha": 56,
+      "odunc_tarihi": "2025-09-03T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-09-18T09:35:58.976771+00:00",
+      "teslim_tarihi": null,
+      "durum": "oduncte",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 139,
+    "fields": {
+      "ogrenci": 68,
+      "kitap_nusha": 186,
+      "odunc_tarihi": "2025-09-03T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-09-18T09:35:58.976771+00:00",
+      "teslim_tarihi": null,
+      "durum": "oduncte",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 140,
+    "fields": {
+      "ogrenci": 54,
+      "kitap_nusha": 61,
+      "odunc_tarihi": "2025-09-03T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-09-18T09:35:58.976771+00:00",
+      "teslim_tarihi": null,
+      "durum": "oduncte",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 141,
+    "fields": {
+      "ogrenci": 1,
+      "kitap_nusha": 62,
+      "odunc_tarihi": "2025-09-25T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-10-10T09:35:58.976771+00:00",
+      "teslim_tarihi": null,
+      "durum": "oduncte",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 142,
+    "fields": {
+      "ogrenci": 107,
+      "kitap_nusha": 63,
+      "odunc_tarihi": "2025-09-22T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-10-07T09:35:58.976771+00:00",
+      "teslim_tarihi": null,
+      "durum": "oduncte",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 143,
+    "fields": {
+      "ogrenci": 108,
+      "kitap_nusha": 189,
+      "odunc_tarihi": "2025-09-18T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-10-03T09:35:58.976771+00:00",
+      "teslim_tarihi": null,
+      "durum": "oduncte",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 144,
+    "fields": {
+      "ogrenci": 72,
+      "kitap_nusha": 66,
+      "odunc_tarihi": "2025-09-15T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-09-30T09:35:58.976771+00:00",
+      "teslim_tarihi": null,
+      "durum": "oduncte",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 145,
+    "fields": {
+      "ogrenci": 119,
+      "kitap_nusha": 69,
+      "odunc_tarihi": "2025-09-06T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-09-21T09:35:58.976771+00:00",
+      "teslim_tarihi": null,
+      "durum": "oduncte",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 146,
+    "fields": {
+      "ogrenci": 54,
+      "kitap_nusha": 75,
+      "odunc_tarihi": "2025-09-22T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-10-07T09:35:58.976771+00:00",
+      "teslim_tarihi": null,
+      "durum": "oduncte",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 147,
+    "fields": {
+      "ogrenci": 93,
+      "kitap_nusha": 76,
+      "odunc_tarihi": "2025-09-15T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-09-30T09:35:58.976771+00:00",
+      "teslim_tarihi": null,
+      "durum": "oduncte",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 148,
+    "fields": {
+      "ogrenci": 14,
+      "kitap_nusha": 80,
+      "odunc_tarihi": "2025-09-02T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-09-17T09:35:58.976771+00:00",
+      "teslim_tarihi": null,
+      "durum": "oduncte",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 149,
+    "fields": {
+      "ogrenci": 14,
+      "kitap_nusha": 82,
+      "odunc_tarihi": "2025-09-02T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-09-17T09:35:58.976771+00:00",
+      "teslim_tarihi": null,
+      "durum": "oduncte",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 150,
+    "fields": {
+      "ogrenci": 118,
+      "kitap_nusha": 90,
+      "odunc_tarihi": "2025-09-17T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-10-02T09:35:58.976771+00:00",
+      "teslim_tarihi": null,
+      "durum": "oduncte",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 151,
+    "fields": {
+      "ogrenci": 119,
+      "kitap_nusha": 102,
+      "odunc_tarihi": "2025-09-05T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-09-20T09:35:58.976771+00:00",
+      "teslim_tarihi": null,
+      "durum": "oduncte",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 152,
+    "fields": {
+      "ogrenci": 104,
+      "kitap_nusha": 103,
+      "odunc_tarihi": "2025-09-21T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-10-06T09:35:58.976771+00:00",
+      "teslim_tarihi": null,
+      "durum": "oduncte",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 153,
+    "fields": {
+      "ogrenci": 64,
+      "kitap_nusha": 104,
+      "odunc_tarihi": "2025-09-28T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-10-13T09:35:58.976771+00:00",
+      "teslim_tarihi": null,
+      "durum": "oduncte",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 154,
+    "fields": {
+      "ogrenci": 49,
+      "kitap_nusha": 105,
+      "odunc_tarihi": "2025-09-12T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-09-27T09:35:58.976771+00:00",
+      "teslim_tarihi": null,
+      "durum": "oduncte",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 155,
+    "fields": {
+      "ogrenci": 5,
+      "kitap_nusha": 106,
+      "odunc_tarihi": "2025-10-01T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-10-16T09:35:58.976771+00:00",
+      "teslim_tarihi": null,
+      "durum": "oduncte",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 156,
+    "fields": {
+      "ogrenci": 31,
+      "kitap_nusha": 110,
+      "odunc_tarihi": "2025-09-20T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-10-05T09:35:58.976771+00:00",
+      "teslim_tarihi": null,
+      "durum": "oduncte",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 157,
+    "fields": {
+      "ogrenci": 83,
+      "kitap_nusha": 115,
+      "odunc_tarihi": "2025-09-23T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-10-08T09:35:58.976771+00:00",
+      "teslim_tarihi": null,
+      "durum": "oduncte",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 158,
+    "fields": {
+      "ogrenci": 87,
+      "kitap_nusha": 116,
+      "odunc_tarihi": "2025-09-26T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-10-11T09:35:58.976771+00:00",
+      "teslim_tarihi": null,
+      "durum": "oduncte",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 159,
+    "fields": {
+      "ogrenci": 61,
+      "kitap_nusha": 122,
+      "odunc_tarihi": "2025-09-09T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-09-24T09:35:58.976771+00:00",
+      "teslim_tarihi": null,
+      "durum": "oduncte",
+      "gecikme_cezasi": null
+    }
+  },
+  {
+    "model": "kutuphane_app.odunckaydi",
+    "pk": 160,
+    "fields": {
+      "ogrenci": 68,
+      "kitap_nusha": 124,
+      "odunc_tarihi": "2025-09-03T09:35:58.976771+00:00",
+      "iade_tarihi": "2025-09-18T09:35:58.976771+00:00",
+      "teslim_tarihi": null,
+      "durum": "oduncte",
+      "gecikme_cezasi": null
+    }
+  }
+]

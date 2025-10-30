@@ -1,0 +1,23 @@
+{% extends "admin/base_site.html" %}
+{% block content %}
+  <h1>Arşive Taşı - Ön İzleme</h1>
+  <p>{{ toplam }} öğrenci arşiv için uygun bulundu.</p>
+  {% if toplam %}
+    <table border="1">
+      <tr><th>No</th><th>Ad</th><th>Soyad</th><th>Sınıf</th><th>Pasif Tarihi</th></tr>
+      {% for ogr in adaylar %}
+        <tr>
+          <td>{{ ogr.ogrenci_no }}</td>
+          <td>{{ ogr.ad }}</td>
+          <td>{{ ogr.soyad }}</td>
+          <td>{{ ogr.sinif }}</td>
+          <td>{{ ogr.pasif_tarihi }}</td>
+        </tr>
+      {% endfor %}
+    </table>
+    <p><a href="{% url 'admin:ogrenci-arsiv-onayla' %}">Onayla ve Arşive Taşı</a></p>
+  {% else %}
+    <p>Şu an arşivlenecek öğrenci yok.</p>
+  {% endif %}
+  <p><a href="..">← Geri dön</a></p>
+{% endblock %}

@@ -1,0 +1,26 @@
+{% extends "admin/base_site.html" %}
+
+{% block content %}
+  <h1>♻️ Sistemi Geri Yükle</h1>
+  <p style="color:red;">⚠️ Bu işlem tüm mevcut veriyi silecek ve seçilen yedeği yükleyecek.</p>
+
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    <p>"EVET" yazın: <input type="text" name="confirm"></p>
+    <p>Güvenlik kodu ({{ code }}): <input type="text" name="code"></p>
+
+    <h3>1) Manuel JSON yükle</h3>
+    <input type="file" name="json_file"><br><br>
+
+    <h3>2) Veya mevcut yedeklerden seç</h3>
+    <select name="selected_file">
+      <option value="">-- Seç --</option>
+      {% for f in backup_files %}
+        <option value="{{ f }}">{{ f }}</option>
+      {% endfor %}
+    </select>
+
+    <br><br>
+    <button type="submit">Geri Yükle</button>
+  </form>
+{% endblock %}

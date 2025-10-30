@@ -1,0 +1,15 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block content %}
+  <p>
+    Bu <strong>dışa aktarma</strong> işlemi, seçtiğiniz formata göre verileri dışa aktaracaktır.
+  </p>
+
+  <form method="post" enctype="multipart/form-data" novalidate>
+    {% csrf_token %}
+    {{ form.media }}
+    {{ form.as_p }}
+    <input type="submit" class="button default" value="Dışa aktar">
+  </form>
+{% endblock %}

@@ -1,0 +1,349 @@
+/* login ekranı için ekstra boşluk */
+QWidget {
+    background-color: #f5f6fa;
+    font-family: "Segoe UI";
+    font-size: 11pt;
+}
+
+QLabel {
+    font-family: "Noto Sans", "Noto Color Emoji", sans-serif;
+    margin-bottom: 10px;
+}
+
+QLineEdit {
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    padding: 6px;
+    background: #ffffff;
+}
+
+QLineEdit:focus {
+    border: 1px solid #0078d7;
+    background: #eaf4ff;
+}
+
+QPushButton#loginButton {
+    background-color: #0078d7;
+    color: white;
+    border-radius: 8px;
+    padding: 8px;
+    font-weight: bold;
+}
+
+QPushButton#loginButton:hover {
+    background-color: #005a9e;
+}
+
+QMainWindow {
+    background-color: #f7f7f7;
+}
+
+QLabel#TitleLabel {
+    font-size: 20px;
+    font-weight: bold;
+    color: #333333;
+    padding: 10px;
+}
+
+QPushButton {
+    background-color: #4CAF50;
+    color: white;
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-size: 14px;
+}
+
+QPushButton:hover {
+    background-color: #45a049;
+}
+
+QTableView {
+    background-color: white;
+    gridline-color: #dcdcdc;
+    font-size: 13px;
+    selection-background-color: #cce5ff;
+    alternate-background-color: #f9f9f9;
+}
+
+QHeaderView::section {
+    background-color: #eaeaea;
+    padding: 6px;
+    font-weight: bold;
+    border: 1px solid #dcdcdc;
+}
+
+QLineEdit#QuickInput {
+    border: 2px solid #0078D7;
+    border-radius: 15px;
+    padding: 8px 12px;
+    font-size: 15px;
+    background: #f1f1f1;
+    color: #333;
+}
+
+QLineEdit#QuickInput:focus {
+    border: 2px solid #005A9E;
+    background: #ffffff;
+}
+
+QToolButton#HamburgerButton {
+    border: none;
+    background: transparent;
+    font-size: 20px;
+    padding: 4px 8px;
+}
+
+QToolButton#HamburgerButton:hover {
+    background: rgba(0, 0, 0, 0.05);
+    border-radius: 6px;
+}
+
+QWidget#SideMenu {
+    background-color: #070a12; /* çok daha koyu lacivert/füme */
+    border-right: 1px solid #000814;
+}
+
+QFrame#SideMenuItem {
+    background-color: transparent;
+    border-radius: 14px;
+}
+
+/* Hover: opak renkle vurgula (yarı saydam değil) */
+QFrame#SideMenuItem[hover="true"] {
+    background-color: #1f2b3a;
+}
+QFrame#SideMenuItem:hover {
+    background-color: #1f2b3a;
+}
+QFrame#SideMenuItem:hover QLabel#SideMenuItemTitle { color: #ffffff; }
+QFrame#SideMenuItem:hover QLabel#SideMenuItemDesc { color: #cdd3de; }
+
+/* Menü öğesi içindeki tüm etiketlerin arka planı şeffaf olsun */
+QFrame#SideMenuItem QLabel {
+    background-color: transparent;
+    border: none;
+}
+
+QLabel#SideMenuItemTitle {
+    font-size: 17px;
+    font-weight: 800;
+    color: #f9fafb; /* daha parlak */
+    background-color: transparent;
+    margin-bottom: 0px; /* global margin'i geçersiz kıl */
+    padding-bottom: 2px;
+}
+
+QLabel#SideMenuItemDesc {
+    font-size: 12px;
+    color: #b6bdc9;
+    background-color: transparent;
+    margin-bottom: 0px; /* global margin'i geçersiz kıl */
+    padding-bottom: 3px; /* kuyruklu harfler için nefes payı */
+}
+
+/* Çocuk etiketler hover'da da şeffaf kalsın (kart arkaplanı görünür) */
+
+QLabel#SideMenuItemIcon {
+    padding: 4px 0;
+}
+QFrame#InfoCard {
+    border: 1px solid #444;
+    border-radius: 6px;
+    background: #f0f0f0;
+    padding: 6px;
+    min-width: 200px;
+    max-width: 250px;
+}
+QFrame#InfoCardWide {
+    border: 1px solid #444;
+    border-radius: 6px;
+    background: #f0f0f0;
+    padding: 8px;
+    min-width: 300px;
+    max-width: 420px;
+}
+
+QPushButton#DialogNeutralButton {
+    background-color: #bdc3c7;
+    color: #2c3e50;
+    border: none;
+    border-radius: 4px;
+    padding: 4px 12px;
+}
+
+QPushButton#DialogPositiveButton {
+    background-color: #27ae60;
+    color: #ffffff;
+    border: none;
+    border-radius: 4px;
+    padding: 4px 12px;
+}
+
+QPushButton#DialogNegativeButton {
+    background-color: #e74c3c;
+    color: #ffffff;
+    border: none;
+    border-radius: 4px;
+    padding: 4px 12px;
+}
+
+QPushButton#ReturnButton {
+    background-color: #1e90ff;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 6px 14px;
+    /*margin-top: 6px;*/
+    font-size: 12px;
+    font-weight: 600;
+}
+
+QPushButton#ReturnButton:hover {
+    background-color: #1874d2;
+}
+
+QPushButton#ReturnButton:disabled {
+    background-color: #8fbaf0;
+    color: #f4f4f4;
+}
+
+QPushButton#SecondaryButton {
+    background-color: #e67e22;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 6px 14px;
+    font-size: 10px;
+    font-weight: 600;
+}
+
+QPushButton#SecondaryButton:hover {
+    background-color: #d35400;
+}
+
+QPushButton#CheckoutButton {
+    background-color: #27ae60;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 4px 10px;
+    margin-top: 8px;
+}
+
+QPushButton#CheckoutButton:hover {
+    background-color: #1f8a4c;
+}
+
+QPushButton#CheckoutButton:disabled {
+    background-color: #9bd6b4;
+    color: #f4f4f4;
+}
+QFrame#HistoryCard {
+    background-color: #e9f7ef;     /* açık yeşil */
+    border-radius: 8px;
+    padding: 4px 6px;
+    margin: 3px;
+    border: 1px solid #cdeccd;
+}
+
+QFrame#InfoCard QLabel,
+QFrame#InfoCardWide QLabel,
+QFrame#HistoryCard QLabel,
+QFrame#HistoryCardActive QLabel,
+QFrame#HistoryCardWarning QLabel,
+QFrame#HistoryCardExpired QLabel,
+QFrame#HistoryCardDisabled QLabel {
+    background-color: transparent;  /* arka plan kartın rengini alsın */
+}
+/* 📘 Normal geçmiş kayıt */
+QFrame#HistoryCard {
+    background-color: #eef6f0;
+    border: 1px solid #cde5d5;
+    border-radius: 6px;
+    /* padding: 4px 8px;
+    margin: 3px 0; */
+}
+
+/* 🟢 Süresi dolmamış aktif kayıt */
+QFrame#HistoryCardActive {
+    background-color: #e7fae7;
+    border: 1px solid #9edb9e;
+    border-radius: 6px;
+    /* padding: 4px 8px;
+    margin: 3px 0; */
+}
+
+/* 🟠 Süresi yaklaşan kayıt */
+QFrame#HistoryCardWarning {
+    background-color: #fff6d5;
+    border: 1px solid #ffe27b;
+    border-radius: 6px;
+    /* padding: 4px 8px;
+    margin: 3px 0; */
+}
+
+/* 🔴 Süresi geçmiş kayıt */
+QFrame#HistoryCardExpired {
+    background-color: #fde4e4;
+    border: 1px solid #f5aaaa;
+    border-radius: 6px;
+    /* padding: 4px 8px;
+    margin: 3px 0; */
+}
+
+/* ⚪ Kayıp / Hasarlı kayıt */
+QFrame#HistoryCardDisabled {
+    background-color: #e3e3e3;
+    border: 1px solid #c2c2c2;
+    border-radius: 6px;
+}
+
+/* Label Editor toolbar groups */
+QFrame#ToolbarGroup {
+    background: #eef3f8;
+    border: 1px solid #d0d7e2;
+    border-radius: 8px;
+}
+QFrame#ToolbarGroup QLabel {
+    background: transparent;
+    color: #2c3e50;
+    font-weight: 600;
+}
+QPushButton#ToolbarButton {
+    background: #f8fafc;
+    color: #1f2937;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    padding: 4px 8px;
+}
+QPushButton#ToolbarButton:hover {
+    background: #eef3f8;
+}
+/* Combobox açılır liste okunabilirliği */
+QComboBox QAbstractItemView,
+QComboBox QListView,
+QListView {
+    background: #ffffff;
+    color: #333333;
+    selection-background-color: #1e90ff;
+    selection-color: #ffffff;
+}
+QComboBox QAbstractItemView::item,
+QComboBox QListView::item,
+QListView::item {
+    background: #ffffff;
+    color: #333333;
+    padding: 4px 8px;
+}
+QComboBox QAbstractItemView::item:hover,
+QComboBox QListView::item:hover,
+QListView::item:hover {
+    background: #eaf4ff;
+    color: #222222;
+}
+QComboBox QAbstractItemView::item:selected,
+QComboBox QListView::item:selected,
+QListView::item:selected {
+    background: #1e90ff;
+    color: #ffffff;
+}
