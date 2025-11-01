@@ -41,9 +41,9 @@ class PrinterSettingsWidget(QWidget):
         grp_label.setObjectName("ToolbarGroup")
         lab_lay = QVBoxLayout(grp_label)
         lab_lay.setContentsMargins(10, 10, 10, 10)
-        lab_lay.addWidget(QLabel("Etiket Yazıcısı"))
+        lab_lay.addWidget(QLabel("Etiket ve Fiş Yazıcısı"))
 
-        row1 = QHBoxLayout()
+        row1 = QHBoxLayout() 
         self.cmb_label = QComboBox()
         self.btn_refresh1 = QToolButton()
         self.chk_label_thermal = QCheckBox("Termal")

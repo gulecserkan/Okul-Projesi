@@ -127,8 +127,10 @@ class DetailWindow(QDialog):
                 color = None
                 if "teslim" in durum:
                     color = QColor(200, 255, 200)
+                elif "gecik" in durum:
+                    color = QColor(248, 176, 176)
                 elif "odunc" in durum:
-                    color = QColor(255, 200, 200)
+                    color = QColor(255, 240, 210)
                 elif "kayip" in durum or "hasar" in durum:
                     color = QColor(215, 215, 215)
                 if color:
@@ -259,8 +261,10 @@ class DetailWindow(QDialog):
                     item = table.item(r, cc)
                     if item is None:
                         continue
-                    if "odunc" in durum:
-                        item.setBackground(QColor(255, 230, 230))  # açık pembe
+                    if "gecik" in durum:
+                        item.setBackground(QColor(248, 176, 176))  # koyu kırmızı
+                    elif "odunc" in durum:
+                        item.setBackground(QColor(255, 240, 210))  # turuncu
                     elif "teslim" in durum or "mevcut" in durum:
                         item.setBackground(QColor(220, 255, 220))  # açık yeşil
                     elif "kayip" in durum or "hasar" in durum:

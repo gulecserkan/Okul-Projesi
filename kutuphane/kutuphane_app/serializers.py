@@ -10,6 +10,8 @@ from .models import (
     OduncKaydi,
     Personel,
     LoanPolicy,
+    RoleLoanPolicy,
+    NotificationSettings,
 )
 
 class RolSerializer(serializers.ModelSerializer):
@@ -23,7 +25,13 @@ class SinifSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 class OgrenciSerializer(serializers.ModelSerializer):
-    sinif=SinifSerializer(read_only=True)
+    sinif = SinifSerializer(read_only=True)
+    sinif_id = serializers.PrimaryKeyRelatedField(
+        source="sinif", queryset=Sinif.objects.all(), write_only=True, required=False, allow_null=True
+    )
+    rol_id = serializers.PrimaryKeyRelatedField(
+        source="rol", queryset=Rol.objects.all(), write_only=True, required=False, allow_null=True
+    )
     class Meta:
         model = Ogrenci
         fields = '__all__'
@@ -38,7 +46,7 @@ class KategoriSerializer(serializers.ModelSerializer):
         model = Kategori
         fields = '__all__'
 
-class KitapSerializer(serializers.ModelSerializer):
+class KitapBaseSerializer(serializers.ModelSerializer):
     kategori = KategoriSerializer(read_only=True)
     yazar = YazarSerializer(read_only=True)
     yazar_id = serializers.PrimaryKeyRelatedField(
@@ -51,8 +59,34 @@ class KitapSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Kitap
-        fields = ['id', 'baslik', 'yayin_yili', 'isbn',
-                  'yazar', 'kategori', 'yazar_id', 'kategori_id', 'nusha_sayisi']
+        fields = [
+            'id',
+            'baslik',
+            'yayin_yili',
+            'isbn',
+            'yazar',
+            'kategori',
+            'yazar_id',
+            'kategori_id',
+            'nusha_sayisi',
+        ]
+
+
+class KitapSerializer(KitapBaseSerializer):
+    """Listelemeler için özet serializer (resimsiz)."""
+    pass
+
+
+class KitapDetailSerializer(KitapBaseSerializer):
+    class Meta(KitapBaseSerializer.Meta):
+        fields = KitapBaseSerializer.Meta.fields + [
+            'aciklama',
+            'resim1',
+            'resim2',
+            'resim3',
+            'resim4',
+            'resim5',
+        ]
 
 class KitapNushaSerializer(serializers.ModelSerializer):
     kitap = KitapSerializer(read_only=True)
@@ -104,3 +138,37 @@ class LoanPolicySerializer(serializers.ModelSerializer):
     class Meta:
         model = LoanPolicy
         exclude = ("singleton_key",)
+
+
+class RoleLoanPolicySerializer(serializers.ModelSerializer):
+    role_id = serializers.IntegerField(source="role.id", read_only=True)
+    role_name = serializers.CharField(source="role.ad", read_only=True)
+
+    class Meta:
+        model = RoleLoanPolicy
+        fields = (
+            "role_id",
+            "role_name",
+            "duration",
+            "max_items",
+            "delay_grace_days",
+            "penalty_delay_days",
+            "shift_weekend",
+            "penalty_max_per_loan",
+            "penalty_max_per_student",
+            "daily_penalty_rate",
+        )
+
+
+class NotificationSettingsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = NotificationSettings
+        exclude = (
+            "singleton_key",
+            "created_at",
+            "updated_at",
+            "overdue_last_run",
+            "email_schedule_last_run",
+            "sms_schedule_last_run",
+            "mobile_schedule_last_run",
+        )

@@ -49,6 +49,7 @@ class StudentManagerDialog(QDialog):
 
         self.current_id = None
         self._students = []
+        self._last_role_index = 0
         self._classes = []
         self._roles = []
 
@@ -140,7 +141,7 @@ class StudentManagerDialog(QDialog):
         button_row.setSpacing(8)
 
         self.btn_new = QPushButton("Yeni")
-        self.btn_new.setObjectName("DialogNeutralButton")
+        self.btn_new.setObjectName("PrimaryNeutralButton")
         self.btn_save = QPushButton("Kaydet")
         self.btn_save.setObjectName("DialogPositiveButton")
         self.btn_delete = QPushButton("Sil")
@@ -250,6 +251,10 @@ class StudentManagerDialog(QDialog):
         for item in self._roles:
             self.combo_role.addItem(item.get("ad", ""), item.get("id"))
         self.combo_role.blockSignals(False)
+        if 0 <= self._last_role_index < self.combo_role.count():
+            self.combo_role.setCurrentIndex(self._last_role_index)
+        else:
+            self.combo_role.setCurrentIndex(0)
 
     def load_students(self):
         self.table.setSortingEnabled(False)
@@ -378,7 +383,8 @@ class StudentManagerDialog(QDialog):
         if self.combo_class.count() > 0:
             self.combo_class.setCurrentIndex(0)
         if self.combo_role.count() > 0:
-            self.combo_role.setCurrentIndex(0)
+            idx = self._last_role_index if 0 <= self._last_role_index < self.combo_role.count() else 0
+            self.combo_role.setCurrentIndex(idx)
         self.table.clearSelection()
 
     def on_row_selected(self):
@@ -451,11 +457,15 @@ class StudentManagerDialog(QDialog):
         last = normalize_entity_text(self.input_last_name.text())
         student_no = self.input_number.text().strip()
         phone = self.input_phone.text().strip()
-        if "_" in phone:
+        digits_only = "".join(ch for ch in phone if ch.isdigit())
+        if len(digits_only) < 10:
             phone = ""
+            self.input_phone.clear()
         email = self.input_email.text().strip()
         sinif_id = self.combo_class.currentData()
-        rol_id = self.combo_role.currentData()
+        rol_index = max(self.combo_role.currentIndex(), 0)
+        rol_id = self.combo_role.itemData(rol_index)
+        self._current_role_index = rol_index
         active = self.check_active.isChecked()
 
         if not first:
@@ -469,6 +479,10 @@ class StudentManagerDialog(QDialog):
             return None
         if sinif_id is None:
             QMessageBox.warning(self, "Uyarı", "Lütfen bir sınıf seçin.")
+            return None
+
+        if rol_id is None:
+            QMessageBox.warning(self, "Uyarı", "Lütfen bir rol seçin.")
             return None
 
         if self._is_duplicate_number(student_no):
@@ -496,7 +510,9 @@ class StudentManagerDialog(QDialog):
             "soyad": last,
             "ogrenci_no": student_no,
             "sinif": sinif_id,
+            "sinif_id": sinif_id,
             "rol": rol_id,
+            "rol_id": rol_id,
             "telefon": normalized_phone,
             "eposta": email or None,
             "aktif": active,
@@ -544,6 +560,7 @@ class StudentManagerDialog(QDialog):
         if success:
             QMessageBox.information(self, "Başarılı", f"Öğrenci {action_text} işlemi tamamlandı.")
             self.load_students()
+            self._last_role_index = getattr(self, "_current_role_index", 0)
             self.reset_form()
         else:
             detail = student_api.extract_error(resp)
@@ -673,7 +690,7 @@ class StudentManagerDialog(QDialog):
     def _revert_active(self, state: bool):
         self.check_active.blockSignals(True)
         self.check_active.setChecked(state)
-        self.check_active.setText("Aktif Öğrenci ✅" if state else "Aktif Öğrenci ❌")
+        self.check_active.setText("Aktif Öğrenci" if state else "Aktif Öğrenci")
         self.check_active.blockSignals(False)
 
     def _set_status_widget(self, row: int, is_active: bool):
@@ -828,9 +845,9 @@ def _normalize_phone(value: str | None) -> str | None:
         return None
     digits = re.sub(r"\D", "", value)
     if len(digits) == 11 and digits.startswith("05"):
-        return digits
+        digits = digits[1:]
     if len(digits) == 10 and digits.startswith("5"):
-        return "0" + digits
+        return digits
     return None
 
 

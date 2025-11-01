@@ -1,30 +1,30 @@
 from __future__ import annotations
 
-from PyQt5.QtCore import Qt
-from PyQt5.QtPrintSupport import QPrinterInfo
+from decimal import Decimal, InvalidOperation
+
+from PyQt5.QtCore import Qt, QTime
 from PyQt5.QtWidgets import (
     QCheckBox,
-    QComboBox,
     QDialog,
     QDialogButtonBox,
     QDoubleSpinBox,
     QFormLayout,
+    QGroupBox,
     QHBoxLayout,
+    QHeaderView,
     QLabel,
     QLineEdit,
     QMessageBox,
+    QPlainTextEdit,
     QPushButton,
+    QScrollArea,
     QSpinBox,
     QTableWidget,
     QTableWidgetItem,
     QTabWidget,
+    QTimeEdit,
     QVBoxLayout,
     QWidget,
-    QHeaderView,
-    QScrollArea,
-    QPushButton,
-    QHBoxLayout,
-    QLabel,
 )
 
 from core.config import load_settings, save_settings
@@ -32,16 +32,17 @@ from core.utils import response_error_message
 from ui.printer_settings_dialog import PrinterSettingsWidget
 from ui.server_settings_dialog import ServerSettingsWidget
 from ui.label_editor_dialog import LabelEditorDialog
+from ui.notification_template_dialog import NotificationTemplateDialog
+from ui.receipt_template_dialog import ReceiptTemplateDialog, RECEIPT_PLACEHOLDERS
 from api import auth
 from api import settings as settings_api
+from api import roles as roles_api
 
 
 class LabelSettingsWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
 
-        self.default_label_printer = None
-        self.default_label_is_thermal = False
         self.mm_w = 55.0
         self.mm_h = 40.0
         self.dpi = 203
@@ -80,17 +81,9 @@ class LabelSettingsWidget(QWidget):
 
         layout.addLayout(form)
 
-        printer_row = QHBoxLayout()
-        printer_row.addWidget(QLabel("Etiket yazıcısı:"))
-        self.cmb_printer = QComboBox()
-        self.cmb_printer.setMinimumWidth(180)
-        printer_row.addWidget(self.cmb_printer, 1)
-        self.btn_refresh_printers = QPushButton("Yenile")
-        self.btn_refresh_printers.setMaximumWidth(90)
-        printer_row.addWidget(self.btn_refresh_printers)
-        self.chk_printer_thermal = QCheckBox("Termal")
-        printer_row.addWidget(self.chk_printer_thermal)
-        layout.addLayout(printer_row)
+        self.lbl_printer_info = QLabel()
+        self.lbl_printer_info.setWordWrap(True)
+        layout.addWidget(self.lbl_printer_info)
 
         self.chk_rotate = QCheckBox("90° döndür")
         layout.addWidget(self.chk_rotate)
@@ -101,10 +94,7 @@ class LabelSettingsWidget(QWidget):
         self.btn_open_editor.setCursor(Qt.PointingHandCursor)
         layout.addWidget(self.btn_open_editor, alignment=Qt.AlignRight)
 
-        self.btn_refresh_printers.clicked.connect(self.refresh_printers)
         self.btn_open_editor.clicked.connect(self._open_editor)
-        self.cmb_printer.currentTextChanged.connect(self._on_printer_changed)
-        self.chk_printer_thermal.toggled.connect(self._on_printer_thermal_toggled)
 
         self.load_preferences()
 
@@ -121,23 +111,26 @@ class LabelSettingsWidget(QWidget):
         self.snap_enabled = bool(label_prefs.get("snap", False))
         self.rotate_print = bool(label_prefs.get("rotate_print", False))
 
-        self.default_label_printer = printing.get("label_printer") or label_prefs.get("default_printer")
-        self.default_label_is_thermal = bool(
-            printing.get("label_is_thermal", label_prefs.get("default_printer_is_thermal", False))
-        )
-
         self.spin_width.setValue(self.mm_w)
         self.spin_height.setValue(self.mm_h)
         self.spin_dpi.setValue(self.dpi)
         self.spin_grid.setValue(self.grid_mm)
         self.chk_snap.setChecked(self.snap_enabled)
         self.chk_rotate.setChecked(self.rotate_print)
-        self.refresh_printers()
+
+        printer_name = printing.get("label_printer")
+        info_parts = []
+        if printer_name:
+            info_parts.append(f"Varsayılan etiket yazıcısı: {printer_name}")
+        else:
+            info_parts.append("Varsayılan etiket yazıcısı seçilmemiş.")
+        if printing.get("label_is_thermal"):
+            info_parts.append("Termal mod etkin.")
+        self.lbl_printer_info.setText(" ".join(info_parts) + " (Yazıcı seçimi Yazıcılar sekmesinden yapılır.)")
 
     def save_preferences(self):
         st = load_settings() or {}
         label_prefs = st.setdefault("label_editor", {})
-        printing = st.setdefault("printing", {})
 
         self.mm_w = float(self.spin_width.value())
         self.mm_h = float(self.spin_height.value())
@@ -145,9 +138,6 @@ class LabelSettingsWidget(QWidget):
         self.grid_mm = float(self.spin_grid.value())
         self.snap_enabled = bool(self.chk_snap.isChecked())
         self.rotate_print = bool(self.chk_rotate.isChecked())
-
-        self.default_label_printer = self.cmb_printer.currentText().strip() or None
-        self.default_label_is_thermal = bool(self.chk_printer_thermal.isChecked())
 
         label_prefs.update(
             {
@@ -157,13 +147,8 @@ class LabelSettingsWidget(QWidget):
                 "grid_mm": self.grid_mm,
                 "snap": self.snap_enabled,
                 "rotate_print": self.rotate_print,
-                "default_printer": self.default_label_printer,
-                "default_printer_is_thermal": self.default_label_is_thermal,
             }
         )
-
-        printing["label_printer"] = self.default_label_printer
-        printing["label_is_thermal"] = self.default_label_is_thermal
 
         try:
             save_settings(st)
@@ -172,45 +157,232 @@ class LabelSettingsWidget(QWidget):
 
         return True
 
-    def _on_printer_changed(self, text: str):
-        self.default_label_printer = text.strip() or None
-
-    def _on_printer_thermal_toggled(self, checked: bool):
-        self.default_label_is_thermal = bool(checked)
-
-    # ------------------------------------------------------------------
-    def refresh_printers(self):
-        names = self._printers()
-        prev = self.default_label_printer or self.cmb_printer.currentText().strip()
-        self.cmb_printer.blockSignals(True)
-        self.cmb_printer.clear()
-        self.cmb_printer.addItems(names)
-        if prev:
-            idx = self.cmb_printer.findText(prev)
-            if idx >= 0:
-                self.cmb_printer.setCurrentIndex(idx)
-        self.cmb_printer.blockSignals(False)
-        if not names and prev:
-            self.cmb_printer.addItem(prev)
-            self.cmb_printer.setCurrentIndex(0)
-        if self.default_label_printer:
-            idx = self.cmb_printer.findText(self.default_label_printer)
-            if idx >= 0:
-                self.cmb_printer.setCurrentIndex(idx)
-        self.chk_printer_thermal.setChecked(self.default_label_is_thermal)
-
-    def _printers(self):
-        try:
-            return [p.printerName() for p in QPrinterInfo.availablePrinters()]
-        except Exception:
-            return []
-
     def _open_editor(self):
         dlg = LabelEditorDialog(self)
         dlg.exec_()
         # editörden çıkınca tercihleri yeniden yükleyelim
         self.load_preferences()
 
+
+RECEIPT_SCENARIOS = [
+    ("fine_payment", "Ceza Ödemesi Fişi"),
+    ("debt_statement", "Borcu Yoktur Bilgisi"),
+    ("general_notice", "Bilgilendirme / Genel Fiş"),
+]
+
+DEFAULT_RECEIPT_TEMPLATES = {
+    "fine_payment": {
+        "title": "Ceza Ödemesi Fişi",
+        "body": (
+            "Okul Kütüphanesi\n"
+            "Ceza Ödeme Makbuzu\n"
+            "-------------------------\n"
+            "Öğrenci : {{ student_full_name }} ({{ student_number }})\n"
+            "Sınıf   : {{ student_class }} / {{ student_role }}\n"
+            "Tarih   : {{ receipt_date }} {{ receipt_time }}\n"
+            "Ödenen  : {{ payment_amount }} {{ payment_currency }}\n"
+            "Kalan Borç : {{ remaining_debt }}\n"
+            "İşlemi yapan: {{ operator_name }}\n"
+            "\n"
+            "Teşekkür ederiz."
+        ),
+    },
+    "debt_statement": {
+        "title": "Borcu Yoktur Belgesi",
+        "body": (
+            "Okul Kütüphanesi\n"
+            "BORCU YOKTUR BİLGİSİ\n"
+            "-------------------------\n"
+            "Öğrenci : {{ student_full_name }} ({{ student_number }})\n"
+            "Sınıf   : {{ student_class }} / {{ student_role }}\n"
+            "Tarih   : {{ receipt_date }} {{ receipt_time }}\n"
+            "\n"
+            "Aktif ödünç sayısı : {{ loan_count }}\n"
+            "Kalan borç         : {{ remaining_debt }}\n"
+            "\n"
+            "Bu tarih itibarıyla öğrenci kütüphanemize karşı borçlu değildir."
+        ),
+    },
+    "general_notice": {
+        "title": "Genel Bilgilendirme",
+        "body": (
+            "Okul Kütüphanesi\n"
+            "Bilgilendirme\n"
+            "-------------------------\n"
+            "Öğrenci : {{ student_full_name }} ({{ student_number }})\n"
+            "Tarih   : {{ receipt_date }} {{ receipt_time }}\n"
+            "\n"
+            "{{ debt_items }}\n"
+            "\n"
+            "İşlemi yapan: {{ operator_name }}\n"
+        ),
+    },
+}
+
+
+class ReceiptSettingsWidget(QWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+
+        self.mm_w = 80.0
+        self.mm_h = 120.0
+        self.dpi = 203
+        self.rotate_print = False
+        self.templates: dict[str, dict] = {}
+        self.font_pt = 10  # Düz metin fişler için varsayılan yazı boyutu (termal ve masaüstü yazıcılar için dengeli).
+
+        main_layout = QVBoxLayout(self)
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        container = QWidget()
+        root = QVBoxLayout(container)
+        root.setContentsMargins(0, 0, 0, 0)
+        root.setSpacing(12)
+
+        size_group = QGroupBox("Kağıt Ayarı")
+        size_form = QFormLayout(size_group)
+
+        self.spin_width = QDoubleSpinBox()
+        self.spin_width.setRange(40.0, 210.0)
+        self.spin_width.setSingleStep(0.5)
+        self.spin_width.setMaximumWidth(120)
+        size_form.addRow("Genişlik (mm)", self.spin_width)
+
+        root.addWidget(size_group)
+
+        self.lbl_printer_info = QLabel()
+        self.lbl_printer_info.setWordWrap(True)
+        root.addWidget(self.lbl_printer_info)
+
+        template_group = QGroupBox("Şablonlar")
+        template_layout = QVBoxLayout(template_group)
+
+        self.template_views: dict[str, QPlainTextEdit] = {}
+        for key, title in RECEIPT_SCENARIOS:
+            box = QGroupBox(title)
+            box_layout = QVBoxLayout(box)
+            preview = QPlainTextEdit()
+            preview.setReadOnly(True)
+            preview.setLineWrapMode(QPlainTextEdit.NoWrap)
+            preview.setFixedHeight(140)
+            self.template_views[key] = preview
+            box_layout.addWidget(preview)
+            btn_row = QHBoxLayout()
+            btn_edit = QPushButton("Şablonu Düzenle…")
+            btn_edit.setCursor(Qt.PointingHandCursor)
+            btn_edit.clicked.connect(lambda _, slug=key, caption=title: self._edit_template(slug, caption))
+            btn_row.addStretch(1)
+            btn_row.addWidget(btn_edit)
+            box_layout.addLayout(btn_row)
+            template_layout.addWidget(box)
+
+        template_layout.addStretch(1)
+        root.addWidget(template_group)
+
+        root.addStretch(1)
+
+        scroll.setWidget(container)
+        main_layout.addWidget(scroll)
+
+        self.load_preferences()
+
+    # ------------------------------------------------------------------
+    def load_preferences(self):
+        settings = load_settings() or {}
+        receipts = settings.get("receipts", {})
+        printing = settings.get("printing", {})
+
+        self.mm_w = float(receipts.get("mm_w", self.mm_w))
+        self.mm_h = float(receipts.get("mm_h", self.mm_h))
+        self.dpi = int(receipts.get("dpi", self.dpi))
+        self.font_pt = int(receipts.get("font_pt", self.font_pt or 10))
+        self.rotate_print = bool(receipts.get("rotate_print", False))
+
+        raw_templates = receipts.get("templates", {})
+        if isinstance(raw_templates, dict):
+            self.templates = {
+                key: {
+                    "title": value.get("title", key) if isinstance(value, dict) else str(key),
+                    "body": value.get("body", "") if isinstance(value, dict) else str(value),
+                }
+                for key, value in raw_templates.items()
+            }
+        else:
+            self.templates = {}
+
+        if not self.templates:
+            self.templates = {k: v.copy() for k, v in DEFAULT_RECEIPT_TEMPLATES.items()}
+        else:
+            for key, value in DEFAULT_RECEIPT_TEMPLATES.items():
+                self.templates.setdefault(key, value.copy())
+
+        self.spin_width.setValue(self.mm_w)
+        self._refresh_template_previews()
+
+        self._refresh_printer_info(printing)
+
+    # ------------------------------------------------------------------
+    def save_preferences(self):
+        settings = load_settings() or {}
+        receipts = settings.setdefault("receipts", {})
+
+        self.mm_w = float(self.spin_width.value())
+        self.mm_h = float(self.mm_h)
+        self.dpi = int(self.dpi)
+        self.rotate_print = bool(self.rotate_print)
+
+        receipts.update(
+            {
+                "mm_w": self.mm_w,
+                "mm_h": self.mm_h,
+                "dpi": self.dpi,
+                "rotate_print": self.rotate_print,
+                "font_pt": self.font_pt,
+                "templates": self.templates,
+            }
+        )
+
+        try:
+            save_settings(settings)
+        except Exception as exc:
+            QMessageBox.warning(self, "Kayıt Hatası", f"Ayarlar kaydedilemedi.\n{exc}")
+            return False
+        return True
+
+    # ------------------------------------------------------------------
+    def _refresh_printer_info(self, printing: dict):
+        printer_name = printing.get("receipt_printer") or printing.get("label_printer")
+        parts = []
+        if printer_name:
+            parts.append(f"Varsayılan fiş yazıcısı: {printer_name}")
+        else:
+            parts.append("Varsayılan fiş yazıcısı seçilmemiş.")
+        if printing.get("receipt_is_thermal"):
+            parts.append("Termal mod etkin.")
+        info = " ".join(parts) + " (Yazıcı seçimi Yazıcılar sekmesinden yapılır.)"
+        self.lbl_printer_info.setText(info)
+
+    def _refresh_template_previews(self):
+        for slug, view in self.template_views.items():
+            tmpl = self.templates.get(slug) or {}
+            body = tmpl.get("body", "").strip()
+            view.setPlainText(body)
+
+    def _edit_template(self, slug: str, title: str):
+        data = self.templates.get(slug) or {}
+        dialog = ReceiptTemplateDialog(
+            parent=self,
+            template_name=title,
+            template_body=data.get("body", ""),
+            placeholders=RECEIPT_PLACEHOLDERS,
+        )
+        if dialog.exec_() != QDialog.Accepted:
+            return
+        self.templates[slug] = {
+            "title": title,
+            "body": dialog.template_text(),
+        }
+        self._refresh_template_previews()
 
 class PasswordSettingsWidget(QWidget):
     def __init__(self, parent=None):
@@ -278,197 +450,58 @@ class PasswordSettingsWidget(QWidget):
 class LoansSettingsWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
-
-        self.defaults = {
-            "default_duration": 14,
-            "default_max_items": 3,
-            "delay_grace_days": 0,
-            "auto_extend_enabled": False,
-            "auto_extend_days": 7,
-            "auto_extend_limit": 1,
-            "penalty_delay_days": 0,
-            "shift_weekend": True,
-            "quarantine_days": 0,
-            "require_damage_note": True,
-            "require_shelf_code": True,
-            "quiet_hours_enabled": False,
-            "quiet_hours_start": "22:00",
-            "quiet_hours_end": "08:00",
-        }
-        self.current_policy = dict(self.defaults)
+        self.roles = []
+        self.role_policies = {}
 
         root_layout = QVBoxLayout(self)
         root_layout.setContentsMargins(16, 16, 16, 16)
         root_layout.setSpacing(12)
 
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        container = QWidget()
-        layout = QVBoxLayout(container)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(12)
+        title = QLabel("Rol bazlı ödünç ayarları")
+        title.setStyleSheet("font-weight:600;font-size:14px;")
+        root_layout.addWidget(title)
 
-        form = QFormLayout()
+        helper = QHBoxLayout()
+        helper.setSpacing(12)
+        helper.addSpacing(60)
+        for text, tip in [
+            ("Süre (gün)", "Bu rol için ödünç verilen kitabın başlangıç süresi."),
+            ("Maks. ödünç", "Bu rol aynı anda en fazla kaç kitabı ödünç alabilir."),
+            ("Gecikme toleransı", "İade tarihi aşıldıktan sonra gecikmiş sayılmadan önce tanınan ek gün."),
+            ("Ceza gecikmesi", "Gecikme tespit edildiğinde cezanın başlamadan önce beklenen süre."),
+            ("Hafta sonu", "İade tarihi hafta sonuna denk gelirse bir sonraki iş gününe kaydır."),
+        ]:
+            helper.addWidget(self._header_with_help(text, tip))
+        helper.addStretch(1)
+        root_layout.addLayout(helper)
 
-        self.spin_default_duration = QSpinBox()
-        self.spin_default_duration.setRange(1, 90)
-        self.spin_default_duration.setMaximumWidth(120)
-        form.addRow(
-            self._with_help(
-                QLabel("Varsayılan ödünç süresi (gün)"),
-                "Sunucudan ayarlanan standart ödünç verme süresi. Rolde farklı süre yoksa kullanılır.",
-            ),
-            self.spin_default_duration,
-        )
-
-        self.spin_default_max = QSpinBox()
-        self.spin_default_max.setRange(1, 20)
-        self.spin_default_max.setMaximumWidth(120)
-        form.addRow(
-            self._with_help(
-                QLabel("Maks. ödünç sayısı"),
-                "Bir öğrencinin aynı anda alabileceği ödünç sayısının genel limiti.",
-            ),
-            self.spin_default_max,
-        )
-
-        self.spin_grace = QSpinBox()
-        self.spin_grace.setRange(0, 10)
-        self.spin_grace.setMaximumWidth(120)
-        form.addRow(
-            self._with_help(
-                QLabel("Gecikme toleransı (gün)"),
-                "İade tarihi aşıldıktan sonra öğrenciyi gecikmiş saymadan önce verilen ek süre.",
-            ),
-            self.spin_grace,
-        )
-
-        self.chk_auto_extend = QCheckBox("Bitiş tarihine yaklaşınca otomatik uzat")
-        form.addRow("", self._with_help(self.chk_auto_extend, "Bu özellik henüz devrede değil."))
-
-        self.spin_auto_extend_days = QSpinBox()
-        self.spin_auto_extend_days.setRange(1, 30)
-        self.spin_auto_extend_days.setMaximumWidth(120)
-        form.addRow(
-            self._with_help(QLabel("Uzatma süresi (gün)"),
-                            "Otomatik uzatma aktif olduğunda eklenmesi planlanan gün sayısı."),
-            self.spin_auto_extend_days,
-        )
-
-        self.spin_auto_extend_limit = QSpinBox()
-        self.spin_auto_extend_limit.setRange(1, 10)
-        self.spin_auto_extend_limit.setMaximumWidth(120)
-        form.addRow(
-            self._with_help(QLabel("Maks. uzatma sayısı"),
-                            "Bir ödünç kaydına otomatik uzatma kaç defa uygulanabilir."),
-            self.spin_auto_extend_limit,
-        )
-
-        self.spin_penalty_delay = QSpinBox()
-        self.spin_penalty_delay.setRange(0, 30)
-        self.spin_penalty_delay.setMaximumWidth(120)
-        form.addRow(
-            self._with_help(
-                QLabel("Ceza başlangıç gecikmesi (gün)"),
-                (
-                    "İade tarihine tanınan ek tolerans (ör. 2 gün) bittikten sonra ceza başlamadan önce beklenen süre.\n"
-                    "Örnek: İade tarihi 10 Temmuz, tolerans 2 gün ise ceza 12 Temmuz'dan sonra başlar. "
-                    "Burada girilen değer (örn. 1 gün) ceza başlamasını 13 Temmuz'a ertelemeye yarar."
-                ),
-            ),
-            self.spin_penalty_delay,
-        )
-
-        self.chk_shift_weekend = QCheckBox("İade tarihi hafta sonuna denk gelirse bir sonraki iş gününe kaydır")
-        form.addRow("", self.chk_shift_weekend)
-
-        self.spin_quarantine = QSpinBox()
-        self.spin_quarantine.setRange(0, 30)
-        self.spin_quarantine.setMaximumWidth(120)
-        form.addRow(
-            self._with_help(QLabel("İade sonrası bekleme süresi (gün)"),
-                            "Bu özellik henüz devrede değil."),
-            self.spin_quarantine,
-        )
-
-        self.chk_damage_note = QCheckBox("İade sırasında hasar notu zorunlu")
-        form.addRow("", self._with_help(self.chk_damage_note, "Bu özellik henüz devrede değil."))
-
-        self.chk_shelf_required = QCheckBox("Ödünç verirken raf kodu zorunlu")
-        form.addRow("", self._with_help(self.chk_shelf_required, "Bu özellik henüz devrede değil."))
-
-        self.chk_quiet_hours = QCheckBox("Belirli saatlerde işlem yapılmasın")
-        form.addRow("", self._with_help(self.chk_quiet_hours, "Bu özellik henüz devrede değil."))
-
-        quiet_row = QHBoxLayout()
-        quiet_row.setSpacing(6)
-        self.time_quiet_start = QLineEdit()
-        self.time_quiet_start.setPlaceholderText("22:00")
-        self.time_quiet_start.setMaximumWidth(80)
-        self.time_quiet_end = QLineEdit()
-        self.time_quiet_end.setPlaceholderText("08:00")
-        self.time_quiet_end.setMaximumWidth(80)
-        quiet_row.addWidget(QLabel("Başlangıç"))
-        quiet_row.addWidget(self.time_quiet_start)
-        quiet_row.addWidget(QLabel("Bitiş"))
-        quiet_row.addWidget(self.time_quiet_end)
-        quiet_row.addStretch(1)
-        form.addRow(
-            self._with_help(QLabel("Sessiz saat"), "Bu özellik henüz devrede değil."),
-            quiet_row,
-        )
-
-        layout.addLayout(form)
-
-        layout.addWidget(QLabel("Rol bazlı sınırlar"))
-        self.table_roles = QTableWidget(0, 3)
-        self.table_roles.setHorizontalHeaderLabels(["Rol", "Süre (gün)", "Maks. ödünç"])
+        self.table_roles = QTableWidget(0, 6)
+        self.table_roles.setHorizontalHeaderLabels([
+            "Rol",
+            "Süre (gün)",
+            "Maks. ödünç",
+            "Gecikme toleransı",
+            "Ceza gecikmesi",
+            "Hafta sonu kaydır",
+        ])
         header = self.table_roles.horizontalHeader()
-        header.setSectionResizeMode(0, QHeaderView.Stretch)
+        header.setSectionResizeMode(0, QHeaderView.ResizeToContents)
         header.setSectionResizeMode(1, QHeaderView.ResizeToContents)
         header.setSectionResizeMode(2, QHeaderView.ResizeToContents)
-        layout.addWidget(self.table_roles)
-
-        layout.addStretch(1)
-
-        info = QLabel("Bu alanlar gelecekte ödünç modülünde kullanılmak üzere saklanır.")
-        info.setWordWrap(True)
-        layout.addWidget(info)
-
-        scroll.setWidget(container)
-        root_layout.addWidget(scroll)
+        header.setSectionResizeMode(3, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(4, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(5, QHeaderView.ResizeToContents)
+        root_layout.addWidget(self.table_roles)
 
         self.load_preferences()
-        self._mark_reserved_fields()
 
-    def _mark_reserved_fields(self):
-        """Şimdilik kullanılmayan alanları pasifleştir ve bilgi ver."""
-        reserved_controls = [
-            (self.chk_auto_extend, "Bu özellik henüz devrede değil."),
-            (self.spin_auto_extend_days, "Bu özellik henüz devrede değil."),
-            (self.spin_auto_extend_limit, "Bu özellik henüz devrede değil."),
-            (self.spin_quarantine, "Bu özellik henüz devrede değil."),
-            (self.chk_damage_note, "Bu özellik henüz devrede değil."),
-            (self.chk_shelf_required, "Bu özellik henüz devrede değil."),
-            (self.chk_quiet_hours, "Bu özellik henüz devrede değil."),
-            (self.time_quiet_start, "Bu özellik henüz devrede değil."),
-            (self.time_quiet_end, "Bu özellik henüz devrede değil."),
-        ]
-        for widget, tip in reserved_controls:
-            widget.setEnabled(False)
-            widget.setToolTip(tip)
-
-    def _with_help(self, widget, message):
+    def _header_with_help(self, text, message):
         container = QWidget()
         layout = QHBoxLayout(container)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(4)
-
-        if isinstance(widget, QLabel):
-            layout.addWidget(widget)
-        else:
-            layout.addWidget(widget)
-
+        label = QLabel(text)
+        layout.addWidget(label)
         btn = QPushButton("?")
         btn.setFixedSize(20, 20)
         btn.setObjectName("HelpButton")
@@ -480,135 +513,867 @@ class LoansSettingsWidget(QWidget):
 
         btn.clicked.connect(show_message)
         layout.addWidget(btn)
-        layout.addStretch(1)
-
         return container
 
     def load_preferences(self):
-        server_policy = None
-        resp = settings_api.fetch_loan_policy()
-        if resp is not None and getattr(resp, "status_code", None) == 200:
+        roles_resp = roles_api.list_roles()
+        try:
+            roles = roles_resp.json() if roles_resp and roles_resp.status_code == 200 else []
+        except Exception:
+            roles = []
+        self.roles = roles or []
+
+        role_policies = {}
+        role_resp = settings_api.fetch_role_loan_policies()
+        if role_resp is not None and getattr(role_resp, "status_code", None) == 200:
             try:
-                server_policy = resp.json() or {}
+                data = role_resp.json() or []
             except ValueError:
-                server_policy = {}
-            # yerel önbelleği güncelle
+                data = []
+            for item in data:
+                rid = item.get("role_id")
+                if rid is None:
+                    continue
+                role_policies[rid] = item
             st = load_settings() or {}
-            st["loans"] = server_policy
+            st["role_loans"] = {str(k): v for k, v in role_policies.items()}
             try:
                 save_settings(st)
             except Exception:
                 pass
         else:
             st = load_settings() or {}
-            server_policy = st.get("loans", {})
-            if resp is not None and getattr(resp, "status_code", None) not in (None, 0, 200):
-                QMessageBox.warning(
-                    self,
-                    "Sunucuya erişilemiyor",
-                    response_error_message(resp, "Ayarlar alınamadı. Yerel değerler gösteriliyor."),
-                )
+            cached = st.get("role_loans", {}) or {}
+            role_policies = {int(k): v for k, v in cached.items() if k is not None}
 
-        payload = dict(self.defaults)
-        if server_policy:
-            payload.update(server_policy)
+        self.role_policies = role_policies
 
-        self.current_policy = payload
+        self.table_roles.setRowCount(len(self.roles))
+        for row, role in enumerate(self.roles):
+            role_id = role.get("id")
+            name = role.get("ad", "")
+            item_role = QTableWidgetItem(name)
+            item_role.setFlags(Qt.ItemIsSelectable | Qt.ItemIsEnabled)
+            item_role.setData(Qt.UserRole, role)
+            self.table_roles.setItem(row, 0, item_role)
 
-        self.spin_default_duration.setValue(int(payload.get("default_duration", self.defaults["default_duration"])))
-        self.spin_default_max.setValue(int(payload.get("default_max_items", self.defaults["default_max_items"])))
-        self.spin_grace.setValue(int(payload.get("delay_grace_days", self.defaults["delay_grace_days"])))
-        self.chk_auto_extend.setChecked(bool(payload.get("auto_extend_enabled", self.defaults["auto_extend_enabled"])))
-        self.spin_auto_extend_days.setValue(int(payload.get("auto_extend_days", self.defaults["auto_extend_days"])))
-        self.spin_auto_extend_limit.setValue(int(payload.get("auto_extend_limit", self.defaults["auto_extend_limit"])))
-        self.spin_penalty_delay.setValue(int(payload.get("penalty_delay_days", self.defaults["penalty_delay_days"])))
-        self.chk_shift_weekend.setChecked(bool(payload.get("shift_weekend", self.defaults["shift_weekend"])))
-        self.spin_quarantine.setValue(int(payload.get("quarantine_days", self.defaults["quarantine_days"])))
-        self.chk_damage_note.setChecked(bool(payload.get("require_damage_note", self.defaults["require_damage_note"])))
-        self.chk_shelf_required.setChecked(bool(payload.get("require_shelf_code", self.defaults["require_shelf_code"])))
-        self.chk_quiet_hours.setChecked(bool(payload.get("quiet_hours_enabled", self.defaults["quiet_hours_enabled"])))
-        self.time_quiet_start.setText(str(payload.get("quiet_hours_start", self.defaults["quiet_hours_start"])))
-        self.time_quiet_end.setText(str(payload.get("quiet_hours_end", self.defaults["quiet_hours_end"])))
+            overrides = role_policies.get(role_id, {})
 
-        role_limits = payload.get("role_limits", []) or []
-        self.table_roles.setRowCount(len(role_limits))
-        for row, entry in enumerate(role_limits):
-            role = str(entry.get("role", ""))
-            dur = str(entry.get("duration", ""))
-            max_items = str(entry.get("max_items", ""))
-            self.table_roles.setItem(row, 0, QTableWidgetItem(role))
-            self.table_roles.setItem(row, 1, QTableWidgetItem(dur))
-            self.table_roles.setItem(row, 2, QTableWidgetItem(max_items))
+            def _int_text(value):
+                if value in (None, ""):
+                    return ""
+                try:
+                    iv = int(value)
+                except (TypeError, ValueError):
+                    return ""
+                return str(iv)
+
+            dur_item = QTableWidgetItem(_int_text(overrides.get("duration")))
+            max_item = QTableWidgetItem(_int_text(overrides.get("max_items")))
+            grace_item = QTableWidgetItem(_int_text(overrides.get("delay_grace_days")))
+            penalty_item = QTableWidgetItem(_int_text(overrides.get("penalty_delay_days")))
+            for itm in (dur_item, max_item, grace_item, penalty_item):
+                itm.setTextAlignment(Qt.AlignCenter)
+            self.table_roles.setItem(row, 1, dur_item)
+            self.table_roles.setItem(row, 2, max_item)
+            self.table_roles.setItem(row, 3, grace_item)
+            self.table_roles.setItem(row, 4, penalty_item)
+
+            shift_item = QTableWidgetItem()
+            shift_item.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled | Qt.ItemIsSelectable)
+            shift = overrides.get("shift_weekend")
+            if isinstance(shift, bool):
+                shift_item.setCheckState(Qt.Checked if shift else Qt.Unchecked)
+            else:
+                shift_item.setCheckState(Qt.PartiallyChecked)
+            self.table_roles.setItem(row, 5, shift_item)
 
     def save_preferences(self):
-        payload = self._collect_payload()
-
-        resp = settings_api.update_loan_policy(payload)
-        if resp is None or getattr(resp, "status_code", None) != 200:
+        overrides = self._collect_role_overrides()
+        role_resp = settings_api.update_role_loan_policies(overrides)
+        if role_resp is None or getattr(role_resp, "status_code", None) not in (200, 202):
             QMessageBox.warning(
                 self,
-                "Kaydedilemedi",
-                response_error_message(resp, "Sunucuya kaydedilemedi."),
+                "Rol ayarları",
+                response_error_message(role_resp, "Rol bazlı ayarlar kaydedilemedi."),
             )
             return False
 
-        self.current_policy = payload
-
+        try:
+            data = role_resp.json() or []
+        except Exception:
+            data = []
         st = load_settings() or {}
-        st["loans"] = payload
+        st["role_loans"] = {str(item.get("role_id")): item for item in data if item.get("role_id") is not None}
+        self.role_policies = {item.get("role_id"): item for item in data if item.get("role_id") is not None}
         try:
             save_settings(st)
         except Exception:
             pass
 
+        self.load_preferences()
         return True
 
-    def _collect_payload(self):
-        payload = {
-            "default_duration": int(self.spin_default_duration.value()),
-            "default_max_items": int(self.spin_default_max.value()),
-            "delay_grace_days": int(self.spin_grace.value()),
-            "auto_extend_enabled": bool(self.chk_auto_extend.isChecked()),
-            "auto_extend_days": int(self.spin_auto_extend_days.value()),
-            "auto_extend_limit": int(self.spin_auto_extend_limit.value()),
-            "penalty_delay_days": int(self.spin_penalty_delay.value()),
-            "shift_weekend": bool(self.chk_shift_weekend.isChecked()),
-            "quarantine_days": int(self.spin_quarantine.value()),
-            "require_damage_note": bool(self.chk_damage_note.isChecked()),
-            "require_shelf_code": bool(self.chk_shelf_required.isChecked()),
-            "quiet_hours_enabled": bool(self.chk_quiet_hours.isChecked()),
-            "quiet_hours_start": self.time_quiet_start.text().strip() or self.defaults["quiet_hours_start"],
-            "quiet_hours_end": self.time_quiet_end.text().strip() or self.defaults["quiet_hours_end"],
-        }
-
-        role_limits = []
+    def _collect_role_overrides(self):
+        overrides = []
         for row in range(self.table_roles.rowCount()):
             role_item = self.table_roles.item(row, 0)
-            dur_item = self.table_roles.item(row, 1)
-            max_item = self.table_roles.item(row, 2)
-            role = role_item.text().strip() if role_item else ""
-            if not role:
+            if not role_item:
                 continue
+            role_data = role_item.data(Qt.UserRole) or {}
+            role_id = role_data.get("id")
+            if role_id is None:
+                continue
+
+            def _parse_int(item):
+                if not item or not item.text().strip():
+                    return None
+                try:
+                    return int(item.text().strip())
+                except ValueError:
+                    return None
+
+            duration = _parse_int(self.table_roles.item(row, 1))
+            max_items = _parse_int(self.table_roles.item(row, 2))
+            grace_days = _parse_int(self.table_roles.item(row, 3))
+            penalty_delay = _parse_int(self.table_roles.item(row, 4))
+
+            shift_item = self.table_roles.item(row, 5)
+            if shift_item and shift_item.checkState() != Qt.PartiallyChecked:
+                shift_weekend = shift_item.checkState() == Qt.Checked
+            else:
+                shift_weekend = None
+
+            existing = self.role_policies.get(role_id, {})
+            penalty_max_per_loan = existing.get("penalty_max_per_loan")
+            penalty_max_per_student = existing.get("penalty_max_per_student")
+            daily_penalty_rate = existing.get("daily_penalty_rate")
+
+            overrides.append({
+                "role_id": role_id,
+                "duration": duration,
+                "max_items": max_items,
+                "delay_grace_days": grace_days,
+                "penalty_delay_days": penalty_delay,
+                "shift_weekend": shift_weekend,
+                "penalty_max_per_loan": penalty_max_per_loan,
+                "penalty_max_per_student": penalty_max_per_student,
+                "daily_penalty_rate": daily_penalty_rate,
+            })
+        return overrides
+
+class PenaltySettingsWidget(QWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.roles = []
+        self.role_policies = {}
+        self.default_penalty_max_per_loan = 0.0
+        self.default_penalty_max_per_student = 0.0
+
+        root = QVBoxLayout(self)
+        root.setContentsMargins(16, 16, 16, 16)
+        root.setSpacing(12)
+
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        container = QWidget()
+        scroll_layout = QVBoxLayout(container)
+        scroll_layout.setContentsMargins(0, 0, 0, 0)
+        scroll_layout.setSpacing(12)
+
+        title = QLabel("Rol bazlı ceza ayarları")
+        title.setStyleSheet("font-weight:600;font-size:14px;")
+        root.addWidget(title)
+
+        info = QLabel(
+            "Günlük gecikme cezası rol modelinden alınır. Boş bırakılan limitler genel ayarları kullanır. "
+            "0 değeri sınırsız anlamına gelir."
+        )
+        info.setWordWrap(True)
+        info.setStyleSheet("color:#555;")
+        root.addWidget(info)
+
+        self.table_roles = QTableWidget(0, 4)
+        self.table_roles.setHorizontalHeaderLabels(
+            ["Rol", "Günlük ceza (TL)", "Ödünç başına azami (TL)", "Kişi başına azami (TL)"]
+        )
+        header = self.table_roles.horizontalHeader()
+        header.setSectionResizeMode(0, QHeaderView.Stretch)
+        for idx in range(1, 4):
+            header.setSectionResizeMode(idx, QHeaderView.ResizeToContents)
+        self.table_roles.verticalHeader().setVisible(False)
+        root.addWidget(self.table_roles, 1)
+
+        tip = QLabel("Tüm limit alanları zorunludur. 0 değeri sınırsız anlamına gelir.")
+        tip.setWordWrap(True)
+        tip.setStyleSheet("color:#555;")
+        root.addWidget(tip)
+
+        self.load_preferences()
+
+    # ------------------------------------------------------------------
+    def _format_decimal(self, value, fallback):
+        target = value if value not in (None, "") else fallback
+        try:
+            val = Decimal(str(target))
+        except (InvalidOperation, ValueError):
+            val = Decimal("0")
+        return f"{val:.2f}"
+
+    def _parse_decimal_item(self, item):
+        if item is None:
+            return None, "Değer gereklidir."
+        text = (item.text() or "").strip().replace(",", ".")
+        if not text:
+            return None, "Bu alan boş bırakılamaz."
+        try:
+            value = Decimal(text)
+        except (InvalidOperation, ValueError):
+            return None, "Geçerli bir sayı girin."
+        if value < 0:
+            return None, "Negatif değer girilemez."
+        return f"{value.quantize(Decimal('0.01'))}", None
+
+    # ------------------------------------------------------------------
+    def load_preferences(self):
+        policy = {}
+        resp = settings_api.fetch_loan_policy()
+        if resp is not None and getattr(resp, "status_code", None) == 200:
             try:
-                duration = int(dur_item.text().strip()) if dur_item else 0
+                policy = resp.json() or {}
             except ValueError:
-                duration = 0
+                policy = {}
+
+            st = load_settings() or {}
+            st.setdefault("loans", {}).update(policy)
             try:
-                max_items = int(max_item.text().strip()) if max_item else 0
+                save_settings(st)
+            except Exception:
+                pass
+        else:
+            st = load_settings() or {}
+            policy = st.get("loans", {}) or {}
+
+        self.default_penalty_max_per_loan = float(policy.get("penalty_max_per_loan", 0) or 0)
+        self.default_penalty_max_per_student = float(policy.get("penalty_max_per_student", 0) or 0)
+
+        role_policies = {}
+        role_resp = settings_api.fetch_role_loan_policies()
+        if role_resp is not None and getattr(role_resp, "status_code", None) == 200:
+            try:
+                data = role_resp.json() or []
             except ValueError:
-                max_items = 0
-            role_limits.append(
-                {
-                    "role": role,
-                    "duration": duration,
-                    "max_items": max_items,
-                }
+                data = []
+            for item in data:
+                rid = item.get("role_id")
+                if rid is None:
+                    continue
+                role_policies[rid] = item
+            st = load_settings() or {}
+            st["role_loans"] = {str(k): v for k, v in role_policies.items()}
+            try:
+                save_settings(st)
+            except Exception:
+                pass
+        else:
+            st = load_settings() or {}
+            cached = st.get("role_loans", {}) or {}
+            role_policies = {int(k): v for k, v in cached.items() if k is not None}
+
+        self.role_policies = role_policies
+
+        roles_resp = roles_api.list_roles()
+        try:
+            roles = roles_resp.json() if roles_resp and roles_resp.status_code == 200 else []
+        except Exception:
+            roles = []
+        self.roles = roles or []
+
+        self.table_roles.setRowCount(len(self.roles))
+        for row, role in enumerate(self.roles):
+            role_id = role.get("id")
+            role_info = role_policies.get(role_id, {})
+
+            name_item = QTableWidgetItem(role.get("ad", ""))
+            name_item.setFlags(Qt.ItemIsSelectable | Qt.ItemIsEnabled)
+            name_item.setData(Qt.UserRole, role)
+            self.table_roles.setItem(row, 0, name_item)
+
+            rate_text = self._format_decimal(role_info.get("daily_penalty_rate"), Decimal("0"))
+            rate_item = QTableWidgetItem(rate_text)
+            rate_item.setTextAlignment(Qt.AlignCenter)
+            rate_item.setFlags(Qt.ItemIsSelectable | Qt.ItemIsEnabled | Qt.ItemIsEditable)
+            self.table_roles.setItem(row, 1, rate_item)
+
+            loan_cap = self._format_decimal(
+                role_info.get("penalty_max_per_loan"),
+                self.default_penalty_max_per_loan,
             )
+            loan_item = QTableWidgetItem(loan_cap)
+            loan_item.setTextAlignment(Qt.AlignCenter)
+            loan_item.setFlags(Qt.ItemIsSelectable | Qt.ItemIsEnabled | Qt.ItemIsEditable)
+            self.table_roles.setItem(row, 2, loan_item)
 
-        payload["role_limits"] = role_limits
-        return payload
+            student_cap = self._format_decimal(
+                role_info.get("penalty_max_per_student"),
+                self.default_penalty_max_per_student,
+            )
+            student_item = QTableWidgetItem(student_cap)
+            student_item.setTextAlignment(Qt.AlignCenter)
+            student_item.setFlags(Qt.ItemIsSelectable | Qt.ItemIsEnabled | Qt.ItemIsEditable)
+            self.table_roles.setItem(row, 3, student_item)
+
+    # ------------------------------------------------------------------
+    def save_preferences(self):
+        invalid_values = []
+
+        overrides = []
+        for row in range(self.table_roles.rowCount()):
+            role_item = self.table_roles.item(row, 0)
+            rate_item = self.table_roles.item(row, 1)
+            loan_item = self.table_roles.item(row, 2)
+            student_item = self.table_roles.item(row, 3)
+            if not role_item:
+                continue
+            role_data = role_item.data(Qt.UserRole) or {}
+            role_id = role_data.get("id")
+            if not role_id:
+                continue
+
+            rate_value, rate_err = self._parse_decimal_item(rate_item)
+            loan_cap, loan_err = self._parse_decimal_item(loan_item)
+            student_cap, student_err = self._parse_decimal_item(student_item)
+            if rate_err or loan_err or student_err:
+                invalid_values.append(role_data.get("ad", "Rol"))
+                continue
+
+            existing = self.role_policies.get(role_id, {})
+            override_entry = {
+                "role_id": role_id,
+                "duration": existing.get("duration"),
+                "max_items": existing.get("max_items"),
+                "delay_grace_days": existing.get("delay_grace_days"),
+                "penalty_delay_days": existing.get("penalty_delay_days"),
+                "shift_weekend": existing.get("shift_weekend"),
+                "daily_penalty_rate": rate_value,
+                "penalty_max_per_loan": loan_cap,
+                "penalty_max_per_student": student_cap,
+            }
+            overrides.append(override_entry)
+
+        if invalid_values:
+            QMessageBox.warning(
+                self,
+                "Geçersiz değer",
+                "Şu roller için ceza limitleri boş bırakılamaz veya hatalı: " + ", ".join(invalid_values),
+            )
+            return False
+
+        role_resp = settings_api.update_role_loan_policies(overrides)
+        if role_resp is None or getattr(role_resp, "status_code", None) not in (200, 202):
+            QMessageBox.warning(
+                self,
+                "Kaydedilemedi",
+                response_error_message(role_resp, "Rol bazlı ceza limitleri kaydedilemedi."),
+            )
+            return False
+
+        try:
+            data = role_resp.json() or []
+        except Exception:
+            data = []
+        self.role_policies = {item.get("role_id"): item for item in data if item.get("role_id") is not None}
+
+        st = load_settings() or {}
+        st["role_loans"] = {str(k): v for k, v in self.role_policies.items()}
+        try:
+            save_settings(st)
+        except Exception:
+            pass
+
+        self.load_preferences()
+        return True
 
 
+class NotificationSettingsWidget(QWidget):
+    PLACEHOLDERS = [
+        ("ogrenci_ad", "Öğrencinin adı"),
+        ("ogrenci_soyad", "Öğrencinin soyadı"),
+        ("ogrenci_no", "Öğrenci numarası"),
+        ("rol", "Öğrencinin rolü"),
+        ("kitap_baslik", "Kitap adı"),
+        ("kitap_barkod", "Kitap barkodu"),
+        ("iade_tarihi", "Planlanan iade tarihi"),
+        ("odunc_tarihi", "Ödünç tarihi"),
+        ("gecikme_gun", "Gecikme gün sayısı"),
+        ("kutuphane_adi", "Kütüphane adı"),
+        ("sunucu_tarihi", "Bildirim gönderim tarihi"),
+    ]
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.data = {}
+
+        root = QVBoxLayout(self)
+        root.setContentsMargins(16, 16, 16, 16)
+        root.setSpacing(12)
+
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        container = QWidget()
+        scroll_layout = QVBoxLayout(container)
+        scroll_layout.setContentsMargins(0, 0, 0, 12)
+        scroll_layout.setSpacing(12)
+
+        general_box = QGroupBox("Genel bildirimler")
+        general_layout = QFormLayout(general_box)
+        general_layout.setLabelAlignment(Qt.AlignLeft)
+
+        self.chk_printer_warning = QCheckBox("Açılışta yazıcı bağlantısını kontrol et")
+        general_layout.addRow(self.chk_printer_warning)
+
+        reminder_row = QHBoxLayout()
+        self.chk_due_reminder = QCheckBox("İade tarihi yaklaşınca hatırlatma gönder")
+        reminder_row.addWidget(self.chk_due_reminder)
+        reminder_row.addStretch(1)
+        general_layout.addRow(reminder_row)
+
+        reminder_channels_layout = QHBoxLayout()
+        self.chk_due_reminder_email = QCheckBox("E-posta")
+        reminder_channels_layout.addWidget(self.chk_due_reminder_email)
+        self.chk_due_reminder_sms = QCheckBox("SMS")
+        reminder_channels_layout.addWidget(self.chk_due_reminder_sms)
+        self.chk_due_reminder_mobile = QCheckBox("Mobil")
+        reminder_channels_layout.addWidget(self.chk_due_reminder_mobile)
+        reminder_channels_layout.addStretch(1)
+        reminder_channels_widget = QWidget()
+        reminder_channels_widget.setLayout(reminder_channels_layout)
+        general_layout.addRow("Kanallar", reminder_channels_widget)
+
+        self.spin_reminder_days = QSpinBox()
+        self.spin_reminder_days.setRange(0, 60)
+        self.spin_reminder_days.setSuffix(" gün önce")
+        general_layout.addRow("Gönderim zamanı", self.spin_reminder_days)
+
+        overdue_row = QHBoxLayout()
+        self.chk_due_overdue = QCheckBox("İade geciktiğinde bildirim gönder")
+        overdue_row.addWidget(self.chk_due_overdue)
+        overdue_row.addStretch(1)
+        general_layout.addRow(overdue_row)
+
+        overdue_channels_layout = QHBoxLayout()
+        self.chk_overdue_email = QCheckBox("E-posta")
+        overdue_channels_layout.addWidget(self.chk_overdue_email)
+        self.chk_overdue_sms = QCheckBox("SMS")
+        overdue_channels_layout.addWidget(self.chk_overdue_sms)
+        self.chk_overdue_mobile = QCheckBox("Mobil")
+        overdue_channels_layout.addWidget(self.chk_overdue_mobile)
+        overdue_channels_layout.addStretch(1)
+        overdue_channels_widget = QWidget()
+        overdue_channels_widget.setLayout(overdue_channels_layout)
+        general_layout.addRow("Kanallar", overdue_channels_widget)
+
+        self.spin_overdue_days = QSpinBox()
+        self.spin_overdue_days.setRange(0, 60)
+        self.spin_overdue_days.setSuffix(" gün sonra")
+        general_layout.addRow("Gecikme bildirimi", self.spin_overdue_days)
+
+        scroll_layout.addWidget(general_box)
+
+        email_box = QGroupBox("E-posta bildirimleri")
+        email_layout = QFormLayout(email_box)
+        self.chk_email_enabled = QCheckBox("E-posta gönder")
+        email_layout.addRow(self.chk_email_enabled)
+        self.edit_email_sender = QLineEdit()
+        email_layout.addRow("Gönderen adres", self.edit_email_sender)
+        self.edit_email_host = QLineEdit()
+        email_layout.addRow("SMTP sunucusu", self.edit_email_host)
+        self.spin_email_port = QSpinBox()
+        self.spin_email_port.setRange(1, 65535)
+        email_layout.addRow("Port", self.spin_email_port)
+        self.chk_email_tls = QCheckBox("TLS kullan")
+        email_layout.addRow(self.chk_email_tls)
+        self.edit_email_username = QLineEdit()
+        email_layout.addRow("Kullanıcı adı", self.edit_email_username)
+        self.edit_email_password = QLineEdit()
+        self.edit_email_password.setEchoMode(QLineEdit.Password)
+        email_layout.addRow("Parola", self.edit_email_password)
+
+        email_schedule_layout = QHBoxLayout()
+        self.chk_email_schedule = QCheckBox("Belirli saatte gönder")
+        email_schedule_layout.addWidget(self.chk_email_schedule)
+        self.time_email_schedule = QTimeEdit()
+        self.time_email_schedule.setDisplayFormat("HH:mm")
+        email_schedule_layout.addWidget(self.time_email_schedule)
+        self.edit_email_timezone = QLineEdit()
+        self.edit_email_timezone.setPlaceholderText("Zaman dilimi (örn. Europe/Istanbul)")
+        email_schedule_layout.addWidget(self.edit_email_timezone)
+        email_schedule_layout.addStretch(1)
+        email_schedule_widget = QWidget()
+        email_schedule_widget.setLayout(email_schedule_layout)
+        email_layout.addRow("Planlama", email_schedule_widget)
+        scroll_layout.addWidget(email_box)
+
+        sms_box = QGroupBox("SMS bildirimleri")
+        sms_layout = QFormLayout(sms_box)
+        self.chk_sms_enabled = QCheckBox("SMS gönder")
+        sms_layout.addRow(self.chk_sms_enabled)
+        self.edit_sms_provider = QLineEdit()
+        sms_layout.addRow("Servis sağlayıcı", self.edit_sms_provider)
+        self.edit_sms_url = QLineEdit()
+        sms_layout.addRow("API adresi", self.edit_sms_url)
+        self.edit_sms_key = QLineEdit()
+        self.edit_sms_key.setEchoMode(QLineEdit.Password)
+        sms_layout.addRow("API anahtarı", self.edit_sms_key)
+
+        sms_schedule_layout = QHBoxLayout()
+        self.chk_sms_schedule = QCheckBox("Belirli saatte gönder")
+        sms_schedule_layout.addWidget(self.chk_sms_schedule)
+        self.time_sms_schedule = QTimeEdit()
+        self.time_sms_schedule.setDisplayFormat("HH:mm")
+        sms_schedule_layout.addWidget(self.time_sms_schedule)
+        self.edit_sms_timezone = QLineEdit()
+        self.edit_sms_timezone.setPlaceholderText("Zaman dilimi")
+        sms_schedule_layout.addWidget(self.edit_sms_timezone)
+        sms_schedule_layout.addStretch(1)
+        sms_schedule_widget = QWidget()
+        sms_schedule_widget.setLayout(sms_schedule_layout)
+        sms_layout.addRow("Planlama", sms_schedule_widget)
+        scroll_layout.addWidget(sms_box)
+
+        mobile_box = QGroupBox("Mobil bildirimler")
+        mobile_layout = QFormLayout(mobile_box)
+        self.chk_mobile_enabled = QCheckBox("Mobil uygulama bildirimlerini gönder")
+        mobile_layout.addRow(self.chk_mobile_enabled)
+
+        mobile_schedule_layout = QHBoxLayout()
+        self.chk_mobile_schedule = QCheckBox("Belirli saatte gönder")
+        mobile_schedule_layout.addWidget(self.chk_mobile_schedule)
+        self.time_mobile_schedule = QTimeEdit()
+        self.time_mobile_schedule.setDisplayFormat("HH:mm")
+        mobile_schedule_layout.addWidget(self.time_mobile_schedule)
+        self.edit_mobile_timezone = QLineEdit()
+        self.edit_mobile_timezone.setPlaceholderText("Zaman dilimi")
+        mobile_schedule_layout.addWidget(self.edit_mobile_timezone)
+        mobile_schedule_layout.addStretch(1)
+        mobile_schedule_widget = QWidget()
+        mobile_schedule_widget.setLayout(mobile_schedule_layout)
+        mobile_layout.addRow("Planlama", mobile_schedule_widget)
+        scroll_layout.addWidget(mobile_box)
+
+        template_box = QGroupBox("Mesaj şablonları")
+        template_layout = QFormLayout(template_box)
+
+        self.edit_reminder_subject = QLineEdit()
+        self.btn_edit_reminder_subject = QPushButton("Şablonu Düzenle…")
+        self.btn_edit_reminder_subject.clicked.connect(lambda: self._open_template_editor("reminder_subject", multiline=False))
+        subject_container = QHBoxLayout()
+        subject_container.addWidget(self.edit_reminder_subject, 1)
+        subject_container.addWidget(self.btn_edit_reminder_subject)
+        subject_widget = QWidget()
+        subject_widget.setLayout(subject_container)
+        template_layout.addRow("Hatırlatma konusu", subject_widget)
+
+        self.edit_reminder_body = QPlainTextEdit()
+        self.edit_reminder_body.setPlaceholderText("Hatırlatma mesajı gövdesi…")
+        self.edit_reminder_body.setFixedHeight(100)
+        self.btn_edit_reminder_body = QPushButton("Şablonu Düzenle…")
+        self.btn_edit_reminder_body.clicked.connect(lambda: self._open_template_editor("reminder_body", multiline=True))
+        body_container = QVBoxLayout()
+        body_container.addWidget(self.edit_reminder_body)
+        btn_body_container = QHBoxLayout()
+        btn_body_container.addStretch(1)
+        btn_body_container.addWidget(self.btn_edit_reminder_body)
+        body_container.addLayout(btn_body_container)
+        body_widget = QWidget()
+        body_widget.setLayout(body_container)
+        template_layout.addRow("Hatırlatma metni", body_widget)
+
+        self.edit_overdue_subject = QLineEdit()
+        self.btn_edit_overdue_subject = QPushButton("Şablonu Düzenle…")
+        self.btn_edit_overdue_subject.clicked.connect(lambda: self._open_template_editor("overdue_subject", multiline=False))
+        overdue_subject_layout = QHBoxLayout()
+        overdue_subject_layout.addWidget(self.edit_overdue_subject, 1)
+        overdue_subject_layout.addWidget(self.btn_edit_overdue_subject)
+        overdue_subject_widget = QWidget()
+        overdue_subject_widget.setLayout(overdue_subject_layout)
+        template_layout.addRow("Gecikme konusu", overdue_subject_widget)
+
+        self.edit_overdue_body = QPlainTextEdit()
+        self.edit_overdue_body.setPlaceholderText("Gecikme bildirimi gövdesi…")
+        self.edit_overdue_body.setFixedHeight(100)
+        self.btn_edit_overdue_body = QPushButton("Şablonu Düzenle…")
+        self.btn_edit_overdue_body.clicked.connect(lambda: self._open_template_editor("overdue_body", multiline=True))
+        overdue_body_layout = QVBoxLayout()
+        overdue_body_layout.addWidget(self.edit_overdue_body)
+        overdue_body_btn_layout = QHBoxLayout()
+        overdue_body_btn_layout.addStretch(1)
+        overdue_body_btn_layout.addWidget(self.btn_edit_overdue_body)
+        overdue_body_layout.addLayout(overdue_body_btn_layout)
+        overdue_body_widget = QWidget()
+        overdue_body_widget.setLayout(overdue_body_layout)
+        template_layout.addRow("Gecikme metni", overdue_body_widget)
+
+        scroll_layout.addWidget(template_box)
+        scroll_layout.addStretch(1)
+
+        scroll.setWidget(container)
+        root.addWidget(scroll)
+
+        self.chk_due_reminder.toggled.connect(self._sync_reminder_fields)
+        self.chk_due_overdue.toggled.connect(self._sync_overdue_fields)
+        self.chk_email_enabled.toggled.connect(self._sync_email_fields)
+        self.chk_email_schedule.toggled.connect(self._sync_email_schedule_fields)
+        self.chk_sms_enabled.toggled.connect(self._sync_sms_fields)
+        self.chk_sms_schedule.toggled.connect(self._sync_sms_schedule_fields)
+        self.chk_mobile_enabled.toggled.connect(self._sync_mobile_fields)
+        self.chk_mobile_schedule.toggled.connect(self._sync_mobile_schedule_fields)
+
+        self.load_preferences()
+
+    def load_preferences(self):
+        response = settings_api.fetch_notification_settings()
+        if response is not None and getattr(response, "status_code", None) == 200:
+            try:
+                self.data = response.json() or {}
+            except ValueError:
+                self.data = {}
+            cache = load_settings() or {}
+            cache["notification_settings"] = self.data
+            try:
+                save_settings(cache)
+            except Exception:
+                pass
+        else:
+            cache = load_settings() or {}
+            self.data = cache.get("notification_settings", {})
+
+        data = self.data or {}
+
+        self.chk_printer_warning.setChecked(bool(data.get("printer_warning_enabled", True)))
+        self.chk_due_reminder.setChecked(bool(data.get("due_reminder_enabled", True)))
+        self.spin_reminder_days.setValue(int(data.get("due_reminder_days_before", 1) or 0))
+        self.chk_due_reminder_email.setChecked(bool(data.get("due_reminder_email_enabled", True)))
+        self.chk_due_reminder_sms.setChecked(bool(data.get("due_reminder_sms_enabled", True)))
+        self.chk_due_reminder_mobile.setChecked(bool(data.get("due_reminder_mobile_enabled", True)))
+        self.chk_due_overdue.setChecked(bool(data.get("due_overdue_enabled", True)))
+        self.spin_overdue_days.setValue(int(data.get("due_overdue_days_after", 0) or 0))
+        self.chk_overdue_email.setChecked(bool(data.get("overdue_email_enabled", True)))
+        self.chk_overdue_sms.setChecked(bool(data.get("overdue_sms_enabled", True)))
+        self.chk_overdue_mobile.setChecked(bool(data.get("overdue_mobile_enabled", True)))
+
+        self.chk_email_enabled.setChecked(bool(data.get("email_enabled", False)))
+        self.edit_email_sender.setText(data.get("email_sender", ""))
+        self.edit_email_host.setText(data.get("email_smtp_host", ""))
+        self.spin_email_port.setValue(int(data.get("email_smtp_port", 587) or 587))
+        self.chk_email_tls.setChecked(bool(data.get("email_use_tls", True)))
+        self.edit_email_username.setText(data.get("email_username", ""))
+        self.edit_email_password.setText(data.get("email_password", ""))
+        self.chk_email_schedule.setChecked(bool(data.get("email_schedule_enabled", False)))
+        email_hour = int(data.get("email_schedule_hour", 9) or 0)
+        email_minute = int(data.get("email_schedule_minute", 0) or 0)
+        self.time_email_schedule.setTime(QTime(email_hour % 24, email_minute % 60))
+        self.edit_email_timezone.setText(data.get("email_schedule_timezone", ""))
+
+        self.chk_sms_enabled.setChecked(bool(data.get("sms_enabled", False)))
+        self.edit_sms_provider.setText(data.get("sms_provider", ""))
+        self.edit_sms_url.setText(data.get("sms_api_url", ""))
+        self.edit_sms_key.setText(data.get("sms_api_key", ""))
+        self.chk_sms_schedule.setChecked(bool(data.get("sms_schedule_enabled", False)))
+        sms_hour = int(data.get("sms_schedule_hour", 9) or 0)
+        sms_minute = int(data.get("sms_schedule_minute", 0) or 0)
+        self.time_sms_schedule.setTime(QTime(sms_hour % 24, sms_minute % 60))
+        self.edit_sms_timezone.setText(data.get("sms_schedule_timezone", ""))
+
+        self.chk_mobile_enabled.setChecked(bool(data.get("mobile_enabled", False)))
+        self.chk_mobile_schedule.setChecked(bool(data.get("mobile_schedule_enabled", False)))
+        mobile_hour = int(data.get("mobile_schedule_hour", 9) or 0)
+        mobile_minute = int(data.get("mobile_schedule_minute", 0) or 0)
+        self.time_mobile_schedule.setTime(QTime(mobile_hour % 24, mobile_minute % 60))
+        self.edit_mobile_timezone.setText(data.get("mobile_schedule_timezone", ""))
+
+        self.edit_reminder_subject.setText(data.get("reminder_subject", ""))
+        self.edit_reminder_body.setPlainText(data.get("reminder_body", ""))
+        self.edit_overdue_subject.setText(data.get("overdue_subject", ""))
+        self.edit_overdue_body.setPlainText(data.get("overdue_body", ""))
+
+        self._sync_reminder_fields()
+        self._sync_overdue_fields()
+        self._sync_email_fields()
+        self._sync_sms_fields()
+        self._sync_mobile_fields()
+
+    def save_preferences(self):
+        payload = {
+            "printer_warning_enabled": bool(self.chk_printer_warning.isChecked()),
+            "due_reminder_enabled": bool(self.chk_due_reminder.isChecked()),
+            "due_reminder_days_before": int(self.spin_reminder_days.value()),
+            "due_reminder_email_enabled": bool(self.chk_due_reminder_email.isChecked()),
+            "due_reminder_sms_enabled": bool(self.chk_due_reminder_sms.isChecked()),
+            "due_reminder_mobile_enabled": bool(self.chk_due_reminder_mobile.isChecked()),
+            "due_overdue_enabled": bool(self.chk_due_overdue.isChecked()),
+            "due_overdue_days_after": int(self.spin_overdue_days.value()),
+            "overdue_email_enabled": bool(self.chk_overdue_email.isChecked()),
+            "overdue_sms_enabled": bool(self.chk_overdue_sms.isChecked()),
+            "overdue_mobile_enabled": bool(self.chk_overdue_mobile.isChecked()),
+            "email_enabled": bool(self.chk_email_enabled.isChecked()),
+            "email_sender": self.edit_email_sender.text().strip(),
+            "email_smtp_host": self.edit_email_host.text().strip(),
+            "email_smtp_port": int(self.spin_email_port.value()),
+            "email_use_tls": bool(self.chk_email_tls.isChecked()),
+            "email_username": self.edit_email_username.text().strip(),
+            "email_password": self.edit_email_password.text(),
+            "email_schedule_enabled": bool(self.chk_email_schedule.isChecked()),
+            "email_schedule_hour": int(self.time_email_schedule.time().hour()),
+            "email_schedule_minute": int(self.time_email_schedule.time().minute()),
+            "email_schedule_timezone": self.edit_email_timezone.text().strip(),
+            "sms_enabled": bool(self.chk_sms_enabled.isChecked()),
+            "sms_provider": self.edit_sms_provider.text().strip(),
+            "sms_api_url": self.edit_sms_url.text().strip(),
+            "sms_api_key": self.edit_sms_key.text(),
+            "sms_schedule_enabled": bool(self.chk_sms_schedule.isChecked()),
+            "sms_schedule_hour": int(self.time_sms_schedule.time().hour()),
+            "sms_schedule_minute": int(self.time_sms_schedule.time().minute()),
+            "sms_schedule_timezone": self.edit_sms_timezone.text().strip(),
+            "mobile_enabled": bool(self.chk_mobile_enabled.isChecked()),
+            "mobile_schedule_enabled": bool(self.chk_mobile_schedule.isChecked()),
+            "mobile_schedule_hour": int(self.time_mobile_schedule.time().hour()),
+            "mobile_schedule_minute": int(self.time_mobile_schedule.time().minute()),
+            "mobile_schedule_timezone": self.edit_mobile_timezone.text().strip(),
+            "reminder_subject": self.edit_reminder_subject.text(),
+            "reminder_body": self.edit_reminder_body.toPlainText(),
+            "overdue_subject": self.edit_overdue_subject.text(),
+            "overdue_body": self.edit_overdue_body.toPlainText(),
+        }
+
+        response = settings_api.update_notification_settings(payload, partial=False)
+        if response is None or getattr(response, "status_code", None) not in (200, 202):
+            QMessageBox.warning(self, "Bildirim Ayarları", response_error_message(response, "Ayarlar kaydedilemedi."))
+            return False
+
+        try:
+            self.data = response.json() or payload
+        except Exception:
+            self.data = payload
+
+        cache = load_settings() or {}
+        cache["notification_settings"] = self.data
+        try:
+            save_settings(cache)
+        except Exception:
+            pass
+
+        return True
+
+    # ------------------------------------------------------------------
+    def _sync_reminder_fields(self):
+        enabled = self.chk_due_reminder.isChecked()
+        self.spin_reminder_days.setEnabled(enabled)
+        self._sync_reminder_channels(enabled)
+
+    def _sync_overdue_fields(self):
+        enabled = self.chk_due_overdue.isChecked()
+        self.spin_overdue_days.setEnabled(enabled)
+        self._sync_overdue_channels(enabled)
+
+    def _sync_email_fields(self):
+        enabled = self.chk_email_enabled.isChecked()
+        for widget in (
+            self.edit_email_sender,
+            self.edit_email_host,
+            self.spin_email_port,
+            self.chk_email_tls,
+            self.edit_email_username,
+            self.edit_email_password,
+        ):
+            widget.setEnabled(enabled)
+        self.chk_email_schedule.setEnabled(enabled)
+        if not enabled:
+            self.chk_email_schedule.setChecked(False)
+        self._sync_email_schedule_fields()
+        self._sync_reminder_channels(self.chk_due_reminder.isChecked())
+        self._sync_overdue_channels(self.chk_due_overdue.isChecked())
+
+    def _sync_sms_fields(self):
+        enabled = self.chk_sms_enabled.isChecked()
+        for widget in (
+            self.edit_sms_provider,
+            self.edit_sms_url,
+            self.edit_sms_key,
+        ):
+            widget.setEnabled(enabled)
+        self.chk_sms_schedule.setEnabled(enabled)
+        if not enabled:
+            self.chk_sms_schedule.setChecked(False)
+        self._sync_sms_schedule_fields()
+        self._sync_reminder_channels(self.chk_due_reminder.isChecked())
+        self._sync_overdue_channels(self.chk_due_overdue.isChecked())
+
+    def _sync_mobile_fields(self):
+        enabled = self.chk_mobile_enabled.isChecked()
+        self.chk_mobile_schedule.setEnabled(enabled)
+        if not enabled:
+            self.chk_mobile_schedule.setChecked(False)
+        self._sync_mobile_schedule_fields()
+        self._sync_reminder_channels(self.chk_due_reminder.isChecked())
+        self._sync_overdue_channels(self.chk_due_overdue.isChecked())
+
+    def _sync_email_schedule_fields(self):
+        enabled = self.chk_email_enabled.isChecked() and self.chk_email_schedule.isChecked()
+        self.time_email_schedule.setEnabled(enabled)
+        self.edit_email_timezone.setEnabled(enabled)
+
+    def _sync_sms_schedule_fields(self):
+        enabled = self.chk_sms_enabled.isChecked() and self.chk_sms_schedule.isChecked()
+        self.time_sms_schedule.setEnabled(enabled)
+        self.edit_sms_timezone.setEnabled(enabled)
+
+    def _sync_mobile_schedule_fields(self):
+        enabled = self.chk_mobile_enabled.isChecked() and self.chk_mobile_schedule.isChecked()
+        self.time_mobile_schedule.setEnabled(enabled)
+        self.edit_mobile_timezone.setEnabled(enabled)
+
+    def _sync_reminder_channels(self, enabled=None):
+        if enabled is None:
+            enabled = self.chk_due_reminder.isChecked()
+        email_enabled = enabled and self.chk_email_enabled.isChecked()
+        sms_enabled = enabled and self.chk_sms_enabled.isChecked()
+        mobile_enabled = enabled and self.chk_mobile_enabled.isChecked()
+        self.chk_due_reminder_email.setEnabled(email_enabled)
+        self.chk_due_reminder_sms.setEnabled(sms_enabled)
+        self.chk_due_reminder_mobile.setEnabled(mobile_enabled)
+
+    def _sync_overdue_channels(self, enabled=None):
+        if enabled is None:
+            enabled = self.chk_due_overdue.isChecked()
+        email_enabled = enabled and self.chk_email_enabled.isChecked()
+        sms_enabled = enabled and self.chk_sms_enabled.isChecked()
+        mobile_enabled = enabled and self.chk_mobile_enabled.isChecked()
+        self.chk_overdue_email.setEnabled(email_enabled)
+        self.chk_overdue_sms.setEnabled(sms_enabled)
+        self.chk_overdue_mobile.setEnabled(mobile_enabled)
+
+    def _open_template_editor(self, key: str, *, multiline: bool):
+        if key == "reminder_subject":
+            current = self.edit_reminder_subject.text()
+        elif key == "reminder_body":
+            current = self.edit_reminder_body.toPlainText()
+        elif key == "overdue_subject":
+            current = self.edit_overdue_subject.text()
+        else:
+            current = self.edit_overdue_body.toPlainText()
+
+        dialog = NotificationTemplateDialog("Şablon Düzenleyici", current, self.PLACEHOLDERS, self)
+        if dialog.exec_() == QDialog.Accepted:
+            text = dialog.template_text()
+            if key == "reminder_subject":
+                self.edit_reminder_subject.setText(text)
+            elif key == "reminder_body":
+                self.edit_reminder_body.setPlainText(text)
+            elif key == "overdue_subject":
+                self.edit_overdue_subject.setText(text)
+            else:
+                self.edit_overdue_body.setPlainText(text)
 class PlaceholderPage(QWidget):
     def __init__(self, message: str, parent=None):
         super().__init__(parent)
@@ -628,11 +1393,12 @@ class SettingsDialog(QDialog):
     TAB_MAP = {
         "printers": 0,
         "labels": 1,
-        "server": 2,
-        "password": 3,
-        "notifications": 4,
-        "loans": 5,
-        "penalties": 6,
+        "receipts": 2,
+        "server": 3,
+        "password": 4,
+        "notifications": 5,
+        "loans": 6,
+        "penalties": 7,
     }
 
     def __init__(self, parent=None, initial_tab: str | None = None):
@@ -645,14 +1411,16 @@ class SettingsDialog(QDialog):
         self.tabs = QTabWidget()
         self.printer_page = PrinterSettingsWidget(self)
         self.label_page = LabelSettingsWidget(self)
+        self.receipt_page = ReceiptSettingsWidget(self)
         self.server_page = ServerSettingsWidget(self)
         self.password_page = PasswordSettingsWidget(self)
-        self.notification_page = PlaceholderPage("Bildirim ayarları burada yer alacak.", self)
+        self.notification_page = NotificationSettingsWidget(self)
         self.loans_page = LoansSettingsWidget(self)
-        self.penalties_page = PlaceholderPage("Ceza ayarları burada yer alacak.", self)
+        self.penalties_page = PenaltySettingsWidget(self)
 
         self.tabs.addTab(self.printer_page, "Yazıcılar")
         self.tabs.addTab(self.label_page, "Etiket")
+        self.tabs.addTab(self.receipt_page, "Fiş")
         self.tabs.addTab(self.server_page, "Sunucu")
         self.tabs.addTab(self.password_page, "Şifre")
         self.tabs.addTab(self.notification_page, "Bildirim")

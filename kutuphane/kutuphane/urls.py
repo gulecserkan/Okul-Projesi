@@ -17,10 +17,13 @@ from kutuphane_app.views import (
     FastQueryView,
     BookHistoryView,
     StudentHistoryView,
+    StudentPenaltySummaryView,
     CheckoutView,
     HealthCheckView,
     ChangePasswordView,
     LoanPolicyView,
+    RoleLoanPolicyView,
+    NotificationSettingsView,
 )
 
 from rest_framework_simplejwt.views import (
@@ -47,10 +50,13 @@ urlpatterns = [
     path('api/fast-query/', FastQueryView.as_view(), name="fast-query"),
     path('api/book-history/<str:barkod>/', BookHistoryView.as_view(), name="book-history"),
     path('api/student-history/<str:ogrenci_no>/', StudentHistoryView.as_view(), name="student-history"),
+    path('api/student-penalties/<str:ogrenci_no>/', StudentPenaltySummaryView.as_view(), name="student-penalties"),
     path('api/health/', HealthCheckView.as_view(), name="health"),
     path('api/checkout/', CheckoutView.as_view(), name="checkout"),
     path('api/change-password/', ChangePasswordView.as_view(), name="change-password"),
     path('api/settings/loans/', LoanPolicyView.as_view(), name="loan-policy-settings"),
+    path('api/settings/loans/roles/', RoleLoanPolicyView.as_view(), name="role-loan-policy-settings"),
+    path('api/settings/notifications/', NotificationSettingsView.as_view(), name="notification-settings"),
     path("api/token/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
     path("api/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
     

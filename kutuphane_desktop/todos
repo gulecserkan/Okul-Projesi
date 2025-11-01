@@ -1,5 +1,12 @@
 yapılacaklar:
 
+belli bir süre hareketsizlikte logout yapılacaklar
+
+kitap eklemede barkod basımı olacakyazıcı sekmesinde tanımlı
+
+ayarlatda etiket bölümünde yazıcı ayarına gerek yok zaten 
+
+
 2.  yine ayarlarda bildirim ayarları düşünülüp uygulanacak.
 3.  yine ayarlarda ceza ayarları 
 4.  yine ayarlarda ödünç ayarları
@@ -13,5 +20,13 @@ yapılacaklar:
 
 8.  kitap sayım?
 
+Cron veya başka bir zamanlayıcıyı
+    python manage.py run_scheduled_tasks 
+komutunu (örn. her 15 dakikada bir) çağıracak şekilde güncelleyin; 
+komut ayarları veritabanından okuduğu için manuel müdahale gerekmez.
+
+Gerçek bildirim göndermeyi başlatmak istediğinizde 
+    dispatch_notifications() 
+içini kanala özel implementasyonlarla doldurmanız yeterli olacak.
 
 10.  paket haline getirme?

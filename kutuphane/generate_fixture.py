@@ -15,6 +15,7 @@ pk_counter = {
     "kategori": 1,
     "kitap": 1,
     "kitapnusha": 1,
+    "roleloanpolicy": 1,
 }
 
 # --- Genel ekleme fonksiyonu ---
@@ -32,15 +33,33 @@ siniflar = [add("sinif", {"ad": s}) for s in sinif_adlari]
 # --- Roller ---
 rol_ogr = add("rol", {
     "ad": "Öğrenci",
-    "odunc_suresi_gun": 15,
-    "maksimum_kitap": 3,
-    "gecikme_ceza_gunluk": "0.50"
 })
 rol_ogrt = add("rol", {
     "ad": "Öğretmen",
-    "odunc_suresi_gun": 30,
-    "maksimum_kitap": 10,
-    "gecikme_ceza_gunluk": "0.00"
+})
+
+add("roleloanpolicy", {
+    "role": rol_ogr,
+    "duration": 15,
+    "max_items": 3,
+    "delay_grace_days": 0,
+    "penalty_delay_days": 0,
+    "shift_weekend": False,
+    "penalty_max_per_loan": "0.00",
+    "penalty_max_per_student": "0.00",
+    "daily_penalty_rate": "0.50",
+})
+
+add("roleloanpolicy", {
+    "role": rol_ogrt,
+    "duration": 30,
+    "max_items": 10,
+    "delay_grace_days": 0,
+    "penalty_delay_days": 0,
+    "shift_weekend": False,
+    "penalty_max_per_loan": "0.00",
+    "penalty_max_per_student": "0.00",
+    "daily_penalty_rate": "0.00",
 })
 
 # --- Öğrenciler (her sınıfta 10 öğrenci) ---
@@ -105,6 +124,12 @@ for kat_adi, basliklar in kitap_listeleri.items():
             "kategori": kat_id,
             "yayin_yili": random.randint(1930, 2020),
             "isbn": str(fake.isbn13()),
+            "aciklama": "",
+            "resim1": None,
+            "resim2": None,
+            "resim3": None,
+            "resim4": None,
+            "resim5": None,
         }))
 
 

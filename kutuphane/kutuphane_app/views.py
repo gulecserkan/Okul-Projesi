@@ -7,6 +7,7 @@ from rest_framework.permissions import IsAuthenticated
 from django.db import transaction
 from django.db.models import Count, Sum, Avg, Q
 from datetime import timedelta
+from decimal import Decimal, InvalidOperation
 from django.utils.timezone import now, make_aware, is_naive
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
@@ -24,6 +25,8 @@ from .models import (
     OduncKaydi,
     Personel,
     LoanPolicy,
+    RoleLoanPolicy,
+    NotificationSettings,
 )
 from .serializers import (
     OgrenciSerializer,
@@ -32,21 +35,115 @@ from .serializers import (
     YazarSerializer,
     KategoriSerializer,
     KitapSerializer,
+    KitapDetailSerializer,
     KitapNushaSerializer,
     OduncKaydiSerializer,
     PersonelSerializer,
     LoanPolicySerializer,
+    RoleLoanPolicySerializer,
+    NotificationSettingsSerializer,
 )
 from .loan_policy import (
     calculate_penalty,
     compute_assigned_due,
     compute_effective_due,
     compute_overdue_days,
+    daily_penalty_rate_for_role,
     duration_for_role,
+    grace_days_for_role,
     get_snapshot,
     max_items_for_role,
+    penalty_delay_for_role,
+    penalty_max_per_loan_for_role,
+    penalty_max_per_student_for_role,
+    shift_weekend_for_role,
     LoanPolicySnapshot,
 )
+
+
+def serialize_book_payload(kitap, request=None):
+    if not kitap:
+        return None
+
+    def abs_url(field):
+        if not field:
+            return None
+        url = field.url if hasattr(field, "url") else str(field)
+        if request is not None and url and not url.startswith("http"):
+            return request.build_absolute_uri(url)
+        return url
+
+    return {
+        "id": kitap.id,
+        "baslik": kitap.baslik,
+        "yazar": kitap.yazar.ad_soyad if kitap.yazar else None,
+        "kategori": kitap.kategori.ad if kitap.kategori else None,
+        "isbn": kitap.isbn,
+        "aciklama": kitap.aciklama,
+        "resim1": abs_url(getattr(kitap, "resim1", None)),
+        "resim2": abs_url(getattr(kitap, "resim2", None)),
+        "resim3": abs_url(getattr(kitap, "resim3", None)),
+        "resim4": abs_url(getattr(kitap, "resim4", None)),
+        "resim5": abs_url(getattr(kitap, "resim5", None)),
+    }
+
+
+def _decimal_to_str(value):
+    if value in (None, "", 0):
+        return "0.00"
+    try:
+        quantized = Decimal(value).quantize(Decimal("0.01"))
+    except (InvalidOperation, TypeError):
+        return "0.00"
+    return format(quantized, "f")
+
+
+def penalty_summary_for_student(ogrenci, limit=None):
+    if not ogrenci:
+        return {
+            "outstanding_total": "0.00",
+            "outstanding_count": 0,
+            "entries": [],
+            "has_more": False,
+        }
+
+    qs = (
+        OduncKaydi.objects
+        .filter(ogrenci=ogrenci, gecikme_cezasi__gt=0)
+        .select_related("kitap_nusha__kitap")
+        .order_by("-teslim_tarihi", "-iade_tarihi", "-odunc_tarihi")
+    )
+
+    total = qs.aggregate(total=Sum("gecikme_cezasi")).get("total") or Decimal("0")
+    total_count = qs.count()
+
+    limited_qs = qs
+    if limit is not None:
+        limited_qs = qs[:limit]
+
+    entries = []
+    for loan in limited_qs:
+        copy = getattr(loan, "kitap_nusha", None)
+        book = getattr(copy, "kitap", None) if copy else None
+        entries.append({
+            "id": loan.id,
+            "kitap": getattr(book, "baslik", "") or "",
+            "barkod": getattr(copy, "barkod", "") or "",
+            "durum": loan.durum,
+            "odunc_tarihi": loan.odunc_tarihi.isoformat() if loan.odunc_tarihi else None,
+            "iade_tarihi": loan.iade_tarihi.isoformat() if loan.iade_tarihi else None,
+            "teslim_tarihi": loan.teslim_tarihi.isoformat() if loan.teslim_tarihi else None,
+            "gecikme_cezasi": _decimal_to_str(loan.gecikme_cezasi),
+        })
+
+    has_more = bool(limit is not None and total_count > len(entries))
+
+    return {
+        "outstanding_total": _decimal_to_str(total),
+        "outstanding_count": total_count,
+        "entries": entries,
+        "has_more": has_more,
+    }
 
 class RolViewSet(viewsets.ModelViewSet):
     queryset = Rol.objects.all()
@@ -72,6 +169,11 @@ class KategoriViewSet(viewsets.ModelViewSet):
 class KitapViewSet(viewsets.ModelViewSet):
     queryset = Kitap.objects.all()
     serializer_class = KitapSerializer
+
+    def get_serializer_class(self):
+        if self.action in ("list",):
+            return KitapSerializer
+        return KitapDetailSerializer
 
     def get_queryset(self):
         qs = super().get_queryset()
@@ -236,6 +338,31 @@ class StudentHistoryView(ListAPIView):
             .order_by("-odunc_tarihi")
         )
 
+
+class StudentPenaltySummaryView(APIView):
+    def get(self, request, ogrenci_no):
+        ogrenci = (
+            Ogrenci.objects
+            .filter(ogrenci_no=ogrenci_no)
+            .select_related("sinif", "rol")
+            .first()
+        )
+        if not ogrenci:
+            return Response({"detail": "Öğrenci bulunamadı."}, status=status.HTTP_404_NOT_FOUND)
+
+        summary = penalty_summary_for_student(ogrenci, limit=None)
+        summary.update({
+            "student": {
+                "id": ogrenci.id,
+                "ad": ogrenci.ad,
+                "soyad": ogrenci.soyad,
+                "ogrenci_no": ogrenci.ogrenci_no,
+                "sinif": ogrenci.sinif.ad if ogrenci.sinif else None,
+                "rol": ogrenci.rol.ad if ogrenci.rol else None,
+            }
+        })
+        return Response(summary)
+
 class FastQueryView(APIView):
     def get(self, request):
         q = request.query_params.get("q", "").strip()
@@ -245,14 +372,16 @@ class FastQueryView(APIView):
         policy_instance = LoanPolicy.get_solo()
         policy_snapshot = LoanPolicySnapshot.from_policy(policy_instance)
         policy_data = LoanPolicySerializer(policy_instance).data
+        policy_data["role_limits"] = []
 
         # 1. Barkod kontrolü
         try:
             nusha = KitapNusha.objects.select_related("kitap", "kitap__yazar", "kitap__kategori").get(barkod=q)
             loan = (
                 OduncKaydi.objects
-                .filter(kitap_nusha=nusha, durum="oduncte")
+                .filter(kitap_nusha=nusha, durum__in=["oduncte", "gecikmis"])
                 .select_related("ogrenci")
+                .order_by("-odunc_tarihi")
                 .first()
             )
             history = (
@@ -270,15 +399,10 @@ class FastQueryView(APIView):
                     "durum": nusha.durum,
                     "raf_kodu": nusha.raf_kodu,
                 },
-                "book": {
-                    "id": nusha.kitap.id,
-                    "baslik": nusha.kitap.baslik,
-                    "yazar": nusha.kitap.yazar.ad_soyad if nusha.kitap.yazar else None,
-                    "kategori": nusha.kitap.kategori.ad if nusha.kitap.kategori else None,
-                    "isbn": nusha.kitap.isbn,
-                },
+                "book": serialize_book_payload(nusha.kitap, request),
                 "policy": policy_data,
                 "loan": self._serialize_loan(loan, policy_snapshot, include_student=True, include_copy=False) if loan else None,
+                "penalty_summary": penalty_summary_for_student(loan.ogrenci, limit=10) if loan else None,
                 "history": [
                     self._serialize_loan(h, policy_snapshot, include_student=True, include_copy=False)
                     for h in history
@@ -293,13 +417,7 @@ class FastQueryView(APIView):
             return Response({
                 "type": "isbn",
                 "exists": True,
-                "book": {
-                    "id": kitap.id,
-                    "baslik": kitap.baslik,
-                    "yazar": kitap.yazar.ad_soyad if kitap.yazar else None,
-                    "kategori": kitap.kategori.ad if kitap.kategori else None,
-                    "isbn": kitap.isbn,
-                },
+                "book": serialize_book_payload(kitap, request),
                 "copy_summary": self._isbn_copy_summary(kitap),
                 "policy": policy_data,
             })
@@ -333,7 +451,11 @@ class FastQueryView(APIView):
                     "aktif": ogrenci.aktif,
                     "pasif_tarihi": ogrenci.pasif_tarihi,
                 },
-                "policy": policy_data,
+                "policy": {
+                    **policy_data,
+                    "role": self._serialize_role_policy(policy_snapshot, ogrenci.rol),
+                },
+                "penalty_summary": penalty_summary_for_student(ogrenci, limit=10),
                 "active_loans": [
                     self._serialize_loan(od, policy_snapshot, include_copy=True)
                     for od in aktif_oduncler
@@ -398,12 +520,34 @@ class FastQueryView(APIView):
         copy = getattr(loan, "kitap_nusha", None)
         book = getattr(copy, "kitap", None) if copy else None
 
-        effective_due = compute_effective_due(loan.iade_tarihi, snapshot)
-        overdue_days = compute_overdue_days(loan.iade_tarihi, snapshot)
+        role = getattr(getattr(loan, "ogrenci", None), "rol", None)
 
-        rol = getattr(getattr(loan, "ogrenci", None), "rol", None)
-        rate = getattr(rol, "gecikme_ceza_gunluk", None)
-        penalty = calculate_penalty(rate, overdue_days, snapshot) if overdue_days > 0 else None
+        effective_due = compute_effective_due(loan.iade_tarihi, snapshot, role)
+        overdue_days = compute_overdue_days(loan.iade_tarihi, snapshot, role)
+
+        penalty = None
+        if overdue_days > 0:
+            rate = daily_penalty_rate_for_role(snapshot, role)
+            other_total = Decimal("0")
+            if rate and rate > 0:
+                other_total = (
+                    OduncKaydi.objects
+                    .filter(ogrenci=loan.ogrenci, gecikme_cezasi__gt=0)
+                    .exclude(pk=loan.pk)
+                    .aggregate(total=Sum("gecikme_cezasi"))
+                    .get("total")
+                    or Decimal("0")
+                )
+            penalty = calculate_penalty(
+                snapshot,
+                role,
+                overdue_days,
+                penalty_delay_for_role(snapshot, role),
+                other_active_penalties=other_total,
+                rate=rate,
+            )
+            if penalty is not None and penalty <= 0:
+                penalty = None
 
         data = {
             "id": loan.id,
@@ -415,6 +559,7 @@ class FastQueryView(APIView):
             "overdue_days": overdue_days,
             "is_overdue": overdue_days > 0,
             "penalty_preview": str(penalty) if penalty is not None else None,
+            "policy": self._serialize_role_policy(snapshot, role),
         }
 
         if include_copy and copy:
@@ -445,6 +590,24 @@ class FastQueryView(APIView):
             }
 
         return data
+
+    def _serialize_role_policy(self, snapshot, role):
+        penalty_max_loan = penalty_max_per_loan_for_role(snapshot, role)
+        penalty_max_student = penalty_max_per_student_for_role(snapshot, role)
+        penalty_loan_str = f"{penalty_max_loan:.2f}" if penalty_max_loan is not None else None
+        penalty_student_str = f"{penalty_max_student:.2f}" if penalty_max_student is not None else None
+        daily_penalty = daily_penalty_rate_for_role(snapshot, role)
+        daily_penalty_str = f"{daily_penalty:.2f}" if daily_penalty is not None else None
+        return {
+            "duration": duration_for_role(role, snapshot),
+            "max_items": max_items_for_role(role, snapshot),
+            "delay_grace_days": grace_days_for_role(snapshot, role),
+            "penalty_delay_days": penalty_delay_for_role(snapshot, role),
+            "shift_weekend": shift_weekend_for_role(snapshot, role),
+            "penalty_max_per_loan": penalty_loan_str,
+            "penalty_max_per_student": penalty_student_str,
+            "daily_penalty_rate": daily_penalty_str,
+        }
 
     
 
@@ -505,6 +668,8 @@ class CheckoutView(APIView):
                 durum__in=["oduncte", "gecikmis"]
             ).count() >= max_allowed:
                 return Response({"error": "Öğrencinin aktif ödünç sayısı limitte"}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            max_allowed = role_limit
 
         due_override = request.data.get("iade_tarihi")
         iade_tarihi = None
@@ -518,7 +683,7 @@ class CheckoutView(APIView):
 
         if iade_tarihi is None:
             gun_sayisi = duration_for_role(ogrenci.rol, snapshot)
-            iade_tarihi = compute_assigned_due(now(), gun_sayisi, snapshot)
+            iade_tarihi = compute_assigned_due(now(), gun_sayisi, snapshot, ogrenci.rol)
 
         with transaction.atomic():
             odunc = OduncKaydi.objects.create(
@@ -586,7 +751,9 @@ class LoanPolicyView(APIView):
     def get(self, request):
         policy = LoanPolicy.get_solo()
         serializer = LoanPolicySerializer(policy)
-        return Response(serializer.data)
+        data = serializer.data
+        data["role_limits"] = []
+        return Response(data)
 
     def put(self, request):
         return self._update_policy(request, partial=False)
@@ -597,6 +764,107 @@ class LoanPolicyView(APIView):
     def _update_policy(self, request, partial):
         policy = LoanPolicy.get_solo()
         serializer = LoanPolicySerializer(policy, data=request.data, partial=partial)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class RoleLoanPolicyView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        policies = RoleLoanPolicy.objects.select_related("role").all()
+        serializer = RoleLoanPolicySerializer(policies, many=True)
+        return Response(serializer.data)
+
+    def put(self, request):
+        payload = request.data or []
+        if not isinstance(payload, list):
+            return Response({"detail": "Liste formatında veri bekleniyor."}, status=status.HTTP_400_BAD_REQUEST)
+
+        role_map = {role.id: role for role in Rol.objects.all()}
+        seen_ids = set()
+
+        for entry in payload:
+            if not isinstance(entry, dict):
+                continue
+            role_id = entry.get("role") or entry.get("role_id")
+            if not role_id or role_id not in role_map:
+                continue
+            seen_ids.add(role_id)
+            defaults = {}
+
+            def _int_val(key):
+                value = entry.get(key)
+                if value in ("", None):
+                    return None
+                try:
+                    ivalue = int(value)
+                except (TypeError, ValueError):
+                    return None
+                return ivalue if ivalue >= 0 else None
+
+            def _decimal_val(key):
+                value = entry.get(key)
+                if value in ("", None):
+                    return None
+                try:
+                    dec_value = Decimal(str(value))
+                except (InvalidOperation, TypeError, ValueError):
+                    return None
+                if dec_value < 0:
+                    return None
+                return dec_value.quantize(Decimal("0.01"))
+
+            defaults["duration"] = _int_val("duration")
+            defaults["max_items"] = _int_val("max_items")
+            defaults["delay_grace_days"] = _int_val("delay_grace_days")
+            defaults["penalty_delay_days"] = _int_val("penalty_delay_days")
+            defaults["penalty_max_per_loan"] = _decimal_val("penalty_max_per_loan")
+            defaults["penalty_max_per_student"] = _decimal_val("penalty_max_per_student")
+            defaults["daily_penalty_rate"] = _decimal_val("daily_penalty_rate")
+
+            shift_val = entry.get("shift_weekend")
+            if isinstance(shift_val, bool):
+                defaults["shift_weekend"] = shift_val
+            elif shift_val in ("true", "True", 1, "1"):
+                defaults["shift_weekend"] = True
+            elif shift_val in ("false", "False", 0, "0"):
+                defaults["shift_weekend"] = False
+            else:
+                defaults["shift_weekend"] = None
+
+            # temizle: tüm alanlar None ise kaydı sil
+            if all(value in (None, "") for value in defaults.values()):
+                RoleLoanPolicy.objects.filter(role_id=role_id).delete()
+            else:
+                RoleLoanPolicy.objects.update_or_create(role_id=role_id, defaults=defaults)
+
+        # İsteğe bağlı: payload'da olmayan rollerin ayarlarını silmeyeceğiz (manuel kontrol)
+
+        policies = RoleLoanPolicy.objects.select_related("role").all()
+        serializer = RoleLoanPolicySerializer(policies, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class NotificationSettingsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        settings = NotificationSettings.get_solo()
+        serializer = NotificationSettingsSerializer(settings)
+        return Response(serializer.data)
+
+    def put(self, request):
+        return self._update(request, partial=False)
+
+    def patch(self, request):
+        return self._update(request, partial=True)
+
+    def _update(self, request, *, partial):
+        settings_obj = NotificationSettings.get_solo()
+        serializer = NotificationSettingsSerializer(settings_obj, data=request.data, partial=partial)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_200_OK)
@@ -686,10 +954,7 @@ class BookHistoryView(APIView):
             all_copies.sort(key=lambda x: not x["aktif"])
 
             return Response({
-                "book": {
-                    "baslik": kitap.baslik,
-                    "isbn": kitap.isbn,
-                },
+                "book": serialize_book_payload(kitap, request),
                 "copy": {
                     "barkod": nusha.barkod,
                     "raf_kodu": nusha.raf_kodu,

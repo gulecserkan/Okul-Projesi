@@ -288,7 +288,7 @@ class BookManagerDialog(QDialog):
         btn_row.setContentsMargins(0, 0, 0, 0)
         btn_row.setSpacing(8)
         self.btn_new = QPushButton("Yeni")
-        self.btn_new.setObjectName("DialogNeutralButton")
+        self.btn_new.setObjectName("PrimaryNeutralButton")
         self.btn_save = QPushButton("Kaydet")
         self.btn_save.setObjectName("DialogPositiveButton")
         self.btn_delete = QPushButton("Sil")

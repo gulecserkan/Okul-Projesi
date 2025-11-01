@@ -275,8 +275,8 @@ QFrame#HistoryCardActive {
 
 /* 🟠 Süresi yaklaşan kayıt */
 QFrame#HistoryCardWarning {
-    background-color: #fff6d5;
-    border: 1px solid #ffe27b;
+    background-color: #fff1c9;
+    border: 1px solid #ffd480;
     border-radius: 6px;
     /* padding: 4px 8px;
     margin: 3px 0; */
@@ -284,8 +284,8 @@ QFrame#HistoryCardWarning {
 
 /* 🔴 Süresi geçmiş kayıt */
 QFrame#HistoryCardExpired {
-    background-color: #fde4e4;
-    border: 1px solid #f5aaaa;
+    background-color: #f8b4b4;
+    border: 1px solid #ed7f7f;
     border-radius: 6px;
     /* padding: 4px 8px;
     margin: 3px 0; */
@@ -318,6 +318,18 @@ QPushButton#ToolbarButton {
 }
 QPushButton#ToolbarButton:hover {
     background: #eef3f8;
+}
+
+QPushButton#PrimaryNeutralButton {
+    background-color: #17a2b8;
+    color: #ffffff;
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-weight: 600;
+}
+
+QPushButton#PrimaryNeutralButton:hover {
+    background-color: #138496;
 }
 /* Combobox açılır liste okunabilirliği */
 QComboBox QAbstractItemView,

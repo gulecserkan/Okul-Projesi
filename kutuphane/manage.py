@@ -37,6 +37,21 @@ def main():
         print(summary)
         return
 
+    if len(sys.argv) > 1 and sys.argv[1] == "run_scheduled_tasks":
+        import django
+
+        django.setup()
+        from kutuphane_app.jobs import run_scheduled_jobs
+
+        summary = run_scheduled_jobs()
+        if summary:
+            print("Planlanan görevler çalıştırıldı:")
+            for key, value in summary.items():
+                print(f" - {key}: {value}")
+        else:
+            print("Çalıştırılacak planlı görev bulunamadı.")
+        return
+
     execute_from_command_line(sys.argv)
 
 

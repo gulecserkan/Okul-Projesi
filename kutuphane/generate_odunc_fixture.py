@@ -46,15 +46,18 @@ def main():
         ogr_id = random.choice(ogrenci_ids)
         nusha_id = random.choice(nusha_ids)
 
-        ogr = Ogrenci.objects.select_related("rol").get(id=ogr_id)
+        ogr = Ogrenci.objects.select_related("rol__loan_policy").get(id=ogr_id)
+        role_policy = getattr(ogr.rol, "loan_policy", None)
+        duration_days = getattr(role_policy, "duration", None) or 15
         odunc_tarihi = now - timedelta(days=random.randint(7, MAX_GUN))
-        iade_tarihi  = odunc_tarihi + timedelta(days=(ogr.rol.odunc_suresi_gun if ogr.rol else 15))
+        iade_tarihi  = odunc_tarihi + timedelta(days=duration_days)
 
         # %30 geç iade, %70 zamanında/erken
         if random.random() < 0.3:
             gecikme_gun = random.randint(1, MAX_EK_GECIKME)
             teslim_tarihi = iade_tarihi + timedelta(days=gecikme_gun)
-            ceza_birim = Decimal(ogr.rol.gecikme_ceza_gunluk) if ogr.rol else Decimal("0.50")
+            rate = getattr(role_policy, "daily_penalty_rate", None)
+            ceza_birim = Decimal(rate or 0)
             gecikme_cezasi = ceza_birim * gecikme_gun
         else:
             erken = random.randint(0, 5)
@@ -79,9 +82,11 @@ def main():
     # --- Açık (halen ödünçte) kayıtlar ---
     for nusha_id in acik_nushalar:
         ogr_id = random.choice(ogrenci_ids)
-        ogr = Ogrenci.objects.select_related("rol").get(id=ogr_id)
+        ogr = Ogrenci.objects.select_related("rol__loan_policy").get(id=ogr_id)
+        role_policy = getattr(ogr.rol, "loan_policy", None)
+        duration_days = getattr(role_policy, "duration", None) or 15
         odunc_tarihi = now - timedelta(days=random.randint(1, 30))  # açık kayıtlar genelde daha yeni
-        iade_tarihi  = odunc_tarihi + timedelta(days=(ogr.rol.odunc_suresi_gun if ogr.rol else 15))
+        iade_tarihi  = odunc_tarihi + timedelta(days=duration_days)
 
         data.append({
             "model": "kutuphane_app.odunckaydi",

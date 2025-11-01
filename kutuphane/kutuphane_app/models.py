@@ -1,5 +1,7 @@
 from django.db import models
 from datetime import time
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 
 
 # --- Sınıflar ---
@@ -13,12 +15,30 @@ class Sinif(models.Model):
 # --- Roller (Öğrenci / Öğretmen / Personel gibi) ---
 class Rol(models.Model):
     ad = models.CharField(max_length=50, unique=True)  # Öğrenci, Öğretmen vb.
-    odunc_suresi_gun = models.IntegerField(default=15)
-    maksimum_kitap = models.IntegerField(default=3)
-    gecikme_ceza_gunluk = models.DecimalField(max_digits=6, decimal_places=2, default=0)
 
     def __str__(self):
         return self.ad
+
+
+class RoleLoanPolicy(models.Model):
+    role = models.OneToOneField(Rol, on_delete=models.CASCADE, related_name="loan_policy")
+    duration = models.PositiveIntegerField(null=True, blank=True)
+    max_items = models.PositiveIntegerField(null=True, blank=True)
+    delay_grace_days = models.PositiveIntegerField(null=True, blank=True)
+    penalty_delay_days = models.PositiveIntegerField(null=True, blank=True)
+    shift_weekend = models.BooleanField(null=True, blank=True)
+    penalty_max_per_loan = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
+    penalty_max_per_student = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
+    daily_penalty_rate = models.DecimalField(max_digits=6, decimal_places=2, default=0)
+
+    def __str__(self):
+        return f"{self.role.ad} ödünç ayarları"
+
+
+@receiver(post_save, sender=Rol)
+def ensure_role_policy(sender, instance, created, **kwargs):
+    if created:
+        RoleLoanPolicy.objects.get_or_create(role=instance)
 
 
 # --- Öğrenciler ---
@@ -105,6 +125,12 @@ class Kitap(models.Model):
     kategori = models.ForeignKey(Kategori, on_delete=models.SET_NULL, null=True)
     yayin_yili = models.IntegerField(blank=True, null=True)
     isbn = models.CharField(max_length=20, blank=True, null=True)
+    aciklama = models.TextField(blank=True)
+    resim1 = models.ImageField(upload_to="kitap_resimleri/", blank=True, null=True)
+    resim2 = models.ImageField(upload_to="kitap_resimleri/", blank=True, null=True)
+    resim3 = models.ImageField(upload_to="kitap_resimleri/", blank=True, null=True)
+    resim4 = models.ImageField(upload_to="kitap_resimleri/", blank=True, null=True)
+    resim5 = models.ImageField(upload_to="kitap_resimleri/", blank=True, null=True)
 
     def __str__(self):
         return self.baslik
@@ -189,7 +215,8 @@ class LoanPolicy(models.Model):
     quiet_hours_start = models.TimeField(default=time(22, 0))
     quiet_hours_end = models.TimeField(default=time(8, 0))
 
-    role_limits = models.JSONField(default=list, blank=True)
+    penalty_max_per_loan = models.DecimalField(max_digits=8, decimal_places=2, default=0)
+    penalty_max_per_student = models.DecimalField(max_digits=8, decimal_places=2, default=0)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -205,3 +232,74 @@ class LoanPolicy(models.Model):
     def get_solo(cls):
         policy, _ = cls.objects.get_or_create(singleton_key="default")
         return policy
+
+
+class NotificationSettings(models.Model):
+    singleton_key = models.CharField(max_length=50, unique=True, default="default")
+
+    printer_warning_enabled = models.BooleanField(default=True)
+
+    due_reminder_enabled = models.BooleanField(default=True)
+    due_reminder_days_before = models.PositiveIntegerField(default=1)
+    due_reminder_email_enabled = models.BooleanField(default=True)
+    due_reminder_sms_enabled = models.BooleanField(default=True)
+    due_reminder_mobile_enabled = models.BooleanField(default=True)
+
+    due_overdue_enabled = models.BooleanField(default=True)
+    due_overdue_days_after = models.PositiveIntegerField(default=0)
+    overdue_email_enabled = models.BooleanField(default=True)
+    overdue_sms_enabled = models.BooleanField(default=True)
+    overdue_mobile_enabled = models.BooleanField(default=True)
+
+    email_enabled = models.BooleanField(default=False)
+    email_sender = models.CharField(max_length=120, blank=True)
+    email_smtp_host = models.CharField(max_length=120, blank=True)
+    email_smtp_port = models.PositiveIntegerField(default=587)
+    email_use_tls = models.BooleanField(default=True)
+    email_username = models.CharField(max_length=120, blank=True)
+    email_password = models.CharField(max_length=255, blank=True)
+    email_schedule_enabled = models.BooleanField(default=False)
+    email_schedule_hour = models.PositiveSmallIntegerField(default=9)
+    email_schedule_minute = models.PositiveSmallIntegerField(default=0)
+    email_schedule_timezone = models.CharField(max_length=64, blank=True)
+
+    sms_enabled = models.BooleanField(default=False)
+    sms_provider = models.CharField(max_length=120, blank=True)
+    sms_api_url = models.CharField(max_length=255, blank=True)
+    sms_api_key = models.CharField(max_length=255, blank=True)
+    sms_schedule_enabled = models.BooleanField(default=False)
+    sms_schedule_hour = models.PositiveSmallIntegerField(default=9)
+    sms_schedule_minute = models.PositiveSmallIntegerField(default=0)
+    sms_schedule_timezone = models.CharField(max_length=64, blank=True)
+
+    mobile_enabled = models.BooleanField(default=False)
+    mobile_schedule_enabled = models.BooleanField(default=False)
+    mobile_schedule_hour = models.PositiveSmallIntegerField(default=9)
+    mobile_schedule_minute = models.PositiveSmallIntegerField(default=0)
+    mobile_schedule_timezone = models.CharField(max_length=64, blank=True)
+
+    reminder_subject = models.CharField(max_length=200, blank=True)
+    reminder_body = models.TextField(blank=True)
+
+    overdue_subject = models.CharField(max_length=200, blank=True)
+    overdue_body = models.TextField(blank=True)
+
+    overdue_last_run = models.DateField(blank=True, null=True)
+    email_schedule_last_run = models.DateTimeField(blank=True, null=True)
+    sms_schedule_last_run = models.DateTimeField(blank=True, null=True)
+    mobile_schedule_last_run = models.DateTimeField(blank=True, null=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Bildirim Ayarı"
+        verbose_name_plural = "Bildirim Ayarları"
+
+    def __str__(self):
+        return "Varsayılan bildirim ayarları"
+
+    @classmethod
+    def get_solo(cls):
+        settings, _ = cls.objects.get_or_create(singleton_key="default")
+        return settings

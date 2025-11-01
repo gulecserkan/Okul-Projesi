@@ -21,7 +21,8 @@ from .resources import OgrenciResource
 from .models import (
     Rol, Sinif, Ogrenci, Yazar, Kategori, Kitap, KitapNusha,
     OduncKaydi, Personel,
-    ArsivBatch, ArsivOgrenci, ArsivOdunc
+    ArsivBatch, ArsivOgrenci, ArsivOdunc,
+    LoanPolicy, RoleLoanPolicy, NotificationSettings
 )
 
 # --- Custom Admin Site ---
@@ -114,8 +115,32 @@ class SinifAdmin(admin.ModelAdmin):
 admin_site.register(Sinif, SinifAdmin)
 
 class RolAdmin(admin.ModelAdmin):
-    list_display = ("ad", "odunc_suresi_gun", "maksimum_kitap", "gecikme_ceza_gunluk")
+    list_display = ("ad", "get_duration", "get_max_items", "get_daily_penalty")
     search_fields = ("ad",)
+
+    def _policy(self, obj):
+        return getattr(obj, "loan_policy", None)
+
+    def get_duration(self, obj):
+        policy = self._policy(obj)
+        return getattr(policy, "duration", None)
+
+    get_duration.short_description = "Süre"
+
+    def get_max_items(self, obj):
+        policy = self._policy(obj)
+        return getattr(policy, "max_items", None)
+
+    get_max_items.short_description = "Maks. Kitap"
+
+    def get_daily_penalty(self, obj):
+        policy = self._policy(obj)
+        value = getattr(policy, "daily_penalty_rate", None)
+        if value is None:
+            return "0.00"
+        return f"{value:.2f}"
+
+    get_daily_penalty.short_description = "Günlük Ceza"
 admin_site.register(Rol, RolAdmin)
 
 class YazarAdmin(admin.ModelAdmin):
@@ -339,6 +364,47 @@ class ArsivOduncAdmin(admin.ModelAdmin):
     date_hierarchy = "odunc_tarihi"
     search_fields = ("ogrenci_no", "kitap_baslik", "barkod")
 admin_site.register(ArsivOdunc, ArsivOduncAdmin)
+
+
+class LoanPolicyAdmin(admin.ModelAdmin):
+    list_display = (
+        "default_duration",
+        "default_max_items",
+        "delay_grace_days",
+        "penalty_delay_days",
+        "shift_weekend",
+    )
+
+
+admin_site.register(LoanPolicy, LoanPolicyAdmin)
+
+
+class RoleLoanPolicyAdmin(admin.ModelAdmin):
+    list_display = (
+        "role",
+        "duration",
+        "max_items",
+        "delay_grace_days",
+        "penalty_delay_days",
+        "daily_penalty_rate",
+    )
+
+
+admin_site.register(RoleLoanPolicy, RoleLoanPolicyAdmin)
+
+
+class NotificationSettingsAdmin(admin.ModelAdmin):
+    list_display = (
+        "printer_warning_enabled",
+        "due_reminder_enabled",
+        "due_overdue_enabled",
+        "email_enabled",
+        "sms_enabled",
+        "mobile_enabled",
+    )
+
+
+admin_site.register(NotificationSettings, NotificationSettingsAdmin)
 
 
 admin_site.register(User, UserAdmin)

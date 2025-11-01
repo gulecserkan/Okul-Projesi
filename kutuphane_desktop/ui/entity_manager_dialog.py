@@ -66,7 +66,7 @@ class EntityManagerDialog(QDialog):
 
         btn_row = QHBoxLayout()
         self.btn_new = QPushButton("Yeni")
-        self.btn_new.setObjectName("DialogNeutralButton")
+        self.btn_new.setObjectName("PrimaryNeutralButton")
         self.btn_save = QPushButton("Kaydet")
         self.btn_save.setObjectName("DialogPositiveButton")
         self.btn_delete = QPushButton("Sil")
