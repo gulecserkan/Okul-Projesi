@@ -8,12 +8,22 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import Qt, pyqtSignal
 from core.config import get_api_base_url, load_settings
 from core.utils import format_date, api_request
+from ui.contact_prompt_dialog import (
+    ContactReminderDialog,
+    ContactEditDialog,
+    PenaltyNoticeDialog,
+    CheckoutConfirmDialog,
+    MaxLoansDialog,
+)
+from api import students as student_api
+from PyQt5 import sip
 from ui.loan_status_dialog import LoanStatusDialog
 from ui.detail_window import DetailWindow
 
 
 class QuickResultPanel(QWidget):
     detailStudentRequested = pyqtSignal(str)            # öğrenci_no
+    editStudentRequested = pyqtSignal(str)              # öğrenci_no
     detailBookRequested = pyqtSignal(str, bool)         # barkod, include_history
     returnProcessed = pyqtSignal()
     closed = pyqtSignal()
@@ -254,7 +264,7 @@ class QuickResultPanel(QWidget):
                 btn_checkout = QPushButton("Ödünç Ver")
                 btn_checkout.setObjectName("CheckoutButton")
                 btn_checkout.setCursor(Qt.PointingHandCursor)
-                btn_checkout.clicked.connect(lambda _, cp=copy: self.prompt_checkout(cp))
+                btn_checkout.clicked.connect(lambda _, cp=copy, bk=book: self.prompt_checkout(cp, book_info=bk))
                 info_card_widget.layout().addWidget(btn_checkout, alignment=Qt.AlignRight)
 
             info_card = self.create_card_group("📖 Kitap", [info_card_widget])
@@ -545,19 +555,17 @@ class QuickResultPanel(QWidget):
 
         expected_no = self._expected_student_no(loan)
         button = self.sender()
-        if isinstance(button, QPushButton):
-            button.setEnabled(False)
+        self._set_button_enabled(button, False)
 
         if expected_no:
             entered, ok = self._prompt_student_code(expected_no)
             if not ok:
-                if isinstance(button, QPushButton):
-                    button.setEnabled(True)
+                self._set_button_enabled(button, True)
                 return
             if entered.strip() != str(expected_no).strip():
                 QMessageBox.warning(self, "Onay Hatası", "Öğrenci numarası eşleşmiyor.")
                 if isinstance(button, QPushButton):
-                    button.setEnabled(True)
+                    self._set_button_enabled(button, True)
                 return
 
         if expected_no:
@@ -597,7 +605,7 @@ class QuickResultPanel(QWidget):
             clicked = alert.clickedButton()
             if clicked == btn_cancel:
                 if isinstance(button, QPushButton):
-                    button.setEnabled(True)
+                    self._set_button_enabled(button, True)
                 return
             if clicked == btn_paid:
                 penalty_override = Decimal("0")
@@ -619,14 +627,14 @@ class QuickResultPanel(QWidget):
             choice = self._ask_return_mode()
             if choice == "cancel_operation":
                 if isinstance(button, QPushButton):
-                    button.setEnabled(True)
+                    self._set_button_enabled(button, True)
                 return
             elif choice == "loan_cancel":
                 mode = "cancel"
             # else remain "return"
         success = self.process_return(loan, mode=mode, penalty_override=penalty_override)
         if not success and isinstance(button, QPushButton):
-            button.setEnabled(True)
+            self._set_button_enabled(button, True)
 
     def process_return(self, loan, mode="return", penalty_override=None):
         loan_id = loan.get("id")
@@ -708,7 +716,7 @@ class QuickResultPanel(QWidget):
             allowed_statuses={"kayip", "hasarli"},
         )
 
-    def prompt_checkout(self, copy_info):
+    def prompt_checkout(self, copy_info, *, book_info=None):
         if self._checkout_in_progress:
             return
         barkod = (copy_info or {}).get("barkod")
@@ -717,8 +725,7 @@ class QuickResultPanel(QWidget):
             return
 
         button = self.sender()
-        if isinstance(button, QPushButton):
-            button.setEnabled(False)
+        self._set_button_enabled(button, False)
 
         ogr_no, ok = QInputDialog.getText(
             self,
@@ -727,16 +734,14 @@ class QuickResultPanel(QWidget):
             QLineEdit.Normal
         )
         if not ok or not ogr_no.strip():
-            if isinstance(button, QPushButton):
-                button.setEnabled(True)
+            self._set_button_enabled(button, True)
             return
 
         ogr_no = ogr_no.strip()
         stu_resp = api_request("GET", self._api_url(f"fast-query/?q={ogr_no}"))
         if stu_resp.status_code != 200:
             QMessageBox.warning(self, "İşlem Başarısız", f"Öğrenci doğrulanamadı ({stu_resp.status_code}).")
-            if isinstance(button, QPushButton):
-                button.setEnabled(True)
+            self._set_button_enabled(button, True)
             return
 
         stu_data = {}
@@ -747,13 +752,16 @@ class QuickResultPanel(QWidget):
 
         if stu_data.get("type") != "student":
             QMessageBox.warning(self, "İşlem Başarısız", "Girilen numaraya ait öğrenci bulunamadı.")
-            if isinstance(button, QPushButton):
-                button.setEnabled(True)
+            self._set_button_enabled(button, True)
             return
 
         stu = stu_data.get("student") or {}
         adsoyad = f"{stu.get('ad','')} {stu.get('soyad','')}".strip()
-        sinif = stu.get("sinif") or "—"
+        sinif_info = stu.get("sinif")
+        if isinstance(sinif_info, dict):
+            sinif = sinif_info.get("ad", "—")
+        else:
+            sinif = sinif_info or "—"
         phone = (stu.get("telefon") or "").strip()
         email = (stu.get("eposta") or "").strip()
         missing = []
@@ -762,63 +770,148 @@ class QuickResultPanel(QWidget):
         if not email:
             missing.append("e-posta")
         if missing:
-            box = QMessageBox(self)
-            box.setWindowTitle("Eksik Bilgi")
-            box.setIcon(QMessageBox.Warning)
-            box.setText(
-                "Bu öğrenci için {} bilgisi eksik.".format(" ve ".join(missing))
-            )
-            box.setInformativeText(
-                "Devam etmeden önce öğrenci kartını güncelleyebilirsiniz."
-            )
-            btn_update = box.addButton("Öğrenciyi Güncelle", QMessageBox.AcceptRole)
-            btn_continue = box.addButton("Devam Et", QMessageBox.DestructiveRole)
-            btn_cancel = box.addButton("Vazgeç", QMessageBox.RejectRole)
-            box.setDefaultButton(btn_update)
-            self._apply_dialog_style(box)
-            box.exec_()
-
-            clicked = box.clickedButton()
-            if clicked == btn_cancel:
+            display_student = stu.copy()
+            display_student["sinif"] = sinif
+            reminder = ContactReminderDialog(student=display_student, missing_fields=missing, parent=self.window())
+            reminder.setWindowModality(Qt.ApplicationModal)
+            reminder.exec_()
+            if reminder.result_code == ContactReminderDialog.RESULT_CANCEL:
                 if isinstance(button, QPushButton):
-                    button.setEnabled(True)
+                    self._set_button_enabled(button, True)
                 return
-            if clicked == btn_update:
-                self.detailStudentRequested.emit(stu.get("ogrenci_no") or ogr_no)
-            # Devam Et seçildiyse hiçbir şey yapmayıp akışı sürdürüyoruz.
+            if reminder.result_code == ContactReminderDialog.RESULT_UPDATE:
+                edit_dlg = ContactEditDialog(student=display_student, missing_fields=missing, parent=self.window())
+                edit_dlg.setWindowModality(Qt.ApplicationModal)
+                edit_dlg.exec_()
+                if edit_dlg.result_code == ContactEditDialog.RESULT_CANCEL:
+                    self._set_button_enabled(button, True)
+                    return
+                if edit_dlg.result_code == ContactEditDialog.RESULT_SAVE:
+                    student_id = stu.get("id")
+                    payload = {}
+                    if edit_dlg.normalized_phone is not None:
+                        payload["telefon"] = edit_dlg.normalized_phone
+                    if edit_dlg.email_value is not None:
+                        payload["eposta"] = edit_dlg.email_value
+                    if payload and student_id:
+                        resp = student_api.patch_student(student_id, payload)
+                        if resp.status_code not in (200, 202):
+                            QMessageBox.warning(
+                                self,
+                                "Güncelleme Başarısız",
+                                f"İletişim bilgileri kaydedilemedi ({resp.status_code})."
+                            )
+                            if isinstance(button, QPushButton):
+                                self._set_button_enabled(button, True)
+                            return
+                        if edit_dlg.normalized_phone is not None:
+                            phone = edit_dlg.display_phone
+                            stu["telefon"] = edit_dlg.normalized_phone
+                        if edit_dlg.email_value is not None:
+                            email = edit_dlg.email_value
+                            stu["eposta"] = edit_dlg.email_value
+                        stu_data["student"] = stu
+                    else:
+                        if edit_dlg.normalized_phone is not None:
+                            phone = edit_dlg.display_phone
+                        if edit_dlg.email_value is not None:
+                            email = edit_dlg.email_value
+                # Skip durumunda mevcut bilgilerle devam edilir.
+        summary = self.fetch_penalty_summary(ogr_no)
+        outstanding_total = self._parse_decimal((summary or {}).get("outstanding_total"))
+        if outstanding_total > Decimal("0"):
+            penalty_dialog = PenaltyNoticeDialog(summary=summary, parent=self.window())
+            penalty_dialog.setWindowModality(Qt.ApplicationModal)
+            penalty_dialog.exec_()
+            if penalty_dialog.result_code == PenaltyNoticeDialog.RESULT_CANCEL:
+                if isinstance(button, QPushButton):
+                    self._set_button_enabled(button, True)
+                return
+            # RESULT_PAID ve RESULT_SKIP aynı akış ile devam eder; kayıt üzerinde değişiklik yapılmaz.
+
         aktif_sayi = len(stu_data.get("active_loans", []))
         if isinstance(stu_data, dict):
             self.data["policy"] = stu_data.get("policy") or {}
         self._loan_prefs_cache = None
         loan_prefs = self._get_loan_preferences()
-        max_allowed = int(loan_prefs.get("default_max_items", 0) or 0)
-        if max_allowed and aktif_sayi >= max_allowed:
+        if loan_prefs.get("loan_blocked"):
             QMessageBox.warning(
                 self,
-                "İşlem Engellendi",
-                f"Öğrencinin aktif ödünç sayısı {aktif_sayi}. Maksimum izin verilen değer {max_allowed}."
+                "Ödünç Verilemez",
+                "Bu rol için ödünç işlemi yapılamıyor."
             )
             if isinstance(button, QPushButton):
-                button.setEnabled(True)
+                self._set_button_enabled(button, True)
             return
-        msg = (
-            f"Öğrenci: {adsoyad} ({stu.get('no') or stu.get('ogrenci_no')})\n"
-            f"Sınıf: {sinif}\n"
-            f"Aktif ödünç sayısı: {aktif_sayi}\n\n"
-            "Bu öğrenciye kitap ödünç verilsin mi?"
-        )
-
-        if not self._confirm_checkout(msg):
+        max_allowed = int(loan_prefs.get("default_max_items", 0) or 0)
+        if max_allowed and aktif_sayi >= max_allowed:
+            loans = stu_data.get("active_loans", [])
+            dlg = MaxLoansDialog(
+                student={
+                    "ad": stu.get("ad"),
+                    "soyad": stu.get("soyad"),
+                    "ogrenci_no": stu.get("ogrenci_no") or stu.get("no"),
+                    "sinif": sinif,
+                },
+                loans=loans,
+                limit=max_allowed,
+                parent=self.window(),
+            )
+            dlg.setWindowModality(Qt.ApplicationModal)
+            dlg.exec_()
             if isinstance(button, QPushButton):
-                button.setEnabled(True)
+                self._set_button_enabled(button, True)
+            return
+        due_date = self._compute_due_date(loan_prefs)
+        student_payload = {
+            "ad": stu.get("ad"),
+            "soyad": stu.get("soyad"),
+            "ogrenci_no": stu.get("ogrenci_no") or stu.get("no"),
+            "sinif": sinif,
+        }
+        raw_copy = copy_info if isinstance(copy_info, dict) else {}
+        book_info = book_info if isinstance(book_info, dict) else {}
+        copy_payload = dict(raw_copy) if isinstance(raw_copy, dict) else {}
+        if book_info:
+            copy_payload.setdefault("kitap", book_info)
+        if "barkod" not in copy_payload and isinstance(raw_copy, dict):
+            copy_payload["barkod"] = raw_copy.get("barkod")
+        kit = copy_payload.get("kitap")
+        if not kit and isinstance(copy_payload.get("kitap_nusha"), dict):
+            nested = copy_payload.get("kitap_nusha") or {}
+            copy_payload = dict(nested) if isinstance(nested, dict) else {}
+            if book_info:
+                copy_payload.setdefault("kitap", book_info)
+        kit = copy_payload.get("kitap")
+        confirm_dialog = CheckoutConfirmDialog(
+            student=student_payload,
+            copy=copy_payload,
+            book=book_info or kit,
+            due_date=due_date,
+            parent=self.window(),
+        )
+        confirm_dialog.setWindowModality(Qt.ApplicationModal)
+        if confirm_dialog.exec_() != QDialog.Accepted:
+            if isinstance(button, QPushButton):
+                self._set_button_enabled(button, True)
             return
 
-        due_date = self._compute_due_date(loan_prefs)
-        success = self.process_checkout(ogr_no, barkod, due_date, loan_prefs, button)
-        if not success and isinstance(button, QPushButton):
-            button.setEnabled(True)
+        summary_payload = {
+            "student": student_payload,
+            "book": {
+                "title": (book_info.get("baslik") if isinstance(book_info, dict) else None)
+                         or ((kit or {}).get("baslik") if isinstance(kit, dict) else None)
+                         or (raw_copy.get("book") or {}).get("baslik", "")
+                         or (copy_payload.get("kitap") or {}).get("baslik", ""),
+                "barkod": copy_payload.get("barkod") or raw_copy.get("barkod"),
+            },
+        }
 
-    def process_checkout(self, ogr_no, barkod, due_date, loan_prefs, button=None):
+        success = self.process_checkout(ogr_no, barkod, due_date, loan_prefs, button, summary=summary_payload)
+        if not success and isinstance(button, QPushButton):
+            self._set_button_enabled(button, True)
+
+    def process_checkout(self, ogr_no, barkod, due_date, loan_prefs, button=None, *, summary=None):
         payload = {"ogrenci_no": ogr_no, "barkod": barkod}
         if due_date is not None:
             payload["iade_tarihi"] = due_date.isoformat()
@@ -840,33 +933,48 @@ class QuickResultPanel(QWidget):
 
             due = data.get("iade_tarihi") or (due_date.isoformat() if due_date else None)
             due_text = format_date(due)
+            message_lines = ["İşlem tamamlandı."]
+            book_info = (summary or {}).get("book") or {}
+            student_info = (summary or {}).get("student") or {}
+            book_title = book_info.get("title")
+            book_barcode = book_info.get("barkod")
+            student_name = f"{student_info.get('ad','')} {student_info.get('soyad','')}".strip()
+            student_no = student_info.get("ogrenci_no")
+            if book_title or book_barcode or student_name:
+                message_lines.append("")
+            if book_title:
+                message_lines.append(f"Kitap: {book_title}")
+            if book_barcode:
+                message_lines.append(f"Barkod: {book_barcode}")
+            if student_name:
+                message_lines.append(f"Öğrenci: {student_name}")
+            if student_no:
+                message_lines.append(f"Numara: {student_no}")
+            message_lines.append(f"İade Tarihi: {due_text or '—'}")
+
             QMessageBox.information(
                 self,
                 "Ödünç Verildi",
-                f"İşlem tamamlandı. İade tarihi: {due_text or '—'}"
+                "\n".join(message_lines)
             )
             self.returnProcessed.emit()
             if isinstance(button, QPushButton):
-                button.setEnabled(True)
+                self._set_button_enabled(button, True)
             return True
         finally:
             self._checkout_in_progress = False
+            self._set_button_enabled(button, True)
 
-    def _confirm_checkout(self, message):
-        box = QMessageBox(self)
-        box.setWindowTitle("Ödünç Onayı")
-        box.setText(message)
-        btn_yes = box.addButton("Evet", QMessageBox.AcceptRole)
-        btn_yes.setObjectName("DialogReturnButton")
-        btn_no = box.addButton("Vazgeç", QMessageBox.RejectRole)
-        btn_no.setObjectName("DialogCancelButton")
-        box.setDefaultButton(btn_yes)
-        self._apply_dialog_style(box)
-        box.exec_()
-        return box.clickedButton() == btn_yes
+    def _set_button_enabled(self, button, enabled):
+        if isinstance(button, QPushButton) and button is not None:
+            try:
+                if not sip.isdeleted(button):
+                    button.setEnabled(enabled)
+            except RuntimeError:
+                pass
 
     def _get_loan_preferences(self):
-        if not hasattr(self, "_loan_prefs_cache"):
+        if not hasattr(self, "_loan_prefs_cache") or self._loan_prefs_cache is None:
             base = {}
             if isinstance(self.data, dict):
                 base = (self.data.get("policy") or {}).copy()
@@ -887,7 +995,23 @@ class QuickResultPanel(QWidget):
                 merged.update({k: v for k, v in override.items() if v is not None})
                 return merged
 
+            def _parse_bool(value, default=True):
+                if isinstance(value, bool):
+                    return value
+                if value in (None, "", "None"):
+                    return default
+                if isinstance(value, (int, float)):
+                    return value != 0
+                if isinstance(value, str):
+                    text = value.strip().lower()
+                    if text in ("true", "1", "evet", "on", "yes"):
+                        return True
+                    if text in ("false", "0", "hayır", "hayir", "off", "no"):
+                        return False
+                return default
+
             prefs = base if isinstance(base, dict) else {}
+            base_shift_default = _parse_bool((base or {}).get("shift_weekend"), True) if isinstance(base, dict) else True
             if role_override:
                 prefs = _merge(prefs, {
                     "default_duration": role_override.get("duration"),
@@ -895,7 +1019,22 @@ class QuickResultPanel(QWidget):
                     "delay_grace_days": role_override.get("delay_grace_days"),
                     "penalty_delay_days": role_override.get("penalty_delay_days"),
                     "shift_weekend": role_override.get("shift_weekend"),
+                    "loan_blocked": role_override.get("loan_blocked"),
                 })
+            def _is_zero(value):
+                if value in (None, ""):
+                    return False
+                try:
+                    return int(value) == 0
+                except (TypeError, ValueError):
+                    return False
+
+            prefs["shift_weekend"] = _parse_bool(prefs.get("shift_weekend"), base_shift_default)
+            blocked = bool(prefs.get("loan_blocked"))
+            if not blocked:
+                if _is_zero(prefs.get("default_duration")) or _is_zero(prefs.get("default_max_items")):
+                    blocked = True
+            prefs["loan_blocked"] = blocked
             self._loan_prefs_cache = prefs or {}
         return self._loan_prefs_cache
 

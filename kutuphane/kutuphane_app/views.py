@@ -53,6 +53,7 @@ from .loan_policy import (
     grace_days_for_role,
     get_snapshot,
     max_items_for_role,
+    is_role_blocked,
     penalty_delay_for_role,
     penalty_max_per_loan_for_role,
     penalty_max_per_student_for_role,
@@ -598,6 +599,7 @@ class FastQueryView(APIView):
         penalty_student_str = f"{penalty_max_student:.2f}" if penalty_max_student is not None else None
         daily_penalty = daily_penalty_rate_for_role(snapshot, role)
         daily_penalty_str = f"{daily_penalty:.2f}" if daily_penalty is not None else None
+        blocked = is_role_blocked(snapshot, role)
         return {
             "duration": duration_for_role(role, snapshot),
             "max_items": max_items_for_role(role, snapshot),
@@ -607,6 +609,7 @@ class FastQueryView(APIView):
             "penalty_max_per_loan": penalty_loan_str,
             "penalty_max_per_student": penalty_student_str,
             "daily_penalty_rate": daily_penalty_str,
+            "loan_blocked": blocked,
         }
 
     
@@ -629,6 +632,9 @@ class CheckoutView(APIView):
             return Response({"error": "Öğrenci bulunamadı"}, status=status.HTTP_404_NOT_FOUND)
 
         snapshot = get_snapshot()
+
+        if is_role_blocked(snapshot, ogrenci.rol):
+            return Response({"error": "Bu rol için ödünç işlemi yapılamıyor."}, status=status.HTTP_400_BAD_REQUEST)
 
         aktif_sayi = OduncKaydi.objects.filter(
             ogrenci=ogrenci,

@@ -49,6 +49,7 @@ class StudentManagerDialog(QDialog):
 
         self.current_id = None
         self._students = []
+        self._pending_focus_number = None
         self._last_role_index = 0
         self._classes = []
         self._roles = []
@@ -315,6 +316,11 @@ class StudentManagerDialog(QDialog):
             data = self.table.item(r, 0).data(Qt.UserRole) or {}
             self._set_status_widget(r, bool(data.get("aktif", True)))
 
+        if self._pending_focus_number:
+            number = self._pending_focus_number
+            self._pending_focus_number = None
+            QTimer.singleShot(0, lambda: self.focus_on_student(number))
+
     # ------------------------------------------------------------------ #
     # Yardımcı fonksiyonlar
     def _resolve_class(self, student):
@@ -540,6 +546,25 @@ class StudentManagerDialog(QDialog):
         if not items:
             return None
         return items[0].data(Qt.UserRole)
+
+    def focus_on_student(self, student_no: str) -> bool:
+        number = (student_no or "").strip()
+        if not number:
+            return False
+        if not self._students:
+            self._pending_focus_number = number
+            return False
+        for row, student in enumerate(self._students):
+            if not student:
+                continue
+            if (student.get("ogrenci_no") or "").strip() == number:
+                self.table.selectRow(row)
+                item = self.table.item(row, 0)
+                if item:
+                    self.table.scrollToItem(item)
+                return True
+        self._pending_focus_number = number
+        return False
 
     # ------------------------------------------------------------------ #
     # İşlemler

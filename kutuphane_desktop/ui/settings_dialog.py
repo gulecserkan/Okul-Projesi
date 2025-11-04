@@ -407,6 +407,18 @@ class PasswordSettingsWidget(QWidget):
         form.addRow("Yeni şifre (tekrar)", self.new_password_again)
 
         layout.addLayout(form)
+
+        session_group = QGroupBox("Oturum")
+        session_form = QFormLayout(session_group)
+        self.chk_auto_logout = QCheckBox("Hareketsizlikte otomatik çıkış")
+        session_form.addRow(self.chk_auto_logout)
+        self.spin_auto_logout = QSpinBox()
+        self.spin_auto_logout.setRange(1, 30)
+        self.spin_auto_logout.setSuffix(" dk")
+        session_form.addRow("Süre", self.spin_auto_logout)
+        layout.addWidget(session_group)
+        self.chk_auto_logout.toggled.connect(self.spin_auto_logout.setEnabled)
+
         layout.addStretch(1)
 
         tip = QLabel("Şifre değişikliği sonrası tekrar giriş yapmanız gerekebilir.")
@@ -414,37 +426,79 @@ class PasswordSettingsWidget(QWidget):
         layout.addWidget(tip)
 
         self._refresh_user_label()
+        self._load_session_preferences()
 
     def save_preferences(self):
-        username = auth.get_current_username()
-        if not username:
-            QMessageBox.warning(self, "Şifre Değiştirme", "Oturum bilgisi bulunamadı. Önce giriş yapın.")
-            return False
         current = self.current_password.text().strip()
         new1 = self.new_password.text().strip()
         new2 = self.new_password_again.text().strip()
+        has_password_input = any([current, new1, new2])
 
-        if not any([current, new1, new2]):
-            return True
+        if has_password_input:
+            username = auth.get_current_username()
+            if not username:
+                QMessageBox.warning(self, "Şifre Değiştirme", "Oturum bilgisi bulunamadı. Önce giriş yapın.")
+                return False
+            if not all([current, new1, new2]):
+                QMessageBox.warning(self, "Hata", "Şifre değiştirmek için tüm alanları doldurun.")
+                return False
+            if new1 != new2:
+                QMessageBox.warning(self, "Hata", "Yeni şifre alanları birbiriyle uyuşmuyor.")
+                return False
 
-        if new1 != new2:
-            QMessageBox.warning(self, "Hata", "Yeni şifre alanları birbiriyle uyuşmuyor.")
+            ok, message = auth.change_password(current, new1, new2)
+            if ok:
+                QMessageBox.information(self, "Şifre Değiştirme", message)
+                self.current_password.clear()
+                self.new_password.clear()
+                self.new_password_again.clear()
+            else:
+                QMessageBox.warning(self, "Şifre Değiştirme", message or "Şifre güncellenemedi.")
+                return False
+
+        if not self._save_session_preferences():
             return False
 
-        ok, message = auth.change_password(current, new1, new2)
-        if ok:
-            QMessageBox.information(self, "Şifre Değiştirme", message)
-            self.current_password.clear()
-            self.new_password.clear()
-            self.new_password_again.clear()
-            return True
+        dialog = self.window()
+        parent_window = dialog.parent() if dialog else None
+        if parent_window and hasattr(parent_window, "_setup_inactivity_timer"):
+            try:
+                parent_window._setup_inactivity_timer()
+            except Exception:
+                pass
 
-        QMessageBox.warning(self, "Şifre Değiştirme", message or "Şifre güncellenemedi.")
-        return False
+        changed = bool(has_password_input)
+        return True, ("Şifre güncellendi." if changed else "Oturum ayarları kaydedildi.")
 
     def _refresh_user_label(self):
         username = auth.get_current_username() or "(bilinmiyor)"
         self.lbl_user.setText(username)
+
+    def _load_session_preferences(self):
+        settings = load_settings() or {}
+        session = settings.get("session", {})
+        enabled = bool(session.get("auto_logout_enabled", True))
+        minutes = session.get("auto_logout_minutes", 10)
+        try:
+            minutes = int(minutes)
+        except (TypeError, ValueError):
+            minutes = 10
+        minutes = min(max(minutes, 1), 30)
+        self.chk_auto_logout.setChecked(enabled)
+        self.spin_auto_logout.setValue(minutes)
+        self.spin_auto_logout.setEnabled(enabled)
+
+    def _save_session_preferences(self):
+        settings = load_settings() or {}
+        session = settings.setdefault("session", {})
+        session["auto_logout_enabled"] = bool(self.chk_auto_logout.isChecked())
+        session["auto_logout_minutes"] = int(self.spin_auto_logout.value())
+        try:
+            save_settings(settings)
+        except Exception as exc:
+            QMessageBox.warning(self, "Oturum Ayarları", f"Ayarlar kaydedilemedi.\n{exc}")
+            return False
+        return True
 
 
 class LoansSettingsWidget(QWidget):
@@ -492,6 +546,13 @@ class LoansSettingsWidget(QWidget):
         header.setSectionResizeMode(4, QHeaderView.ResizeToContents)
         header.setSectionResizeMode(5, QHeaderView.ResizeToContents)
         root_layout.addWidget(self.table_roles)
+
+        warning = QLabel(
+            "Süre veya maks. ödünç değerlerinden herhangi biri 0 olursa bu rol için ödünç verme işlemi devre dışı bırakılır."
+        )
+        warning.setWordWrap(True)
+        warning.setStyleSheet("color:#ff0000;")
+        root_layout.addWidget(warning)
 
         self.load_preferences()
 
@@ -686,8 +747,7 @@ class PenaltySettingsWidget(QWidget):
         root.addWidget(title)
 
         info = QLabel(
-            "Günlük gecikme cezası rol modelinden alınır. Boş bırakılan limitler genel ayarları kullanır. "
-            "0 değeri sınırsız anlamına gelir."
+            "Her rol için günlük gecikme cezası ve üst limitleri tanımlayın."
         )
         info.setWordWrap(True)
         info.setStyleSheet("color:#555;")
@@ -706,7 +766,7 @@ class PenaltySettingsWidget(QWidget):
 
         tip = QLabel("Tüm limit alanları zorunludur. 0 değeri sınırsız anlamına gelir.")
         tip.setWordWrap(True)
-        tip.setStyleSheet("color:#555;")
+        tip.setStyleSheet("color:#ff0000;")
         root.addWidget(tip)
 
         self.load_preferences()
@@ -1453,8 +1513,11 @@ class SettingsDialog(QDialog):
         page = self.tabs.currentWidget()
         tab_name = self.tabs.tabText(current_index)
 
+        save_message = None
         if hasattr(page, "save_preferences"):
             result = page.save_preferences()
+            if isinstance(result, tuple):
+                result, save_message = result
         else:
             result = True
 
@@ -1464,7 +1527,8 @@ class SettingsDialog(QDialog):
         if self._status_timer:
             self._status_timer.stop()
             self._status_timer.deleteLater()
-        self.status_label.setText(f"{tab_name} ayarları kaydedildi.")
+        message = save_message or f"{tab_name} ayarları kaydedildi."
+        self.status_label.setText(message)
         self.status_label.setStyleSheet("color: #27ae60;")
         from PyQt5.QtCore import QTimer
 

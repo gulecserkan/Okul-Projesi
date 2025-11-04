@@ -33,7 +33,7 @@ def iter_open_loans(lock=False):
     return qs
 
 
-def update_overdue_loans(now=None):
+def update_overdue_loans(now=None, *, use_lock=False):
     """Açık ödünç kayıtlarını tarayıp gecikenleri günceller."""
 
     if now is None:
@@ -47,7 +47,7 @@ def update_overdue_loans(now=None):
     total_penalty = Decimal("0")
 
     with transaction.atomic():
-        for loan in iter_open_loans(lock=True):
+        for loan in iter_open_loans(lock=use_lock):
             due = loan.iade_tarihi
             role = getattr(loan.ogrenci, "rol", None)
             effective_due = compute_effective_due(due, snapshot, role)

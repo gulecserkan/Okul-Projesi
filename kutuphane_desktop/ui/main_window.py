@@ -15,6 +15,7 @@ from ui.side_menu import SideMenu, SideMenuEntry
 from widgets.quick_result_panel import QuickResultPanel
 from widgets.book_table import BookTable, HEADERS
 import json, os, sys, subprocess, time
+import sip
 from core.config import SETTINGS_FILE, get_api_base_url, load_settings, save_settings
 from PyQt5.QtPrintSupport import QPrinterInfo
 from core.utils import api_request, format_date, response_error_message
@@ -38,6 +39,11 @@ class MainWindow(QMainWindow):
         self._scanner_start_ts = 0.0
         self._scanner_capture = False
         self._scanner_timeout_s = 0.5
+        self._is_logging_out = False
+        self._inactivity_timer = None
+        self._inactivity_minutes = None
+        self._inactivity_timeout_ms = None
+        self.session_settings = {}
         app = QApplication.instance()
         if app:
             app.installEventFilter(self)
@@ -128,6 +134,7 @@ class MainWindow(QMainWindow):
         # Ayarları yükle
         self.settings = self.load_settings()
         self.apply_window_settings()
+        self._setup_inactivity_timer()
         print("[DBG] MainWindow.__init__: end")
         try:
             self._check_printers()
@@ -135,6 +142,15 @@ class MainWindow(QMainWindow):
             pass
 
     def eventFilter(self, obj, event):
+        if event.type() in (
+            QEvent.KeyPress,
+            QEvent.MouseButtonPress,
+            QEvent.MouseButtonRelease,
+            QEvent.MouseMove,
+            QEvent.Wheel,
+        ):
+            self._register_activity()
+
         if event.type() == QEvent.KeyPress:
             if self.quick_input.hasFocus() or obj is self.quick_input:
                 return super().eventFilter(obj, event)
@@ -176,6 +192,7 @@ class MainWindow(QMainWindow):
             self._reset_scanner_capture()
 
         elif event.type() == QEvent.FocusIn and obj is self.quick_input:
+            self._register_activity()
             QTimer.singleShot(0, self.quick_input.selectAll)
         return super().eventFilter(obj, event)
 
@@ -190,12 +207,87 @@ class MainWindow(QMainWindow):
         self._scanner_buffer = []
         self._scanner_capture = False
         self._scanner_start_ts = 0.0
+
+    def _load_session_settings(self):
+        data = load_settings() or {}
+        session = data.get("session", {})
+        enabled = session.get("auto_logout_enabled", True)
+        minutes = session.get("auto_logout_minutes", 10)
+        try:
+            minutes = int(minutes)
+        except (TypeError, ValueError):
+            minutes = 10
+        minutes = min(max(minutes, 1), 30)
+        self.session_settings = {
+            "auto_logout_enabled": bool(enabled),
+            "auto_logout_minutes": minutes,
+        }
+
+    def _ensure_inactivity_timer(self):
+        """QTimer nesnesinin hala geçerli olduğundan emin olur; gerekirse yeniden oluşturur."""
+        try:
+            if sip.isdeleted(self):
+                return None
+        except Exception:
+            return None
+        timer = self._inactivity_timer
+        if timer is not None:
+            try:
+                if sip.isdeleted(timer):
+                    timer = None
+            except Exception:
+                timer = None
+        if timer is None:
+            timer = QTimer(self)
+            timer.setSingleShot(True)
+            timer.timeout.connect(self._handle_inactivity_timeout)
+        self._inactivity_timer = timer
+        return timer
+
+    def _setup_inactivity_timer(self):
+        """Kullanıcı hareketsiz kaldığında otomatik oturumu kapatmak için zamanlayıcı kurar."""
+        self._load_session_settings()
+        enabled = self.session_settings.get("auto_logout_enabled", True)
+        minutes = self.session_settings.get("auto_logout_minutes", 10)
+
+        timer = self._ensure_inactivity_timer()
+        if timer is None:
+            return
+
+        if enabled:
+            self._inactivity_minutes = minutes
+            self._inactivity_timeout_ms = self._inactivity_minutes * 60_000
+            self._register_activity()
+        else:
+            self._inactivity_minutes = None
+            self._inactivity_timeout_ms = None
+            if timer and not sip.isdeleted(timer):
+                timer.stop()
+
+    def _register_activity(self):
+        """Her kullanıcı etkileşiminde çağrılarak zamanlayıcıyı sıfırlar."""
+        if (
+            self._is_logging_out
+            or self._inactivity_timeout_ms is None
+        ):
+            return
+        timer = self._ensure_inactivity_timer()
+        if timer and not sip.isdeleted(timer):
+            timer.start(self._inactivity_timeout_ms)
+
+    def _handle_inactivity_timeout(self):
+        """Belirlenen süre boyunca etkinlik olmadığında çağrılır."""
+        if self.session_settings.get("auto_logout_enabled", True):
+            self.logout_and_show_login(reason="timeout")
     
     # Uygulama kapanırken ayarları kaydet
     def closeEvent(self, event):
+        if self._is_logging_out:
+            super().closeEvent(event)
+            return
+        # Geliştirme sürecinde doğrudan kapanmasına izin ver.
         self.side_menu.force_hide()
         self.save_settings()
-        #auth.logout()  # 🔹 program kapanırken token dosyası silinsin
         super().closeEvent(event)
 
     def save_settings(self):
@@ -217,7 +309,7 @@ class MainWindow(QMainWindow):
                 "y": geom.y(),
                 "w": geom.width(),
                 "h": geom.height(),
-            }
+            },
         }
 
         with open(SETTINGS_FILE, "w") as f:
@@ -308,6 +400,7 @@ class MainWindow(QMainWindow):
 
         panel = QuickResultPanel(data)
         panel.detailStudentRequested.connect(self.show_detail_student)
+        panel.editStudentRequested.connect(self.edit_student_from_quick)
         panel.detailBookRequested.connect(self.handle_detail_book_request)
         panel.returnProcessed.connect(self.on_quick_return_processed)
         panel.closed.connect(self.close_quick_result)
@@ -346,6 +439,9 @@ class MainWindow(QMainWindow):
                 main_tab_icon=STUDENT_TAB_ICON
             )
             dlg.exec_()
+
+    def edit_student_from_quick(self, ogr_no: str):
+        self.open_student_manager(student_no=ogr_no)
 
     def handle_detail_book_request(self, barkod, include_history):
         self.show_detail_book(barkod, include_history=include_history)
@@ -494,6 +590,7 @@ class MainWindow(QMainWindow):
         self.side_menu.force_hide()
         dlg = SettingsDialog(self, initial_tab=initial_tab)
         dlg.exec_()
+        self._setup_inactivity_timer()
     
     def _check_label_printer(self):
         settings = load_settings() or {}
@@ -523,6 +620,10 @@ class MainWindow(QMainWindow):
     # Yeni: Etiket ve Rapor yazıcılarını kontrol et, durumları bildir
     def _check_printers(self):
         st_all = load_settings() or {}
+        notif = st_all.get("notification_settings", {})
+        if not notif.get("printer_warning_enabled", True):
+            return
+
         p = st_all.get("printing", {})
         le = st_all.get("label_editor", {})
 
@@ -642,23 +743,67 @@ class MainWindow(QMainWindow):
         if hasattr(self.table, "reload_data"):
             self.table.reload_data()
 
-    def open_student_manager(self):
+    def open_student_manager(self, student_no: str | None = None):
         self.side_menu.force_hide()
         if self._dlg_student and self._dlg_student.isVisible():
-            self._dlg_student.raise_(); self._dlg_student.activateWindow(); return
+            if student_no:
+                QTimer.singleShot(0, lambda: self._dlg_student.focus_on_student(student_no))
+            self._dlg_student.raise_()
+            self._dlg_student.activateWindow()
+            return
         dlg = StudentManagerDialog(self)
         self._dlg_student = dlg
+        if student_no:
+            QTimer.singleShot(0, lambda: dlg.focus_on_student(student_no))
         dlg.finished.connect(lambda _: setattr(self, "_dlg_student", None))
         dlg.exec_()
         if hasattr(self.table, "reload_data"):
             self.table.reload_data()
 
-    def logout_and_show_login(self):
+    def logout_and_show_login(self, reason=None):
         """Çıkış işlemini yapar ve giriş ekranını açar."""
+        if self._is_logging_out:
+            return
+        self._is_logging_out = True
+
+        if self._inactivity_timer:
+            try:
+                if not sip.isdeleted(self._inactivity_timer):
+                    self._inactivity_timer.stop()
+            except Exception:
+                pass
+
+        app = QApplication.instance()
+        if app:
+            try:
+                app.removeEventFilter(self)
+            except Exception:
+                pass
+
+        if reason == "timeout":
+            minutes = self.session_settings.get("auto_logout_minutes", self._inactivity_minutes or 0)
+            QMessageBox.information(
+                self,
+                "Oturum Sonlandırıldı",
+                f"{minutes} dakika işlem yapılmadığı için oturum kapatıldı.",
+            )
+
+        # Açık yöneticileri kapat
+        for attr in ("_dlg_student", "_dlg_author", "_dlg_category", "_dlg_book"):
+            dlg = getattr(self, attr, None)
+            if dlg and hasattr(dlg, "close"):
+                try:
+                    dlg.close()
+                except Exception:
+                    pass
+            setattr(self, attr, None)
+
+        self.side_menu.force_hide()
+        self.save_settings()
+        auth.logout()
+
         from ui.login_window import LoginWindow  # avoid circular import
         global _active_login_window
-        self.side_menu.force_hide()
-        auth.logout()
 
         _active_login_window = LoginWindow()
         _active_login_window.show()

@@ -93,6 +93,18 @@ def _get_role_override(snapshot: LoanPolicySnapshot, role) -> Optional[RolePolic
     return snapshot.role_overrides.get(role.id)
 
 
+def is_role_blocked(snapshot: LoanPolicySnapshot, role) -> bool:
+    override = _get_role_override(snapshot, role)
+    if override:
+        if (override.duration is not None and int(override.duration) == 0) or (
+            override.max_items is not None and int(override.max_items) == 0
+        ):
+            return True
+    if snapshot.default_duration == 0 or snapshot.default_max_items == 0:
+        return True
+    return False
+
+
 def _resolve_shift_weekend(snapshot: LoanPolicySnapshot, role) -> bool:
     override = _get_role_override(snapshot, role)
     if override and override.shift_weekend is not None:
@@ -191,15 +203,22 @@ def calculate_penalty(
 
 
 def max_items_for_role(role, snapshot: LoanPolicySnapshot) -> Optional[int]:
+    if is_role_blocked(snapshot, role):
+        return 0
     override = _get_role_override(snapshot, role)
     if override and override.max_items is not None:
         value = int(override.max_items)
         return value if value > 0 else None
 
-    return snapshot.default_max_items or None
+    default_value = snapshot.default_max_items
+    if default_value and default_value > 0:
+        return int(default_value)
+    return None
 
 
 def duration_for_role(role, snapshot: LoanPolicySnapshot) -> int:
+    if is_role_blocked(snapshot, role):
+        return 0
     override = _get_role_override(snapshot, role)
     if override and override.duration is not None and override.duration > 0:
         return int(override.duration)

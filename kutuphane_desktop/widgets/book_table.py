@@ -1,4 +1,5 @@
 from datetime import datetime, date, timedelta
+from decimal import Decimal
 
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QLineEdit, QLabel, QTableView, QMenu, QHBoxLayout, QComboBox
@@ -260,7 +261,9 @@ class BookTable(QWidget):
         layout.addLayout(top_row)
 
         # Veriyi yükle
-        data, row_meta = self.fetch_data()
+        initial_filter = self.filter_combo.currentData()
+        self._active_statuses = self._determine_statuses(initial_filter)
+        data, row_meta = self.fetch_data(statuses=self._active_statuses)
 
         # Tablo
         self.table = QTableView()
@@ -307,14 +310,21 @@ class BookTable(QWidget):
         self.apply_settings()
 
         # Arama bağlama
-        self.search_box.textChanged.connect(self.apply_filter)
-        self.filter_combo.currentIndexChanged.connect(lambda _: self.apply_filter())
-        self.apply_filter()
+        self.search_box.textChanged.connect(lambda _: self.apply_filter())
+        self.filter_combo.currentIndexChanged.connect(self.on_filter_changed)
+        self.apply_filter(status=initial_filter)
 
     def reload_data(self):
-        data, row_meta = self.fetch_data()
+        data, row_meta = self.fetch_data(statuses=self._active_statuses)
         self.model.update_data(data, row_meta)
-        self.apply_filter(self.search_box.text())
+        self.apply_filter(self.search_box.text(), status=self.filter_combo.currentData())
+
+    def on_filter_changed(self):
+        status_code = self.filter_combo.currentData()
+        self._active_statuses = self._determine_statuses(status_code)
+        data, row_meta = self.fetch_data(statuses=self._active_statuses)
+        self.model.update_data(data, row_meta)
+        self.apply_filter(status=status_code)
 
     def on_selection_changed(self, selected, deselected):
         try:
@@ -359,7 +369,9 @@ class BookTable(QWidget):
             self.hidden_columns.remove(col)
         self.save_settings()
 
-    def fetch_data(self):
+    def fetch_data(self, *, statuses=None):
+        if not statuses:
+            statuses = ("oduncte", "gecikmis")
         def _load_status(status):
             resp = api_request("GET", self._api_url(f"oduncler/?durum={status}"))
             if resp.status_code != 200:
@@ -370,7 +382,7 @@ class BookTable(QWidget):
                 return []
 
         loans = []
-        for status in ("oduncte", "gecikmis"):
+        for status in statuses:
             loans.extend(_load_status(status))
 
         settings = load_settings() or {}
@@ -447,6 +459,14 @@ class BookTable(QWidget):
                 if 0 <= days_to <= 3:
                     due_soon = True
 
+            penalty_val = loan.get("gecikme_cezasi")
+            penalty_display = ""
+            if penalty_val not in (None, ""):
+                try:
+                    penalty_display = f"{Decimal(str(penalty_val)):.2f}"
+                except Exception:
+                    penalty_display = str(penalty_val)
+
             row = [
                 ogrenci.get("ad", ""),
                 ogrenci.get("soyad", ""),
@@ -462,7 +482,7 @@ class BookTable(QWidget):
                 safe_date(iade_tarihi),
                 safe_date(teslim_tarihi),
                 loan.get("durum", ""),
-                loan.get("gecikme_cezasi", ""),
+                penalty_display,
             ]
             data.append(row)
             row_meta.append(
@@ -476,14 +496,23 @@ class BookTable(QWidget):
                 }
             )
 
+        del loans
         return data, row_meta
 
-    def apply_filter(self, text=None):
+    def apply_filter(self, text=None, *, status=None):
         if text is None:
             text = self.search_box.text()
-        status = self.filter_combo.currentData()
+        if status is None:
+            status = self.filter_combo.currentData()
         self.proxy.set_status_filter(status)
         self.proxy.setFilterFixedString(text)
+
+    def _determine_statuses(self, filter_code):
+        if filter_code == "overdue":
+            return ("gecikmis",)
+        if filter_code in ("grace", "upcoming"):
+            return ("oduncte",)
+        return ("oduncte", "gecikmis")
 
     def save_settings(self):
         try:

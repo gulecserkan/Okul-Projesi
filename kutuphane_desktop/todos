@@ -1,32 +1,54 @@
-yapılacaklar:
+KİTAP YENİ KAYIT:
+    kitap yeni kayıtta;
+        raf numarası yok
+        enter tuşu tab gibi işlesin
+        nüsha ekleme olmuyor (yeni ise nüsha eklenip çıkarken kayıt yapmasın. tampon da tutsun. barkod basımını da sormasın. kaydette sorsun.)
+        kaydedince barkod basımını sorsun    
 
-belli bir süre hareketsizlikte logout yapılacaklar
+    kitap eklemede barkod basımı olacak
 
-kitap eklemede barkod basımı olacakyazıcı sekmesinde tanımlı
+PERSONEL:
+    personel tablosu boşta duruyor. 
+    login de bunu devreye sokalım ve bu personel adı fişlerde yazılsın.
 
-ayarlatda etiket bölümünde yazıcı ayarına gerek yok zaten 
+LOGGİNG:
+    yapılan herbir işlem için log kayıtları oluşturalım.
+
+ETİKET TEST:
+    etiket test edilecek (yer değişimi olduğu için) (hem kitap kaydederken hem de editörde)
+
+BİLDİRİM AYARLARI:
+    Bildirim ayarlarında yazıcı kotrolü çalışıyor. 
+    diğer sms, mail ve mobil bildirimler kaydediliyor.
+    fakat gerçekte gönderme şimdilik yok. yapılınca test edilecek
+
+CEZA AYARLARI:
+    test edildi çalışıyor.
+    fakat öğrenci no girilince  kitap için ceza 41, toplam ceza 40 görünüyor neden?
+
+ÖDÜNÇ AYARLARI:
+    test edildi çalışıyor.
+    hafta sonunu kaydır seçeneği tekrar test edilecek.
+
+SİMGE:
+    butonlara uygun simgeler bulunup butonlar simgeli olacak.
+
+RAPOR:
+    rapor sayfası bir nevi istatistik sayfası olacak. burası beraber düşünülecek.
+
+SAYIM:
+    kitap sayım düşünülecek.
+
+BAZI NOTLAR:
+    Cron veya başka bir zamanlayıcıyı
+        python manage.py run_scheduled_tasks 
+    komutunu (örn. her 15 dakikada bir) çağıracak şekilde güncelleyin; 
+    komut ayarları veritabanından okuduğu için manuel müdahale gerekmez.
+
+    Gerçek bildirim göndermeyi başlatmak istediğinizde 
+        dispatch_notifications() 
+    içini kanala özel implementasyonlarla doldurmanız yeterli olacak.
 
 
-2.  yine ayarlarda bildirim ayarları düşünülüp uygulanacak.
-3.  yine ayarlarda ceza ayarları 
-4.  yine ayarlarda ödünç ayarları
-
-5.  butonlara uygun simgeler bulunup butonlar simgeli olacak.
-
-6.  rapor sayfası bir nevi istatistik sayfası olacak. burası beraber düşünülecek.
-
-7.  veritabanına kitap açıklama için alanlar eklenecek (resim1-2-3-4-5, açıklama).
-    bu alanlar ileride öğretmen tarafından doldurulacak şekilde düşünüldü.
-
-8.  kitap sayım?
-
-Cron veya başka bir zamanlayıcıyı
-    python manage.py run_scheduled_tasks 
-komutunu (örn. her 15 dakikada bir) çağıracak şekilde güncelleyin; 
-komut ayarları veritabanından okuduğu için manuel müdahale gerekmez.
-
-Gerçek bildirim göndermeyi başlatmak istediğinizde 
-    dispatch_notifications() 
-içini kanala özel implementasyonlarla doldurmanız yeterli olacak.
-
-10.  paket haline getirme?
+PAKET HALİNE GETİRME:
+    paket haline getirme?
