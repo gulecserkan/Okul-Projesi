@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from decimal import Decimal, InvalidOperation
 
-from PyQt5.QtCore import Qt, QTime
+from PyQt5.QtCore import Qt, QTime, QTimer
 from PyQt5.QtWidgets import (
     QCheckBox,
     QDialog,
@@ -1380,8 +1380,73 @@ class NotificationSettingsWidget(QWidget):
                 self.edit_overdue_subject.setText(text)
             else:
                 self.edit_overdue_body.setPlainText(text)
+
+
+class InventoryLauncherWidget(QWidget):
+    """Bilgilendirici sayım sekmesi."""
+
+    informational_only = True
+
+    def __init__(self, parent=None, launch_callback=None):
+        super().__init__(parent)
+        self._launch_callback = launch_callback
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(12, 12, 12, 12)
+        layout.setSpacing(12)
+
+        desc = QLabel(
+            "Sayım işlemi raflardaki tüm nüshaları barkod okuyucu veya manuel girişle kontrol eder. "
+            "Başlatacağınız oturum raf filtresi, durum ve isteğe göre diğer kriterlerle oluşturulur. "
+            "Aktif bir sayım varken yeni oturum açılmaz; gerekirse mevcut oturumu tamamlayıp yeniden başlayabilirsiniz."
+        )
+        desc.setWordWrap(True)
+        layout.addWidget(desc)
+
+        self.btn_launch = QPushButton("Sayımı Başlat")
+        self.btn_launch.setObjectName("DialogPositiveButton")
+        self.btn_launch.setCursor(Qt.PointingHandCursor)
+        self.btn_launch.clicked.connect(self._handle_launch)
+        layout.addWidget(self.btn_launch, alignment=Qt.AlignLeft)
+
+        note = QLabel("Not: Bu işlem ayrı bir pencere açacak ve raf taraması burada yapılacaktır.")
+        note.setWordWrap(True)
+        note.setStyleSheet("color:#666;")
+        layout.addWidget(note)
+
+        layout.addStretch(1)
+
+    def save_preferences(self):
+        """Ayar kaydı yok; butona basıldığında işlem yapılır."""
+        return True, "Bu sekmede kaydedilecek ayar bulunmuyor."
+
+    def _handle_launch(self):
+        if not callable(self._launch_callback):
+            QMessageBox.information(
+                self,
+                "Sayım",
+                "Sayım penceresini açma yetkiniz bulunmuyor veya işlem tanımlı değil."
+            )
+            return
+
+        def launch():
+            self._launch_callback()
+
+        dialog = self.window()
+        if isinstance(dialog, QDialog):
+            dialog.accept()
+            QTimer.singleShot(0, launch)
+        else:
+            launch()
 class SettingsDialog(QDialog):
-    def __init__(self, parent=None, initial_tab: str | None = None, *, admin_access: bool = True):
+    def __init__(
+        self,
+        parent=None,
+        initial_tab: str | None = None,
+        *,
+        admin_access: bool = True,
+        inventory_callback=None,
+    ):
         super().__init__(parent)
         self.setWindowTitle("Ayarlar")
         self.resize(560, 300)
@@ -1408,6 +1473,7 @@ class SettingsDialog(QDialog):
         self.notification_page = NotificationSettingsWidget(self)
         self.loans_page = LoansSettingsWidget(self)
         self.penalties_page = PenaltySettingsWidget(self)
+        self.inventory_page = InventoryLauncherWidget(self, launch_callback=inventory_callback)
 
         self._tab_map: dict[str, int] = {}
         tab_definitions = [
@@ -1415,14 +1481,16 @@ class SettingsDialog(QDialog):
             ("labels", self.label_page, "Etiket"),
             ("receipts", self.receipt_page, "Fiş"),
             ("server", self.server_page, "Sunucu"),
+            ("inventory", self.inventory_page, "Sayım"),
             ("password", self.password_page, "Şifre"),
             ("notifications", self.notification_page, "Bildirim"),
             ("loans", self.loans_page, "Ödünç"),
             ("penalties", self.penalties_page, "Ceza"),
         ]
 
+        limited_allowed = {"password", "inventory"}
         for key, widget, title in tab_definitions:
-            if not self.admin_access and key != "password":
+            if not self.admin_access and key not in limited_allowed:
                 continue
 
             index = self.tabs.addTab(widget, title)

@@ -133,12 +133,6 @@ class MainWindow(QMainWindow):
                 self.open_student_manager,
             ),
             SideMenuEntry(
-                "Sayım",
-                "Raf bazlı envanter sayımları",
-                self._menu_icon("menu_inventory.png", self.style().standardIcon(QStyle.SP_BrowserReload)),
-                self.open_inventory_manager,
-            ),
-            SideMenuEntry(
                 "Yazarlar",
                 "Yazar kayıtlarını yönetin",
                 self._menu_icon("menu_authors.png", self.style().standardIcon(QStyle.SP_FileIcon)),
@@ -610,6 +604,9 @@ class MainWindow(QMainWindow):
     def open_printer_settings(self):
         self.open_settings(initial_tab="printers")
 
+    def open_inventory_settings_tab(self):
+        self.open_settings(initial_tab="inventory", require_admin=False)
+
     def open_password_settings(self):
         self.open_settings(initial_tab="password", require_admin=False)
 
@@ -636,6 +633,7 @@ class MainWindow(QMainWindow):
             self,
             initial_tab=initial_tab,
             admin_access=has_admin_access,
+            inventory_callback=self.open_inventory_manager,
         )
         dlg.exec_()
         self._setup_inactivity_timer()
