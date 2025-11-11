@@ -24,12 +24,23 @@ from kutuphane_app.views import (
     LoanPolicyView,
     RoleLoanPolicyView,
     NotificationSettingsView,
+    PenaltyPaymentView,
+    UpdateOverdueLoansView,
+    AuditLogView,
+    InventorySessionViewSet,
 )
 
-from rest_framework_simplejwt.views import (
-    TokenObtainPairView,
-    TokenRefreshView,
-)
+from rest_framework_simplejwt.views import TokenRefreshView as BaseTokenRefreshView
+from rest_framework_simplejwt.views import TokenObtainPairView as BaseTokenObtainPairView
+from kutuphane_app.serializers import TokenObtainPairSerializer, TokenRefreshSerializer
+
+
+class TokenObtainPairView(BaseTokenObtainPairView):
+    serializer_class = TokenObtainPairSerializer
+
+
+class TokenRefreshView(BaseTokenRefreshView):
+    serializer_class = TokenRefreshSerializer
 
 router = routers.DefaultRouter()
 router.register(r'roller', RolViewSet)
@@ -42,6 +53,7 @@ router.register(r'nushalar', KitapNushaViewSet)
 router.register(r'oduncler', OduncKaydiViewSet)
 router.register(r'personel', PersonelViewSet)
 router.register(r'istatistik', IstatistikViewSet, basename="istatistik")
+router.register(r'inventory-sessions', InventorySessionViewSet, basename="inventory-session")
 
 urlpatterns = [
     #path('admin/', admin.site.urls),
@@ -57,6 +69,9 @@ urlpatterns = [
     path('api/settings/loans/', LoanPolicyView.as_view(), name="loan-policy-settings"),
     path('api/settings/loans/roles/', RoleLoanPolicyView.as_view(), name="role-loan-policy-settings"),
     path('api/settings/notifications/', NotificationSettingsView.as_view(), name="notification-settings"),
+    path('api/penalties/<int:pk>/pay/', PenaltyPaymentView.as_view(), name="penalty-pay"),
+    path('api/jobs/update-overdue/', UpdateOverdueLoansView.as_view(), name="update-overdue-loans"),
+    path('api/logs/', AuditLogView.as_view(), name="audit-log"),
     path("api/token/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
     path("api/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
     

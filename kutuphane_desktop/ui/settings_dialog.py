@@ -33,7 +33,8 @@ from ui.printer_settings_dialog import PrinterSettingsWidget
 from ui.server_settings_dialog import ServerSettingsWidget
 from ui.label_editor_dialog import LabelEditorDialog
 from ui.notification_template_dialog import NotificationTemplateDialog
-from ui.receipt_template_dialog import ReceiptTemplateDialog, RECEIPT_PLACEHOLDERS
+from ui.receipt_template_dialog import ReceiptTemplateDialog
+from core.receipt_templates import RECEIPT_SCENARIOS, DEFAULT_RECEIPT_TEMPLATES, RECEIPT_PLACEHOLDERS
 from api import auth
 from api import settings as settings_api
 from api import roles as roles_api
@@ -163,61 +164,6 @@ class LabelSettingsWidget(QWidget):
         # editörden çıkınca tercihleri yeniden yükleyelim
         self.load_preferences()
 
-
-RECEIPT_SCENARIOS = [
-    ("fine_payment", "Ceza Ödemesi Fişi"),
-    ("debt_statement", "Borcu Yoktur Bilgisi"),
-    ("general_notice", "Bilgilendirme / Genel Fiş"),
-]
-
-DEFAULT_RECEIPT_TEMPLATES = {
-    "fine_payment": {
-        "title": "Ceza Ödemesi Fişi",
-        "body": (
-            "Okul Kütüphanesi\n"
-            "Ceza Ödeme Makbuzu\n"
-            "-------------------------\n"
-            "Öğrenci : {{ student_full_name }} ({{ student_number }})\n"
-            "Sınıf   : {{ student_class }} / {{ student_role }}\n"
-            "Tarih   : {{ receipt_date }} {{ receipt_time }}\n"
-            "Ödenen  : {{ payment_amount }} {{ payment_currency }}\n"
-            "Kalan Borç : {{ remaining_debt }}\n"
-            "İşlemi yapan: {{ operator_name }}\n"
-            "\n"
-            "Teşekkür ederiz."
-        ),
-    },
-    "debt_statement": {
-        "title": "Borcu Yoktur Belgesi",
-        "body": (
-            "Okul Kütüphanesi\n"
-            "BORCU YOKTUR BİLGİSİ\n"
-            "-------------------------\n"
-            "Öğrenci : {{ student_full_name }} ({{ student_number }})\n"
-            "Sınıf   : {{ student_class }} / {{ student_role }}\n"
-            "Tarih   : {{ receipt_date }} {{ receipt_time }}\n"
-            "\n"
-            "Aktif ödünç sayısı : {{ loan_count }}\n"
-            "Kalan borç         : {{ remaining_debt }}\n"
-            "\n"
-            "Bu tarih itibarıyla öğrenci kütüphanemize karşı borçlu değildir."
-        ),
-    },
-    "general_notice": {
-        "title": "Genel Bilgilendirme",
-        "body": (
-            "Okul Kütüphanesi\n"
-            "Bilgilendirme\n"
-            "-------------------------\n"
-            "Öğrenci : {{ student_full_name }} ({{ student_number }})\n"
-            "Tarih   : {{ receipt_date }} {{ receipt_time }}\n"
-            "\n"
-            "{{ debt_items }}\n"
-            "\n"
-            "İşlemi yapan: {{ operator_name }}\n"
-        ),
-    },
-}
 
 
 class ReceiptSettingsWidget(QWidget):
@@ -1434,41 +1380,26 @@ class NotificationSettingsWidget(QWidget):
                 self.edit_overdue_subject.setText(text)
             else:
                 self.edit_overdue_body.setPlainText(text)
-class PlaceholderPage(QWidget):
-    def __init__(self, message: str, parent=None):
-        super().__init__(parent)
-        layout = QVBoxLayout(self)
-        layout.addStretch(1)
-        label = QLabel(message)
-        label.setAlignment(Qt.AlignCenter)
-        label.setWordWrap(True)
-        layout.addWidget(label)
-        layout.addStretch(1)
-
-    def save_preferences(self):
-        return True
-
-
 class SettingsDialog(QDialog):
-    TAB_MAP = {
-        "printers": 0,
-        "labels": 1,
-        "receipts": 2,
-        "server": 3,
-        "password": 4,
-        "notifications": 5,
-        "loans": 6,
-        "penalties": 7,
-    }
-
-    def __init__(self, parent=None, initial_tab: str | None = None):
+    def __init__(self, parent=None, initial_tab: str | None = None, *, admin_access: bool = True):
         super().__init__(parent)
         self.setWindowTitle("Ayarlar")
         self.resize(560, 300)
+        self.admin_access = bool(admin_access)
 
         layout = QVBoxLayout(self)
 
         self.tabs = QTabWidget()
+        tab_bar = self.tabs.tabBar()
+        if tab_bar is not None:
+            tab_bar.setUsesScrollButtons(False)
+        # Scroll butonlarının ayırdığı boşluğu da gizle
+        self.tabs.setStyleSheet(
+            """
+            QTabBar::scroller { width: 0px; }
+            QTabBar QToolButton { width: 0px; height: 0px; margin: 0; padding: 0; border: none; }
+            """
+        )
         self.printer_page = PrinterSettingsWidget(self)
         self.label_page = LabelSettingsWidget(self)
         self.receipt_page = ReceiptSettingsWidget(self)
@@ -1478,14 +1409,24 @@ class SettingsDialog(QDialog):
         self.loans_page = LoansSettingsWidget(self)
         self.penalties_page = PenaltySettingsWidget(self)
 
-        self.tabs.addTab(self.printer_page, "Yazıcılar")
-        self.tabs.addTab(self.label_page, "Etiket")
-        self.tabs.addTab(self.receipt_page, "Fiş")
-        self.tabs.addTab(self.server_page, "Sunucu")
-        self.tabs.addTab(self.password_page, "Şifre")
-        self.tabs.addTab(self.notification_page, "Bildirim")
-        self.tabs.addTab(self.loans_page, "Ödünç")
-        self.tabs.addTab(self.penalties_page, "Ceza")
+        self._tab_map: dict[str, int] = {}
+        tab_definitions = [
+            ("printers", self.printer_page, "Yazıcılar"),
+            ("labels", self.label_page, "Etiket"),
+            ("receipts", self.receipt_page, "Fiş"),
+            ("server", self.server_page, "Sunucu"),
+            ("password", self.password_page, "Şifre"),
+            ("notifications", self.notification_page, "Bildirim"),
+            ("loans", self.loans_page, "Ödünç"),
+            ("penalties", self.penalties_page, "Ceza"),
+        ]
+
+        for key, widget, title in tab_definitions:
+            if not self.admin_access and key != "password":
+                continue
+
+            index = self.tabs.addTab(widget, title)
+            self._tab_map[key] = index
 
         layout.addWidget(self.tabs)
 
@@ -1505,8 +1446,10 @@ class SettingsDialog(QDialog):
         layout.addLayout(footer)
         self._status_timer = None
 
-        if initial_tab and initial_tab in self.TAB_MAP:
-            self.tabs.setCurrentIndex(self.TAB_MAP[initial_tab])
+        if initial_tab and initial_tab in self._tab_map:
+            self.tabs.setCurrentIndex(self._tab_map[initial_tab])
+        elif not self.admin_access and "password" in self._tab_map:
+            self.tabs.setCurrentIndex(self._tab_map["password"])
 
     def _on_apply_clicked(self):
         current_index = self.tabs.currentIndex()
@@ -1524,6 +1467,7 @@ class SettingsDialog(QDialog):
         if result is False:
             return
 
+        # Sadece bilgilendirici sekme olduğunda status çubuğunu kullanma
         if self._status_timer:
             self._status_timer.stop()
             self._status_timer.deleteLater()
@@ -1546,5 +1490,5 @@ class SettingsDialog(QDialog):
             self._status_timer = None
 
     def open_tab(self, key: str):
-        if key in self.TAB_MAP:
-            self.tabs.setCurrentIndex(self.TAB_MAP[key])
+        if key in self._tab_map:
+            self.tabs.setCurrentIndex(self._tab_map[key])

@@ -14,15 +14,18 @@ from django.http import HttpResponse
 from django.core import management
 from django.contrib.auth.models import User, Group
 from django.contrib.auth.admin import UserAdmin, GroupAdmin
+from django import forms
+from django.contrib.auth.hashers import make_password
 
 from import_export.admin import ImportExportModelAdmin
 
 from .resources import OgrenciResource
 from .models import (
     Rol, Sinif, Ogrenci, Yazar, Kategori, Kitap, KitapNusha,
-    OduncKaydi, Personel,
+    OduncKaydi, Personel, AuditLog,
     ArsivBatch, ArsivOgrenci, ArsivOdunc,
-    LoanPolicy, RoleLoanPolicy, NotificationSettings
+    LoanPolicy, RoleLoanPolicy, NotificationSettings,
+    InventorySession, InventoryItem
 )
 
 # --- Custom Admin Site ---
@@ -174,11 +177,98 @@ class OduncKaydiAdmin(admin.ModelAdmin):
     raw_id_fields = ("ogrenci", "kitap_nusha")
 admin_site.register(OduncKaydi, OduncKaydiAdmin)
 
+class PersonelAdminForm(forms.ModelForm):
+    password = forms.CharField(
+        label="Yeni şifre",
+        widget=forms.PasswordInput,
+        required=False,
+        help_text="Şifreyi değiştirmek isterseniz doldurun."
+    )
+    password_confirm = forms.CharField(
+        label="Yeni şifre (tekrar)",
+        widget=forms.PasswordInput,
+        required=False,
+    )
+
+    class Meta:
+        model = Personel
+        fields = ("ad_soyad", "kullanici_adi", "rol")
+
+    def clean(self):
+        cleaned = super().clean()
+        pw = cleaned.get("password")
+        pw_confirm = cleaned.get("password_confirm")
+        if pw or pw_confirm:
+            if pw != pw_confirm:
+                raise forms.ValidationError("Yeni şifre alanları uyuşmuyor.")
+            if not pw:
+                raise forms.ValidationError("Şifre boş olamaz.")
+        return cleaned
+
+
 class PersonelAdmin(admin.ModelAdmin):
+    form = PersonelAdminForm
     list_display = ("ad_soyad", "kullanici_adi", "rol")
     search_fields = ("ad_soyad", "kullanici_adi")
     list_filter = ("rol",)
+
+    def save_model(self, request, obj, form, change):
+        raw_password = form.cleaned_data.get("password")
+
+        # Kullanıcı kaydı yoksa oluştur
+        if not obj.user:
+            user = User.objects.create_user(
+                username=obj.kullanici_adi,
+                password=raw_password or User.objects.make_random_password(),
+                first_name=obj.ad_soyad,
+                is_staff=True,
+            )
+            obj.user = user
+        else:
+            obj.user.username = obj.kullanici_adi
+            obj.user.first_name = obj.ad_soyad
+            if raw_password:
+                obj.user.set_password(raw_password)
+            obj.user.save()
+
+        if raw_password:
+            obj.set_password(raw_password)
+        elif not change and not obj.sifre_hash:
+            # yeni kayıtta şifre verilmemişse rasgele oluştur
+            generated = User.objects.make_random_password()
+            obj.set_password(generated)
+            obj.user.set_password(generated)
+            obj.user.save()
+
+        super().save_model(request, obj, form, change)
 admin_site.register(Personel, PersonelAdmin)
+
+
+class InventoryItemInline(admin.TabularInline):
+    model = InventoryItem
+    extra = 0
+    can_delete = False
+    fields = ("barkod", "kitap_baslik", "raf_kodu", "durum", "seen", "seen_at", "seen_by", "note")
+    readonly_fields = fields
+    ordering = ("-seen", "raf_kodu", "barkod")
+
+
+class InventorySessionAdmin(admin.ModelAdmin):
+    list_display = ("name", "status", "total_items", "seen_items", "created_at", "created_by")
+    list_filter = ("status", "created_at")
+    search_fields = ("name", "description")
+    readonly_fields = ("created_at", "updated_at", "started_at", "completed_at", "total_items", "seen_items", "filters", "created_by")
+    inlines = [InventoryItemInline]
+
+
+admin_site.register(InventorySession, InventorySessionAdmin)
+
+
+@admin.register(AuditLog)
+class AuditLogAdmin(admin.ModelAdmin):
+    list_display = ("olusturma_zamani", "kullanici", "islem", "ip_adresi")
+    list_filter = ("islem", "kullanici")
+    search_fields = ("islem", "detay", "kullanici__username", "kullanici__first_name", "kullanici__last_name")
 
 # --- Ogrenci + import-export + ARŞİV Özel URL + İşlem ---
 class OgrenciAdmin(ImportExportModelAdmin):

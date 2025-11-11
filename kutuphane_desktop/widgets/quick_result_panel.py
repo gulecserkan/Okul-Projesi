@@ -12,13 +12,21 @@ from ui.contact_prompt_dialog import (
     ContactReminderDialog,
     ContactEditDialog,
     PenaltyNoticeDialog,
+    PenaltyDetailDialog,
     CheckoutConfirmDialog,
     MaxLoansDialog,
 )
 from api import students as student_api
+from api import logs as log_api
 from PyQt5 import sip
 from ui.loan_status_dialog import LoanStatusDialog
 from ui.detail_window import DetailWindow
+from core.log_helpers import build_log_detail, format_currency
+from printing.receipt_printer import (
+    print_fine_payment_receipt,
+    ReceiptPrintError,
+    check_receipt_printer_status,
+)
 
 
 class QuickResultPanel(QWidget):
@@ -44,6 +52,8 @@ class QuickResultPanel(QWidget):
         self.penalty_summary = data.get("penalty_summary") if isinstance(data, dict) else None
         if not isinstance(self.penalty_summary, dict):
             self.penalty_summary = None
+        self.penalty_total_label = None
+        self.penalty_detail_button = None
 
         # üst: info + history
         top_layout = QHBoxLayout()
@@ -291,22 +301,22 @@ class QuickResultPanel(QWidget):
                 lines = [(f"{adsoyad}", f"🕓 Dönüş: {donus or '—'}")]
                 status_current = (loan.get("durum") or "").lower()
                 penalty_preview = loan.get("penalty_preview") or loan.get("gecikme_cezasi")
-                if status_current == "gecikmis":
-                    lines.append(("⚠️ Gecikme", f"Ceza: {penalty_preview or '—'}"))
                 outstanding_total = self._parse_decimal((self.penalty_summary or {}).get("outstanding_total"))
+                entry_amount = Decimal("0")
                 if outstanding_total > Decimal("0"):
-                    entry_amount = Decimal("0")
                     entries = (self.penalty_summary or {}).get("entries") or []
                     for entry in entries:
                         if entry.get("id") == loan.get("id"):
                             entry_amount = self._parse_decimal(entry.get("gecikme_cezasi"))
                             break
-                    if entry_amount == Decimal("0") and penalty_preview:
-                        entry_amount = self._parse_decimal(penalty_preview)
+                if status_current == "gecikmis":
+                    penalty_amount = entry_amount
+                    if penalty_amount == Decimal("0") and penalty_preview not in (None, ""):
+                        penalty_amount = self._parse_decimal(penalty_preview)
+                    penalty_text = self._format_currency(penalty_amount) if penalty_amount > Decimal("0") else "—"
+                    lines.append(("⚠️ Gecikme", f"Ceza: {penalty_text}"))
+                if outstanding_total > Decimal("0"):
                     lines.append(("Toplam ceza", self._format_currency(outstanding_total)))
-                    remaining = outstanding_total - entry_amount
-                    if remaining > Decimal("0"):
-                        lines.append(("Diğer cezalar", self._format_currency(remaining)))
                 active_style = "HistoryCardExpired" if status_current == "gecikmis" else "HistoryCardWarning"
                 active_card = self.create_card(None, lines, active_style)
                 if loan.get("id"):
@@ -588,6 +598,7 @@ class QuickResultPanel(QWidget):
             outstanding_other = Decimal("0")
 
         penalty_override = None
+        penalty_payment_amount = None
         if current_penalty > Decimal("0"):
             alert = QMessageBox(self)
             alert.setWindowTitle("Gecikme Cezası")
@@ -600,7 +611,11 @@ class QuickResultPanel(QWidget):
             btn_paid = alert.addButton("Ceza Ödendi", QMessageBox.AcceptRole)
             btn_unpaid = alert.addButton("Ödenmedi", QMessageBox.DestructiveRole)
             btn_cancel = alert.addButton("Vazgeç", QMessageBox.RejectRole)
+            btn_paid.setObjectName("DialogPositiveButton")
+            btn_unpaid.setObjectName("DialogWarnButton")
+            btn_cancel.setObjectName("DialogDangerButton")
             self._apply_dialog_style(alert)
+            self._attach_receipt_warning_to_box(alert)
             alert.exec_()
             clicked = alert.clickedButton()
             if clicked == btn_cancel:
@@ -609,6 +624,7 @@ class QuickResultPanel(QWidget):
                 return
             if clicked == btn_paid:
                 penalty_override = Decimal("0")
+                penalty_payment_amount = entry_amount if entry_amount > Decimal("0") else current_penalty
         elif outstanding_total > Decimal("0"):
             info = QMessageBox(self)
             info.setWindowTitle("Bekleyen Ceza")
@@ -632,11 +648,19 @@ class QuickResultPanel(QWidget):
             elif choice == "loan_cancel":
                 mode = "cancel"
             # else remain "return"
-        success = self.process_return(loan, mode=mode, penalty_override=penalty_override)
+        success = self.process_return(
+            loan,
+            mode=mode,
+            penalty_override=penalty_override,
+            penalty_payment_amount=penalty_payment_amount,
+        )
+        if success and penalty_payment_amount is not None:
+            summary = self.fetch_penalty_summary(self.student_no)
+            self._attempt_penalty_receipt(summary, penalty_payment_amount)
         if not success and isinstance(button, QPushButton):
             self._set_button_enabled(button, True)
 
-    def process_return(self, loan, mode="return", penalty_override=None):
+    def process_return(self, loan, mode="return", penalty_override=None, penalty_payment_amount=None):
         loan_id = loan.get("id")
         if not loan_id:
             return False
@@ -656,6 +680,14 @@ class QuickResultPanel(QWidget):
                 }
                 if penalty_override is not None:
                     payload["gecikme_cezasi"] = self._format_decimal_for_payload(penalty_override)
+                    paid = penalty_payment_amount is not None and penalty_payment_amount > Decimal("0")
+                    payload["gecikme_cezasi_odendi"] = paid
+                    if paid:
+                        payload["gecikme_odeme_tarihi"] = now_iso
+                        payload["gecikme_odeme_tutari"] = self._format_decimal_for_payload(penalty_payment_amount)
+                    else:
+                        payload["gecikme_odeme_tarihi"] = None
+                        payload["gecikme_odeme_tutari"] = None
             resp = api_request("PATCH", self._api_url(f"oduncler/{loan_id}/"), json=payload)
             if resp.status_code not in (200, 202):
                 QMessageBox.warning(self, "İşlem Başarısız", f"İade kaydedilemedi ({resp.status_code}).")
@@ -678,8 +710,53 @@ class QuickResultPanel(QWidget):
                     print("Nüsha durumu güncellenirken hata:", exc)
 
             if mode == "cancel":
+                log_action = "Ödünç iptali"
+                ogrenci = (updated or {}).get("ogrenci") or loan.get("ogrenci") or {}
+                copy = (updated or {}).get("kitap_nusha") or loan.get("kitap_nusha") or {}
+                barkod = copy.get("barkod") or loan.get("barkod")
+                kitap = copy.get("kitap") or loan.get("kitap") or {}
+                detail = build_log_detail(
+                    student=self._student_log_payload(ogrenci),
+                    book=self._book_log_payload(kitap),
+                    barcode=barkod,
+                    extra="İşlem: Ödünç iptal edildi",
+                )
+                log_api.safe_send_log(log_action, detay=detail or "Ödünç işlemi iptal edildi.")
                 QMessageBox.information(self, "Ödünç İptal", "Ödünç işlemi iptal edildi.")
             else:
+                log_action = "İade alma"
+                ogrenci = (updated or {}).get("ogrenci") or loan.get("ogrenci") or {}
+                copy = (updated or {}).get("kitap_nusha") or loan.get("kitap_nusha") or {}
+                barkod = copy.get("barkod") or loan.get("barkod")
+                kitap = copy.get("kitap") or loan.get("kitap") or {}
+                due_text = ""
+                raw_due = (updated or {}).get("iade_tarihi") or loan.get("iade_tarihi")
+                if raw_due:
+                    due_text = format_date(raw_due)
+                penalty_value = None
+                penalty_status = None
+                if penalty_override is not None:
+                    paid_amount = self._parse_decimal(penalty_payment_amount) if penalty_payment_amount is not None else Decimal("0")
+                    override_amount = self._parse_decimal(penalty_override)
+                    penalty_value = paid_amount if paid_amount > Decimal("0") else override_amount
+                    penalty_status = "Ödendi" if paid_amount > Decimal("0") else "Ödenmedi"
+                elif loan.get("gecikme_cezasi"):
+                    unpaid_amount = self._parse_decimal(loan.get("gecikme_cezasi"))
+                    if unpaid_amount > Decimal("0"):
+                        penalty_value = unpaid_amount
+                        penalty_status = "Ödendi" if loan.get("gecikme_cezasi_odendi") else "Ödenmedi"
+                detail = build_log_detail(
+                    student=self._student_log_payload(ogrenci),
+                    book=self._book_log_payload(kitap),
+                    barcode=barkod,
+                    date=due_text or raw_due,
+                    date_label="Asıl iade",
+                    penalty=penalty_value,
+                    penalty_status=penalty_status,
+                )
+                log_api.safe_send_log(log_action, detay=detail or "Kitap iadesi kaydedildi.")
+                if penalty_payment_amount and self._parse_decimal(penalty_payment_amount) > Decimal("0"):
+                    log_api.safe_send_log("Tahsilat", detay=self._numeric_amount(penalty_payment_amount))
                 QMessageBox.information(self, "İade Alındı", "Kitap iadesi başarıyla kaydedildi.")
             self.returnProcessed.emit()
             return True
@@ -762,6 +839,20 @@ class QuickResultPanel(QWidget):
             sinif = sinif_info.get("ad", "—")
         else:
             sinif = sinif_info or "—"
+        if not self._is_student_active(stu):
+            QMessageBox.warning(
+                self,
+                "Ödünç Verilemez",
+                "Bu öğrenci pasif durumda olduğu için ödünç işlemi yapılamaz."
+            )
+            detail = build_log_detail(
+                student=self._student_log_payload(stu),
+                extra="Pasif öğrenci için ödünç verme girişimi"
+            )
+            log_api.safe_send_log("Pasif öğrenci engeli", detay=detail or "Pasif öğrenciye ödünç verme denemesi.")
+            if isinstance(button, QPushButton):
+                self._set_button_enabled(button, True)
+            return
         phone = (stu.get("telefon") or "").strip()
         email = (stu.get("eposta") or "").strip()
         missing = []
@@ -819,6 +910,7 @@ class QuickResultPanel(QWidget):
                 # Skip durumunda mevcut bilgilerle devam edilir.
         summary = self.fetch_penalty_summary(ogr_no)
         outstanding_total = self._parse_decimal((summary or {}).get("outstanding_total"))
+        loan_prefs = self._get_loan_preferences()
         if outstanding_total > Decimal("0"):
             penalty_dialog = PenaltyNoticeDialog(summary=summary, parent=self.window())
             penalty_dialog.setWindowModality(Qt.ApplicationModal)
@@ -827,7 +919,17 @@ class QuickResultPanel(QWidget):
                 if isinstance(button, QPushButton):
                     self._set_button_enabled(button, True)
                 return
-            # RESULT_PAID ve RESULT_SKIP aynı akış ile devam eder; kayıt üzerinde değişiklik yapılmaz.
+            if penalty_dialog.result_code == PenaltyNoticeDialog.RESULT_PAID:
+                summary = penalty_dialog.updated_summary or self.fetch_penalty_summary(ogr_no)
+                self._update_penalty_info(summary or {})
+                outstanding_total = self._parse_decimal((summary or {}).get("outstanding_total"))
+            else:
+                summary = penalty_dialog.updated_summary or summary
+            self.penalty_summary = summary if isinstance(summary, dict) else self.penalty_summary
+        if not self._maybe_show_student_status_alert(stu_data, summary, loan_prefs):
+            if isinstance(button, QPushButton):
+                self._set_button_enabled(button, True)
+            return
 
         aktif_sayi = len(stu_data.get("active_loans", []))
         if isinstance(stu_data, dict):
@@ -951,6 +1053,18 @@ class QuickResultPanel(QWidget):
             if student_no:
                 message_lines.append(f"Numara: {student_no}")
             message_lines.append(f"İade Tarihi: {due_text or '—'}")
+
+            log_detail = build_log_detail(
+                student={"ad": student_info.get("ad"), "soyad": student_info.get("soyad"), "ogrenci_no": student_no},
+                book={"baslik": book_title} if book_title else None,
+                barcode=book_barcode,
+                date=due_text,
+                date_label="İade Tarihi",
+            )
+            log_api.safe_send_log(
+                "Ödünç verme",
+                detay=log_detail or "Ödünç işlemi tamamlandı."
+            )
 
             QMessageBox.information(
                 self,
@@ -1229,6 +1343,19 @@ class QuickResultPanel(QWidget):
             quantized = Decimal("0.00")
         return f"{format(quantized, '.2f')} ₺"
 
+    def _numeric_amount(self, amount):
+        dec = self._parse_decimal(amount)
+        if dec is None:
+            return "0"
+        try:
+            normalized = dec.quantize(Decimal("0.01"))
+        except InvalidOperation:
+            normalized = Decimal("0.00")
+        text = format(normalized, "f")
+        if "." in text:
+            text = text.rstrip("0").rstrip(".")
+        return text or "0"
+
     def _format_decimal_for_payload(self, value):
         if value is None:
             return None
@@ -1238,6 +1365,25 @@ class QuickResultPanel(QWidget):
         except InvalidOperation:
             quantized = Decimal("0.00")
         return format(quantized, ".2f")
+
+    def _student_log_payload(self, student):
+        if not isinstance(student, dict):
+            return student
+        return {
+            "ad": student.get("ad"),
+            "soyad": student.get("soyad"),
+            "ogrenci_no": student.get("ogrenci_no") or student.get("no"),
+        }
+
+    def _book_log_payload(self, book):
+        if isinstance(book, dict):
+            title = book.get("baslik") or book.get("title")
+            if title:
+                return {"baslik": title}
+            return book
+        if isinstance(book, str):
+            return {"baslik": book}
+        return {}
 
     def fetch_penalty_summary(self, student_no=None):
         code = student_no or self.student_no
@@ -1255,7 +1401,101 @@ class QuickResultPanel(QWidget):
         summary_data = {k: v for k, v in summary.items() if k != "student"}
         if isinstance(summary_data, dict):
             self.penalty_summary = summary_data
+            self._update_penalty_info(summary_data)
         return summary
+
+    def _maybe_show_student_status_alert(self, student_data, penalty_summary, loan_prefs=None):
+        if not isinstance(student_data, dict):
+            return True
+        active_loans = student_data.get("active_loans") or []
+        overdue_titles = []
+        issue_titles = []
+        due_soon = []
+        today = datetime.now().date()
+        active_count = len(active_loans)
+        for loan in active_loans:
+            status = (loan.get("durum") or "").lower()
+            copy = loan.get("kitap_nusha") or {}
+            book = copy.get("kitap") or {}
+            title = book.get("baslik") or loan.get("kitap") or "(Bilgi yok)"
+            if status == "gecikmis":
+                overdue_titles.append(title)
+            copy_status = (copy.get("durum") or "").lower()
+            if copy_status in {"kayip", "hasarli"} or status in {"kayip", "hasarli"}:
+                issue_titles.append(title)
+            raw_due = loan.get("iade_tarihi")
+            due_date = self._parse_date(raw_due)
+            if due_date and due_date >= today:
+                days_left = (due_date - today).days
+                if days_left <= 2:
+                    due_soon.append((title, days_left))
+
+        limit = None
+        if isinstance(loan_prefs, dict):
+            limit = loan_prefs.get("default_max_items")
+        if limit in (None, ""):
+            policy_role = student_data.get("policy", {}).get("role", {}) if isinstance(student_data.get("policy"), dict) else {}
+            limit = policy_role.get("max_items")
+        try:
+            limit = int(limit) if limit not in (None, "") else None
+        except (TypeError, ValueError):
+            limit = None
+
+        total_penalty = self._parse_decimal((penalty_summary or {}).get("outstanding_total"))
+        primary_warnings = []
+        if overdue_titles:
+            primary_warnings.append(f"• Gecikmiş iade: {', '.join(self._summarize_titles(overdue_titles))}")
+        if issue_titles:
+            primary_warnings.append(f"• Kayıp/hasarlı kayıt: {', '.join(self._summarize_titles(issue_titles))}")
+        if due_soon:
+            formatted = []
+            for title, days_left in due_soon[:3]:
+                if days_left <= 0:
+                    formatted.append(f"{title} (bugün)")
+                else:
+                    formatted.append(f"{title} ({days_left} gün içinde)")
+            if len(due_soon) > 3:
+                formatted.append(f"+{len(due_soon) - 3} daha")
+            primary_warnings.append(f"• Yaklaşan iade: {', '.join(formatted)}")
+        if total_penalty > Decimal("0"):
+            primary_warnings.append(f"• Toplam ceza: {self._format_currency(total_penalty)}")
+
+        limit_warning = None
+        if active_count and limit and limit > 0 and active_count >= limit:
+            limit_warning = f"• Aktif ödünç: {active_count} / {limit}"
+
+        if not primary_warnings and not limit_warning:
+            return True
+
+        warnings = list(primary_warnings)
+        if limit_warning:
+            warnings.insert(0, limit_warning)
+        elif active_count and primary_warnings:
+            if limit and limit > 0:
+                warnings.insert(0, f"• Aktif ödünç: {active_count} / {limit}")
+            else:
+                warnings.insert(0, f"• Aktif ödünç: {active_count}")
+
+        box = QMessageBox(self)
+        box.setWindowTitle("Öğrenci Durumu")
+        box.setIcon(QMessageBox.Warning)
+        box.setText("Bu öğrencinin mevcut durumu:\n\n" + "\n".join(warnings))
+        btn_continue = box.addButton("Ödünçe Devam Et", QMessageBox.AcceptRole)
+        btn_cancel = box.addButton("İptal", QMessageBox.RejectRole)
+        btn_continue.setObjectName("DialogPositiveButton")
+        btn_cancel.setObjectName("DialogDangerButton")
+        box.setDefaultButton(btn_cancel if overdue_titles or issue_titles else btn_continue)
+        box.exec_()
+        return box.clickedButton() == btn_continue
+
+    def _summarize_titles(self, titles, limit=3):
+        unique = []
+        for title in titles:
+            if title and title not in unique:
+                unique.append(title)
+        if len(unique) <= limit:
+            return unique
+        return unique[:limit] + [f"+{len(unique) - limit} daha"]
 
     def open_penalty_detail(self):
         if not self.student_no:
@@ -1265,34 +1505,22 @@ class QuickResultPanel(QWidget):
         if not payload:
             QMessageBox.information(self, "Bilgi", "Ceza detayları alınamadı.")
             return
-        entries = payload.get("entries") or []
+        summary = self.penalty_summary or {}
+        entries = summary.get("entries") or []
         if not entries:
             QMessageBox.information(self, "Bilgi", "Bu öğrenciye ait bekleyen ceza bulunmuyor.")
             return
-
-        rows = []
-        for entry in entries:
-            rows.append([
-                entry.get("kitap", ""),
-                entry.get("barkod", ""),
-                format_date(entry.get("odunc_tarihi")),
-                format_date(entry.get("iade_tarihi")),
-                format_date(entry.get("teslim_tarihi")),
-                entry.get("durum", ""),
-                self._format_currency(entry.get("gecikme_cezasi")),
-            ])
-
-        dialog = DetailWindow.single_tab(
-            "Gecikme Cezaları",
-            ["Kitap", "Barkod", "Ödünç", "İade", "Teslim", "Durum", "Ceza"],
-            rows,
-            settings_key="penalty_detail",
-            icon_path=None,
-            tab_title="Ceza Detayı"
-        )
+        dialog = PenaltyDetailDialog(summary=summary, parent=self.window())
+        dialog.penaltyPaid.connect(self._on_penalty_paid)
         dialog.exec_()
 
+    def _on_penalty_paid(self, summary):
+        if isinstance(summary, dict):
+            self._update_penalty_info(summary)
+
     def _inject_penalty_info(self, card_widget, summary):
+        self.penalty_total_label = None
+        self.penalty_detail_button = None
         if not isinstance(summary, dict):
             return
         total = self._parse_decimal(summary.get("outstanding_total"))
@@ -1303,8 +1531,7 @@ class QuickResultPanel(QWidget):
             return
         layout.addSpacing(4)
         row = QHBoxLayout()
-        label = QLabel(f"Toplam ceza: {self._format_currency(total)}")
-        label.setStyleSheet("color:#c0392b; font-weight:bold;")
+        label = QLabel()
         row.addWidget(label)
         row.addStretch(1)
         btn_detail = QPushButton("Ceza Detayı")
@@ -1313,6 +1540,79 @@ class QuickResultPanel(QWidget):
         btn_detail.clicked.connect(self.open_penalty_detail)
         row.addWidget(btn_detail)
         layout.addLayout(row)
+        self.penalty_total_label = label
+        self.penalty_detail_button = btn_detail
+        self._update_penalty_info(summary)
+
+    def _update_penalty_info(self, summary):
+        if not isinstance(summary, dict):
+            return
+        self.penalty_summary = summary
+        label = getattr(self, "penalty_total_label", None)
+        button = getattr(self, "penalty_detail_button", None)
+        total = self._parse_decimal(summary.get("outstanding_total"))
+        if label:
+            if total > Decimal("0"):
+                label.setText(f"Toplam ceza: {self._format_currency(total)}")
+                label.setStyleSheet("color:#c0392b; font-weight:bold;")
+            else:
+                label.setText("Toplam ceza: 0.00 ₺")
+                label.setStyleSheet("color:#27ae60; font-weight:bold;")
+        if button:
+            entries = summary.get("entries") or []
+            button.setEnabled(bool(entries))
+
+    def _attempt_penalty_receipt(self, summary, amount):
+        amount_dec = self._parse_decimal(amount)
+        if amount_dec <= Decimal("0"):
+            return
+        summary_data = dict(summary) if isinstance(summary, dict) else {}
+        if "entries" not in summary_data or not summary_data.get("entries"):
+            entries = (self.penalty_summary or {}).get("entries") or []
+            summary_data["entries"] = entries
+        if "outstanding_total" not in summary_data or summary_data.get("outstanding_total") is None:
+            summary_data["outstanding_total"] = (self.penalty_summary or {}).get("outstanding_total")
+        if not summary_data.get("student"):
+            student = (self.data or {}).get("student") or (self.data or {}).get("ogrenci")
+            if isinstance(student, dict):
+                summary_data["student"] = student
+        try:
+            print_fine_payment_receipt(summary_data, amount_dec)
+        except ReceiptPrintError as exc:
+            QMessageBox.warning(self, "Fiş Yazdırma", str(exc))
+        except Exception as exc:
+            QMessageBox.warning(self, "Fiş Yazdırma", f"Fiş yazdırma başarısız:\n{exc}")
+
+    def _attach_receipt_warning_to_box(self, box):
+        ok, reason = check_receipt_printer_status()
+        if ok:
+            return
+        layout = box.layout()
+        if layout is None:
+            return
+        widget = QWidget()
+        row = QHBoxLayout(widget)
+        row.setContentsMargins(0, 0, 0, 0)
+        row.setSpacing(6)
+        label = QLabel("Fiş yazıcısı hazır değil. Fiş basılamayabilir.")
+        label.setStyleSheet("color:#c0392b; font-weight:600;")
+        btn = QPushButton("?")
+        btn.setFixedWidth(28)
+        btn.setCursor(Qt.PointingHandCursor)
+
+        def _show():
+            QMessageBox.information(box, "Fiş Yazdırma", reason)
+
+        btn.clicked.connect(_show)
+        row.addWidget(label)
+        row.addWidget(btn)
+        row.addStretch(1)
+        try:
+            row_index = layout.rowCount()
+            col_span = layout.columnCount()
+            layout.addWidget(widget, row_index, 0, 1, max(1, col_span))
+        except AttributeError:
+            layout.addWidget(widget)
 
     def _expected_student_no(self, loan):
         if self.student_no:

@@ -7,11 +7,13 @@ from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtWidgets import QApplication, QAction
 
 from api import auth
+from api import logs as log_api
 from api.system import health_check
 from core.config import get_api_base_url
 from ui.main_window import MainWindow
 from ui.rich_label import RichLabel
 from ui.server_settings_dialog import ServerSettingsDialog
+from core.log_helpers import build_log_detail
 
 
 class LoginWindow(QWidget):
@@ -136,6 +138,20 @@ class LoginWindow(QWidget):
             self._logging_in = False
 
     def accept_login(self):
+        try:
+            username = auth.get_current_username()
+            full_name = auth.get_current_full_name()
+            if full_name and username and full_name.strip().lower() == username.strip().lower():
+                full_name = full_name.title()
+            display_name = full_name or username or "Bilinmeyen kullanıcı"
+            detail = build_log_detail(
+                user={"ad": display_name},
+                role=auth.get_current_role(),
+                extra="İşlem: Oturum açma"
+            )
+            log_api.safe_send_log("Oturum açma", detay=detail or f"{display_name} sisteme giriş yaptı.")
+        except Exception:
+            pass
         # Ana pencereyi bir sonraki event loop turunda aç – Login şimdilik görünür kalsın
         QTimer.singleShot(50, self._open_main_async)
         # Not: _active_login_window referansını hemen temizlemiyoruz; deleteLater sonrası zaten kalkacak
@@ -143,6 +159,12 @@ class LoginWindow(QWidget):
     def _open_main_async(self):
         try:
             self.main_window = MainWindow()
+            full_name = auth.get_current_full_name() or ""
+            if full_name:
+                try:
+                    self.main_window.setWindowTitle(f"Kütüphane Yönetim Sistemi ({full_name})")
+                except Exception:
+                    pass
             self.main_window.show()
         except Exception as exc:
             # İsteğe bağlı: hatayı stdout'a yazmadan kullanıcıya gösterme

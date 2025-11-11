@@ -68,7 +68,11 @@ def update_overdue_loans(now=None, *, use_lock=False):
                     penalty_delay = penalty_delay_for_role(snapshot, role)
                     other_total = (
                         OduncKaydi.objects
-                        .filter(ogrenci=loan.ogrenci, gecikme_cezasi__gt=0)
+                        .filter(
+                            ogrenci=loan.ogrenci,
+                            gecikme_cezasi__gt=0,
+                            gecikme_cezasi_odendi=False,
+                        )
                         .exclude(pk=loan.pk)
                         .aggregate(total=Sum("gecikme_cezasi"))
                         .get("total")
@@ -101,14 +105,28 @@ def update_overdue_loans(now=None, *, use_lock=False):
                     reverted += 1
 
             # Ceza güncellemesi
+            reset_paid_fields = False
             if penalty_value is None and loan.gecikme_cezasi:
                 loan.gecikme_cezasi = None
                 fields.append("gecikme_cezasi")
                 recalculated += 1
+                reset_paid_fields = True
             elif penalty_value is not None and loan.gecikme_cezasi != penalty_value:
                 loan.gecikme_cezasi = penalty_value
                 fields.append("gecikme_cezasi")
                 recalculated += 1
+                reset_paid_fields = True
+
+            if reset_paid_fields:
+                if loan.gecikme_cezasi_odendi:
+                    loan.gecikme_cezasi_odendi = False
+                    fields.append("gecikme_cezasi_odendi")
+                if loan.gecikme_odeme_tarihi is not None:
+                    loan.gecikme_odeme_tarihi = None
+                    fields.append("gecikme_odeme_tarihi")
+                if loan.gecikme_odeme_tutari is not None:
+                    loan.gecikme_odeme_tutari = None
+                    fields.append("gecikme_odeme_tutari")
 
             if fields:
                 loan.save(update_fields=fields)

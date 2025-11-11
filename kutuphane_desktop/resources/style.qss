@@ -57,12 +57,22 @@ QPushButton:hover {
     background-color: #45a049;
 }
 
+QPushButton:disabled {
+    background-color: #cfd4da;
+    color: #81878f;
+}
+
 QTableView {
     background-color: white;
     gridline-color: #dcdcdc;
     font-size: 13px;
-    selection-background-color: #cce5ff;
     alternate-background-color: #f9f9f9;
+}
+
+QTableView::item:selected {
+    background-color: #a9d8ff;
+    color: #111111;
+    font-weight: 600;
 }
 
 QHeaderView::section {
@@ -171,6 +181,11 @@ QPushButton#DialogNeutralButton {
     padding: 4px 12px;
 }
 
+QPushButton#DialogNeutralButton:disabled {
+    background-color: #dde1e3;
+    color: #9aa2aa;
+}
+
 QPushButton#DialogPositiveButton {
     background-color: #27ae60;
     color: #ffffff;
@@ -179,12 +194,65 @@ QPushButton#DialogPositiveButton {
     padding: 4px 12px;
 }
 
-QPushButton#DialogNegativeButton {
+QPushButton#DialogPositiveButton:hover {
+    background-color: #219150;
+}
+
+QPushButton#DialogPositiveButton:disabled {
+    background-color: #9bd6b4;
+    color: #f1f6f2;
+}
+
+QPushButton#DialogWarnButton {
+    background-color: #f39c12;
+    color: #2c3e50;
+    border: none;
+    border-radius: 4px;
+    padding: 4px 12px;
+}
+
+QPushButton#DialogWarnButton:hover {
+    background-color: #df8b0d;
+    color: #1f2d3a;
+}
+
+QPushButton#DialogWarnButton:disabled {
+    background-color: #f8c880;
+    color: #9c6d20;
+}
+
+QPushButton#DialogDangerButton {
     background-color: #e74c3c;
     color: #ffffff;
     border: none;
     border-radius: 4px;
     padding: 4px 12px;
+}
+
+QPushButton#DialogDangerButton:hover {
+    background-color: #cf4335;
+}
+
+QPushButton#DialogDangerButton:disabled {
+    background-color: #f2a099;
+    color: #ffffff;
+}
+
+QPushButton#DialogNegativeButton {
+    background-color: #c0392b;
+    color: #ffffff;
+    border: none;
+    border-radius: 4px;
+    padding: 4px 12px;
+}
+
+QPushButton#DialogNegativeButton:hover {
+    background-color: #a83226;
+}
+
+QPushButton#DialogNegativeButton:disabled {
+    background-color: #e1a19a;
+    color: #ffffff;
 }
 
 QPushButton#ReturnButton {
@@ -330,6 +398,82 @@ QPushButton#PrimaryNeutralButton {
 
 QPushButton#PrimaryNeutralButton:hover {
     background-color: #138496;
+}
+
+QPushButton#PrimaryNeutralButton:disabled {
+    background-color: #9bd4df;
+    color: #f0f7f9;
+}
+
+QPushButton#DialogCloseButton {
+    background-color: #1e90ff;
+    color: #ffffff;
+    border-radius: 6px;
+    padding: 6px 16px;
+    font-weight: 600;
+}
+
+QPushButton#DialogCloseButton:hover {
+    background-color: #1874d2;
+}
+
+QPushButton#DialogCloseButton:disabled {
+    background-color: #9fc6ff;
+    color: #f2f6ff;
+}
+
+QPushButton#DialogWarnLargeButton {
+    background-color: #f39c12;
+    color: #2c3e50;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 20px;
+    font-size: 15px;
+    font-weight: 700;
+}
+
+QPushButton#DialogWarnLargeButton:hover {
+    background-color: #df8b0d;
+    color: #1f2d3a;
+}
+
+QPushButton#DialogWarnLargeButton:disabled {
+    background-color: #f8c880;
+    color: #9c6d20;
+}
+
+QPushButton#ActionNewButton {
+    background-color: #2ecc71;
+    color: #ffffff;
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-weight: 600;
+}
+
+QPushButton#ActionNewButton:hover {
+    background-color: #27b864;
+}
+
+QPushButton#ActionNewButton:disabled {
+    background-color: #a7e6c3;
+    color: #f6fbf8;
+}
+
+QPushButton#ActionEditButton {
+    background-color: #e67e22;
+    color: #ffffff;
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-weight: 600;
+}
+
+QPushButton#ActionEditButton:hover {
+    background-color: #cf6f1b;
+}
+
+QPushButton#ActionEditButton:disabled {
+    background-color: #f4c49b;
+    color: #fef9f4;
 }
 /* Combobox açılır liste okunabilirliği */
 QComboBox QAbstractItemView,

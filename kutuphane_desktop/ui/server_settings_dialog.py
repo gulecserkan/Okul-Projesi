@@ -101,6 +101,8 @@ class ServerSettingsDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle("Sunucu Ayarları")
         self.setMinimumWidth(480)
+        self.saved = False
+        self.new_url = None
 
         layout = QVBoxLayout(self)
         self.page = ServerSettingsWidget(self)
@@ -119,4 +121,10 @@ class ServerSettingsDialog(QDialog):
 
     def _on_save(self):
         if self.page.save_preferences():
+            self.saved = True
+            self.new_url = self.page.new_url
             self.accept()
+
+    def reject(self):
+        self.saved = False
+        super().reject()

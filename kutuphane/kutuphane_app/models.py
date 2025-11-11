@@ -2,6 +2,10 @@ from django.db import models
 from datetime import time
 from django.db.models.signals import post_save
 from django.dispatch import receiver
+from django.contrib.auth import get_user_model
+from django.contrib.auth.hashers import make_password, check_password
+from django.conf import settings
+from django.utils import timezone
 
 
 # --- Sınıflar ---
@@ -170,16 +174,29 @@ class OduncKaydi(models.Model):
     ]
     durum = models.CharField(max_length=20, choices=DURUM_SECENEKLERI, default="oduncte")
     gecikme_cezasi = models.DecimalField(max_digits=6, decimal_places=2, blank=True, null=True)
+    gecikme_cezasi_odendi = models.BooleanField(default=False)
+    gecikme_odeme_tarihi = models.DateTimeField(blank=True, null=True)
+    gecikme_odeme_tutari = models.DecimalField(max_digits=6, decimal_places=2, blank=True, null=True)
 
     def __str__(self):
         return f"{self.ogrenci} - {self.kitap_nusha}"
 
 
 # --- Kütüphane Personeli (opsiyonel) ---
+User = get_user_model()
+
+
 class Personel(models.Model):
     ad_soyad = models.CharField(max_length=100)
     kullanici_adi = models.CharField(max_length=50, unique=True)
-    sifre_hash = models.CharField(max_length=128)
+    sifre_hash = models.CharField(max_length=128, blank=True)
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="personel",
+    )
     ROL_SECENEKLERI = [
         ("admin", "Admin"),
         ("personel", "Personel"),
@@ -188,6 +205,108 @@ class Personel(models.Model):
 
     def __str__(self):
         return self.ad_soyad
+
+    def set_password(self, raw_password):
+        self.sifre_hash = make_password(raw_password)
+
+    def check_password(self, raw_password):
+        return check_password(raw_password, self.sifre_hash)
+
+
+class InventorySession(models.Model):
+    STATUS_CHOICES = [
+        ("active", "Aktif"),
+        ("completed", "Tamamlandı"),
+        ("canceled", "İptal Edildi"),
+    ]
+
+    name = models.CharField(max_length=120)
+    description = models.TextField(blank=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="active")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    started_at = models.DateTimeField(auto_now_add=True)
+    completed_at = models.DateTimeField(blank=True, null=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        related_name="inventory_sessions",
+        null=True,
+        blank=True,
+    )
+    filters = models.JSONField(default=dict, blank=True)
+    total_items = models.PositiveIntegerField(default=0)
+    seen_items = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ("-created_at",)
+        verbose_name = "Sayım Oturumu"
+        verbose_name_plural = "Sayım Oturumları"
+
+    def __str__(self):
+        return f"Sayım #{self.id} - {self.name}"
+
+    @property
+    def progress(self):
+        if not self.total_items:
+            return 0.0
+        return min(1.0, self.seen_items / float(self.total_items))
+
+    def mark_completed(self, status="completed"):
+        self.status = status
+        self.completed_at = timezone.now()
+        self.save(update_fields=["status", "completed_at"])
+
+
+class InventoryItem(models.Model):
+    session = models.ForeignKey(InventorySession, on_delete=models.CASCADE, related_name="items")
+    kitap_nusha = models.ForeignKey(KitapNusha, on_delete=models.CASCADE, related_name="inventory_items")
+    barkod = models.CharField(max_length=50)
+    kitap_baslik = models.CharField(max_length=200)
+    raf_kodu = models.CharField(max_length=20, blank=True, null=True)
+    durum = models.CharField(max_length=20, blank=True)
+    seen = models.BooleanField(default=False)
+    seen_at = models.DateTimeField(blank=True, null=True)
+    seen_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        related_name="inventory_checks",
+        null=True,
+        blank=True,
+    )
+    note = models.CharField(max_length=200, blank=True)
+
+    class Meta:
+        unique_together = ("session", "kitap_nusha")
+        ordering = ("-seen", "raf_kodu", "barkod")
+        verbose_name = "Sayım Kalemi"
+        verbose_name_plural = "Sayım Kalemleri"
+
+    def __str__(self):
+        return f"{self.barkod} @ {self.session_id}"
+
+
+class AuditLog(models.Model):
+    kullanici = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="log_kayitlari",
+    )
+    islem = models.CharField(max_length=100)
+    detay = models.TextField(blank=True)
+    ip_adresi = models.GenericIPAddressField(blank=True, null=True)
+    olusturma_zamani = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-olusturma_zamani"]
+        verbose_name = "Log Kaydı"
+        verbose_name_plural = "Log Kayıtları"
+
+    def __str__(self):
+        user = self.kullanici.get_full_name() if self.kullanici else "Bilinmeyen"
+        return f"{self.olusturma_zamani:%Y-%m-%d %H:%M} - {user} - {self.islem}"
 
 
 class LoanPolicy(models.Model):

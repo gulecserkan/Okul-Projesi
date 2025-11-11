@@ -11,16 +11,20 @@ from ui.entity_manager_dialog import AuthorManagerDialog, CategoryManagerDialog
 from ui.book_manager_dialog import BookManagerDialog
 from ui.label_editor_dialog import LabelEditorDialog
 from ui.student_manager_dialog import StudentManagerDialog
+from ui.inventory_dialog import InventoryDialog
 from ui.side_menu import SideMenu, SideMenuEntry
 from widgets.quick_result_panel import QuickResultPanel
 from widgets.book_table import BookTable, HEADERS
 import json, os, sys, subprocess, time
 import sip
 from core.config import SETTINGS_FILE, get_api_base_url, load_settings, save_settings
+from core.utils import register_session_expired_handler
 from PyQt5.QtPrintSupport import QPrinterInfo
 from core.utils import api_request, format_date, response_error_message
 from api import auth
+from api import logs as log_api
 from ui.settings_dialog import SettingsDialog
+from core.log_helpers import build_log_detail
 
 
 _active_login_window = None
@@ -43,7 +47,15 @@ class MainWindow(QMainWindow):
         self._inactivity_timer = None
         self._inactivity_minutes = None
         self._inactivity_timeout_ms = None
+        self._startup_jobs_run = False
+        self._session_expired_warning_shown = False
         self.session_settings = {}
+        role_value = auth.get_current_role()
+        normalized_role = (role_value or "").strip().lower()
+        self._current_role = normalized_role
+        allowed_roles = {"admin", "superuser"}
+        # Eğer rol bilgisi yoksa (eski token) erişimi kısıtlama
+        self._settings_allowed = (not normalized_role) or (normalized_role in allowed_roles)
         app = QApplication.instance()
         if app:
             app.installEventFilter(self)
@@ -96,10 +108,15 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(container)
 
         self.side_menu = SideMenu(self)
+        settings_desc = (
+            "Genel tercihleri yönetin"
+            if self._settings_allowed
+            else "Bu alana yalnızca yönetici hesabı erişebilir"
+        )
         menu_items = [
             SideMenuEntry(
                 "Ayarlar",
-                "Genel tercihleri yönetin",
+                settings_desc,
                 self._menu_icon("menu_settings.png", self.style().standardIcon(QStyle.SP_FileDialogDetailedView)),
                 self.open_settings,
             ),
@@ -114,6 +131,12 @@ class MainWindow(QMainWindow):
                 "Öğrenci kayıtlarını yönetin",
                 self._menu_icon("menu_student.png", self.style().standardIcon(QStyle.SP_ComputerIcon)),
                 self.open_student_manager,
+            ),
+            SideMenuEntry(
+                "Sayım",
+                "Raf bazlı envanter sayımları",
+                self._menu_icon("menu_inventory.png", self.style().standardIcon(QStyle.SP_BrowserReload)),
+                self.open_inventory_manager,
             ),
             SideMenuEntry(
                 "Yazarlar",
@@ -135,7 +158,8 @@ class MainWindow(QMainWindow):
         self.settings = self.load_settings()
         self.apply_window_settings()
         self._setup_inactivity_timer()
-        print("[DBG] MainWindow.__init__: end")
+        QTimer.singleShot(0, self._trigger_startup_jobs)
+        register_session_expired_handler(self._handle_session_expired)
         try:
             self._check_printers()
         except Exception:
@@ -586,11 +610,39 @@ class MainWindow(QMainWindow):
     def open_printer_settings(self):
         self.open_settings(initial_tab="printers")
 
-    def open_settings(self, initial_tab: str | None = None):
+    def open_password_settings(self):
+        self.open_settings(initial_tab="password", require_admin=False)
+
+    def open_settings(self, initial_tab: str | None = None, *, require_admin: bool = True):
+        has_admin_access = bool(getattr(self, "_settings_allowed", True))
+        limited_view = not has_admin_access
+        if require_admin and limited_view:
+            QMessageBox.information(
+                self,
+                "Sınırlı Erişim",
+                "Bu hesap yönetici yetkisine sahip değil. Ayarlar penceresinde sadece şifre sekmesi görüntülenecek."
+            )
+            detail = build_log_detail(
+                user=self._current_user_detail(),
+                role=self._current_role,
+                extra="Ayarlar menüsüne tam erişim isteği"
+            )
+            log_api.safe_send_log(
+                "Sınırlı ayar erişimi",
+                detay=detail or f"Rol: {self._current_role or 'bilinmiyor'}"
+            )
         self.side_menu.force_hide()
-        dlg = SettingsDialog(self, initial_tab=initial_tab)
+        dlg = SettingsDialog(
+            self,
+            initial_tab=initial_tab,
+            admin_access=has_admin_access,
+        )
         dlg.exec_()
         self._setup_inactivity_timer()
+
+    def _current_user_detail(self):
+        name = auth.get_current_full_name() or auth.get_current_username() or "Bilinmeyen"
+        return {"ad": name}
     
     def _check_label_printer(self):
         settings = load_settings() or {}
@@ -760,11 +812,18 @@ class MainWindow(QMainWindow):
         if hasattr(self.table, "reload_data"):
             self.table.reload_data()
 
+    def open_inventory_manager(self):
+        self.side_menu.force_hide()
+        dlg = InventoryDialog(self)
+        dlg.exec_()
+
     def logout_and_show_login(self, reason=None):
         """Çıkış işlemini yapar ve giriş ekranını açar."""
         if self._is_logging_out:
             return
         self._is_logging_out = True
+        register_session_expired_handler(None)
+        self._session_expired_warning_shown = False
 
         if self._inactivity_timer:
             try:
@@ -800,6 +859,25 @@ class MainWindow(QMainWindow):
 
         self.side_menu.force_hide()
         self.save_settings()
+        try:
+            display = auth.get_current_full_name() or auth.get_current_username() or "Bilinmeyen kullanıcı"
+            if reason == "timeout":
+                message = "Hareketsizlik nedeniyle oturum sonlandırıldı."
+                action = "Oturum kapatma (pasiflik)"
+            elif reason == "session_expired":
+                message = "Oturum süresi sona erdi."
+                action = "Oturum kapatma (oturum süresi)"
+            else:
+                message = "Kullanıcı isteğiyle çıkış yapıldı."
+                action = "Oturum kapatma"
+            detail = build_log_detail(
+                user={"ad": display},
+                role=self._current_role,
+                extra=message,
+            )
+            log_api.safe_send_log(action, detay=detail or f"{display} çıkış yaptı.")
+        except Exception:
+            pass
         auth.logout()
 
         from ui.login_window import LoginWindow  # avoid circular import
@@ -811,6 +889,7 @@ class MainWindow(QMainWindow):
         QTimer.singleShot(0, self._close_safely)
 
     def _close_safely(self):
+        register_session_expired_handler(None)
         try:
             self.hide()
         except Exception:
@@ -828,8 +907,40 @@ class MainWindow(QMainWindow):
         path = path.lstrip('/')
         return f"{base}/{path}"
 
+    def _trigger_startup_jobs(self):
+        if self._startup_jobs_run:
+            return
+        self._startup_jobs_run = True
+        QTimer.singleShot(0, self._run_startup_jobs)
+
+    def _run_startup_jobs(self):
+        try:
+            resp = api_request("POST", self._api_url("jobs/update-overdue/"))
+        except Exception as exc:
+            print("[DBG] Overdue job failed:", exc)
+            return
+        status = getattr(resp, "status_code", None)
+        if status != 200:
+            print("[DBG] Overdue job response:", status)
+
     def _menu_icon(self, filename, fallback):
         path = os.path.join("resources", "icons", filename)
         if os.path.exists(path):
             return QIcon(path)
         return fallback
+
+    def _handle_session_expired(self):
+        if self._session_expired_warning_shown or self._is_logging_out:
+            return
+        self._session_expired_warning_shown = True
+        QTimer.singleShot(0, self._show_session_expired_message)
+
+    def _show_session_expired_message(self):
+        if self._is_logging_out:
+            return
+        QMessageBox.warning(
+            self,
+            "Oturum Süresi Doldu",
+            "Oturum süreniz doldu. Lütfen tekrar giriş yapın."
+        )
+        self.logout_and_show_login(reason="session_expired")

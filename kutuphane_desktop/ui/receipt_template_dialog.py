@@ -15,24 +15,7 @@ from PyQt5.QtWidgets import (
     QWidget,
 )
 
-
-RECEIPT_PLACEHOLDERS = [
-    ("operator_name", "İşlemi yapan personel"),
-    ("receipt_date", "Fiş tarihi (örn. 10.11.2025)"),
-    ("receipt_time", "Fiş saati (örn. 14:32)"),
-    ("student_full_name", "Öğrencinin adı soyadı"),
-    ("student_number", "Öğrenci numarası"),
-    ("student_class", "Öğrencinin sınıfı"),
-    ("student_role", "Öğrencinin rolü / statüsü"),
-    ("student_phone", "Öğrenci telefonu"),
-    ("student_email", "Öğrenci e-posta adresi"),
-    ("payment_amount", "Ödenen ceza tutarı"),
-    ("payment_currency", "Para birimi"),
-    ("remaining_debt", "Öğrencinin kalan borcu"),
-    ("debt_items", "Borç kalemleri listesini metin olarak ekler"),
-    ("loan_count", "Aktif ödünç sayısı"),
-    ("return_deadline", "En yakın iade tarihi"),
-]
+from core.receipt_templates import RECEIPT_PLACEHOLDERS
 
 
 class ReceiptTemplateDialog(QDialog):

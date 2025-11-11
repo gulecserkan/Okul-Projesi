@@ -6,10 +6,11 @@ from typing import Dict, List, Optional
 
 from PyQt5.QtCore import QPointF, QSizeF, Qt, QRectF
 from PyQt5.QtGui import QColor, QFont, QImage, QPainter, QTransform
-from PyQt5.QtPrintSupport import QPrintDialog, QPrinter
+from PyQt5.QtPrintSupport import QPrinter, QPrinterInfo
 from PyQt5.QtWidgets import QGraphicsScene, QGraphicsItem, QGraphicsTextItem
 
 from core.config import load_settings
+from printing.printer_guard import ensure_printer_ready, enforce_media_type
 
 FIELD_PLACEHOLDERS = {
     'title': '{title}',
@@ -23,6 +24,13 @@ FIELD_PLACEHOLDERS = {
 
 def mm_to_px(mm: float, dpi: int) -> float:
     return (mm / 25.4) * dpi
+
+
+def _known_printer_names() -> set[str]:
+    try:
+        return {p.printerName() for p in QPrinterInfo.availablePrinters()}
+    except Exception:
+        return set()
 
 
 class Code128GraphicsItem:
@@ -301,21 +309,26 @@ def print_label_batch(template_path: str, contexts: List[Dict[str, str]]) -> Non
     rotate = bool(label_prefs.get("rotate_print", False))
 
     printer = QPrinter(QPrinter.HighResolution)
-    printer_name = printing_prefs.get("label_printer") or label_prefs.get("default_printer")
-    if printer_name:
-        printer.setPrinterName(printer_name)
+    printer_name = (printing_prefs.get("label_printer") or label_prefs.get("default_printer")) or ""
+
+    if not printer_name:
+        raise RuntimeError(
+            "Varsayılan etiket yazıcısı seçilmemiş. Yazıcı Ayarları sekmesinden bir yazıcı belirleyin."
+        )
+
+    available = _known_printer_names()
+    if available and printer_name not in available:
+        raise RuntimeError(f"'{printer_name}' adlı etiket yazıcısı sistemde bulunamadı.")
+
+    ensure_printer_ready(printer_name)
+    enforce_media_type("label", printer_name, printing_prefs)
+    printer.setPrinterName(printer_name)
 
     label_prefs["label_is_thermal"] = printing_prefs.get(
         "label_is_thermal", label_prefs.get("default_printer_is_thermal", False)
     )
 
     _configure_printer(printer, template, label_prefs)
-
-    if not printer_name:
-        dlg = QPrintDialog(printer)
-        dlg.setWindowTitle("Etiket Yazdır")
-        if dlg.exec_() != QPrintDialog.Accepted:
-            return
 
     painter = QPainter(printer)
     if not painter.isActive():

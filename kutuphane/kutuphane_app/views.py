@@ -4,8 +4,10 @@ from rest_framework.generics import ListAPIView
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.exceptions import ValidationError as DRFValidationError
 from django.db import transaction
-from django.db.models import Count, Sum, Avg, Q
+from django.db.models import Count, Sum, Avg, Q, F
+from django.shortcuts import get_object_or_404
 from datetime import timedelta
 from decimal import Decimal, InvalidOperation
 from django.utils.timezone import now, make_aware, is_naive
@@ -27,6 +29,9 @@ from .models import (
     LoanPolicy,
     RoleLoanPolicy,
     NotificationSettings,
+    AuditLog,
+    InventorySession,
+    InventoryItem,
 )
 from .serializers import (
     OgrenciSerializer,
@@ -42,6 +47,9 @@ from .serializers import (
     LoanPolicySerializer,
     RoleLoanPolicySerializer,
     NotificationSettingsSerializer,
+    AuditLogSerializer,
+    InventorySessionSerializer,
+    InventoryItemSerializer,
 )
 from .loan_policy import (
     calculate_penalty,
@@ -60,6 +68,7 @@ from .loan_policy import (
     shift_weekend_for_role,
     LoanPolicySnapshot,
 )
+from .jobs import update_overdue_loans
 
 
 def serialize_book_payload(kitap, request=None):
@@ -99,6 +108,13 @@ def _decimal_to_str(value):
     return format(quantized, "f")
 
 
+def _client_ip_from_request(request):
+    forwarded = request.META.get("HTTP_X_FORWARDED_FOR")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return request.META.get("REMOTE_ADDR")
+
+
 def penalty_summary_for_student(ogrenci, limit=None):
     if not ogrenci:
         return {
@@ -110,7 +126,12 @@ def penalty_summary_for_student(ogrenci, limit=None):
 
     qs = (
         OduncKaydi.objects
-        .filter(ogrenci=ogrenci, gecikme_cezasi__gt=0)
+        .filter(
+            ogrenci=ogrenci,
+            gecikme_cezasi__gt=0,
+            gecikme_cezasi_odendi=False,
+            teslim_tarihi__isnull=False,
+        )
         .select_related("kitap_nusha__kitap")
         .order_by("-teslim_tarihi", "-iade_tarihi", "-odunc_tarihi")
     )
@@ -135,6 +156,8 @@ def penalty_summary_for_student(ogrenci, limit=None):
             "iade_tarihi": loan.iade_tarihi.isoformat() if loan.iade_tarihi else None,
             "teslim_tarihi": loan.teslim_tarihi.isoformat() if loan.teslim_tarihi else None,
             "gecikme_cezasi": _decimal_to_str(loan.gecikme_cezasi),
+            "gecikme_cezasi_odendi": loan.gecikme_cezasi_odendi,
+            "gecikme_odeme_tarihi": loan.gecikme_odeme_tarihi.isoformat() if loan.gecikme_odeme_tarihi else None,
         })
 
     has_more = bool(limit is not None and total_count > len(entries))
@@ -223,6 +246,166 @@ class OduncKaydiViewSet(viewsets.ModelViewSet):
 class PersonelViewSet(viewsets.ModelViewSet):
     queryset = Personel.objects.all()
     serializer_class = PersonelSerializer
+    permission_classes = [IsAuthenticated]
+
+
+class InventorySessionViewSet(viewsets.ModelViewSet):
+    queryset = InventorySession.objects.all().select_related("created_by")
+    serializer_class = InventorySessionSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        action = getattr(self, "action", None)
+        # Listeleme dışında (ör. /items/ aksiyonunda) status parametresi
+        # oturumları filtreleyip 404 üretmesin.
+        if action in (None, "list"):
+            status_param = self.request.query_params.get("status")
+            if status_param:
+                statuses = [part.strip() for part in status_param.split(",") if part.strip()]
+                if statuses:
+                    qs = qs.filter(status__in=statuses)
+        return qs
+
+    def perform_create(self, serializer):
+        filters = serializer.validated_data.get("filters") or {}
+        copies = list(self._filter_copies(filters))
+        if not copies:
+            raise DRFValidationError({"detail": "Belirtilen filtrelere uyan nüsha bulunamadı."})
+        user = self.request.user if getattr(self.request, "user", None) and self.request.user.is_authenticated else None
+        with transaction.atomic():
+            session = serializer.save(
+                created_by=user,
+                filters=filters,
+                status="active",
+                total_items=len(copies),
+                seen_items=0,
+            )
+            batch = [
+                InventoryItem(
+                    session=session,
+                    kitap_nusha=copy,
+                    barkod=copy.barkod,
+                    kitap_baslik=copy.kitap.baslik if copy.kitap else "",
+                    raf_kodu=copy.raf_kodu,
+                    durum=copy.durum,
+                )
+                for copy in copies
+            ]
+            InventoryItem.objects.bulk_create(batch, batch_size=500)
+
+    def _filter_copies(self, filters):
+        filters = filters or {}
+        qs = KitapNusha.objects.select_related("kitap").all()
+        raf_query = filters.get("raf_query")
+        if raf_query:
+            qs = qs.filter(raf_kodu__icontains=raf_query)
+        raf_prefix = filters.get("raf_prefix")
+        if raf_prefix:
+            qs = qs.filter(raf_kodu__startswith=raf_prefix)
+        durumlar = filters.get("durumlar")
+        if isinstance(durumlar, (list, tuple)):
+            qs = qs.filter(durum__in=durumlar)
+        kitap_id = filters.get("kitap_id")
+        if kitap_id:
+            qs = qs.filter(kitap_id=kitap_id)
+        kategori_id = filters.get("kategori_id")
+        if kategori_id:
+            qs = qs.filter(kitap__kategori_id=kategori_id)
+        return qs.order_by("raf_kodu", "barkod")
+
+    @action(detail=True, methods=["get"], url_path="items")
+    def list_items(self, request, pk=None):
+        session = self.get_object()
+        status_filter = (request.query_params.get("status") or "unseen").lower()
+        qs = session.items.select_related("kitap_nusha", "seen_by")
+        if status_filter == "unseen":
+            qs = qs.filter(seen=False)
+        elif status_filter == "seen":
+            qs = qs.filter(seen=True)
+        search = request.query_params.get("q")
+        if search:
+            qs = qs.filter(
+                Q(barkod__icontains=search)
+                | Q(kitap_baslik__icontains=search)
+                | Q(raf_kodu__icontains=search)
+            )
+        total = qs.count()
+        try:
+            limit = int(request.query_params.get("limit", 250))
+        except (TypeError, ValueError):
+            limit = 250
+        limit = max(1, min(limit, 1000))
+        try:
+            offset = int(request.query_params.get("offset", 0))
+        except (TypeError, ValueError):
+            offset = 0
+        offset = max(0, offset)
+        items = qs[offset : offset + limit]
+        serializer = InventoryItemSerializer(items, many=True)
+        return Response(
+            {
+                "results": serializer.data,
+                "count": total,
+                "offset": offset,
+                "limit": limit,
+                "session": InventorySessionSerializer(session).data,
+            }
+        )
+
+    @action(detail=True, methods=["post"], url_path="mark")
+    def mark_item(self, request, pk=None):
+        session = self.get_object()
+        if session.status != "active":
+            return Response({"detail": "Yalnızca aktif sayımlarda değişiklik yapılabilir."}, status=status.HTTP_400_BAD_REQUEST)
+        barkod = (request.data.get("barkod") or "").strip()
+        item_id = request.data.get("item_id")
+        if item_id:
+            item = get_object_or_404(session.items.select_related("kitap_nusha"), pk=item_id)
+        elif barkod:
+            item = get_object_or_404(session.items.select_related("kitap_nusha"), barkod=barkod)
+        else:
+            return Response({"detail": "Barkod veya item_id alanı zorunludur."}, status=status.HTTP_400_BAD_REQUEST)
+
+        seen_flag = request.data.get("seen")
+        mark_seen = True if seen_flag is None else bool(seen_flag)
+        note = request.data.get("note")
+
+        changed = False
+        if mark_seen and not item.seen:
+            item.seen = True
+            item.seen_at = timezone.now()
+            item.seen_by = request.user
+            changed = True
+        elif not mark_seen and item.seen:
+            item.seen = False
+            item.seen_at = None
+            item.seen_by = None
+            changed = True
+
+        if note is not None:
+            item.note = note
+
+        item.save(update_fields=["seen", "seen_at", "seen_by", "note"])
+
+        if changed:
+            session.seen_items = session.items.filter(seen=True).count()
+            session.save(update_fields=["seen_items"])
+
+        return Response(InventoryItemSerializer(item).data, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=["post"], url_path="complete")
+    def complete_session(self, request, pk=None):
+        session = self.get_object()
+        if session.status != "active":
+            return Response({"detail": "Bu sayım zaten kapatılmış."}, status=status.HTTP_400_BAD_REQUEST)
+        status_value = (request.data.get("status") or "completed").lower()
+        if status_value not in {"completed", "canceled"}:
+            status_value = "completed"
+        session.status = status_value
+        session.completed_at = timezone.now()
+        session.save(update_fields=["status", "completed_at"])
+        return Response(InventorySessionSerializer(session).data)
 
 class IstatistikViewSet(viewsets.ViewSet):
 
@@ -310,14 +493,20 @@ class IstatistikViewSet(viewsets.ViewSet):
     def en_cok_geciken(self, request):
         limit = int(request.query_params.get('limit', 5))
         ogrenciler = (Ogrenci.objects
-            .annotate(gecikme=Count('odunckaydi', filter=Q(odunckaydi__gecikme_cezasi__gt=0)))
+            .annotate(gecikme=Count('odunckaydi', filter=Q(
+                odunckaydi__gecikme_cezasi__gt=0,
+                odunckaydi__gecikme_cezasi_odendi=False,
+            )))
             .order_by('-gecikme')[:limit])
         return Response([{"ogrenci": str(o), "gecikme": o.gecikme} for o in ogrenciler])
 
     # 10. Toplam ceza miktarı
     @action(detail=False, methods=['get'])
     def toplam_ceza(self, request):
-        qs = OduncKaydi.objects.all()
+        qs = OduncKaydi.objects.filter(
+            gecikme_cezasi__gt=0,
+            gecikme_cezasi_odendi=False,
+        )
         ay = request.query_params.get('ay')  # örn: ?ay=3
         if ay:
             baslangic = now() - timedelta(days=30*int(ay))
@@ -533,7 +722,11 @@ class FastQueryView(APIView):
             if rate and rate > 0:
                 other_total = (
                     OduncKaydi.objects
-                    .filter(ogrenci=loan.ogrenci, gecikme_cezasi__gt=0)
+                    .filter(
+                        ogrenci=loan.ogrenci,
+                        gecikme_cezasi__gt=0,
+                        gecikme_cezasi_odendi=False,
+                    )
                     .exclude(pk=loan.pk)
                     .aggregate(total=Sum("gecikme_cezasi"))
                     .get("total")
@@ -748,6 +941,11 @@ class ChangePasswordView(APIView):
         user.set_password(new_password)
         user.save(update_fields=["password"])
 
+        personel = getattr(user, "personel", None)
+        if personel is not None:
+            personel.sifre_hash = user.password
+            personel.save(update_fields=["sifre_hash"])
+
         return Response({"detail": "Şifre güncellendi."}, status=status.HTTP_200_OK)
 
 
@@ -875,6 +1073,107 @@ class NotificationSettingsView(APIView):
             serializer.save()
             return Response(serializer.data, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class AuditLogView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        incoming = request.data or {}
+        if hasattr(incoming, "dict"):
+            incoming = incoming.dict()
+
+        islem = incoming.get("islem") or incoming.get("action")
+        detay = incoming.get("detay") or incoming.get("detail") or ""
+        ip_adresi = (
+            incoming.get("ip_adresi")
+            or incoming.get("ipAddress")
+            or incoming.get("ip_address")
+            or _client_ip_from_request(request)
+        )
+
+        serializer = AuditLogSerializer(
+            data={
+                "islem": islem,
+                "detay": detay,
+                "ip_adresi": ip_adresi,
+            }
+        )
+        serializer.is_valid(raise_exception=True)
+        log = serializer.save(kullanici=request.user if request.user.is_authenticated else None)
+        return Response(AuditLogSerializer(log).data, status=status.HTTP_201_CREATED)
+
+
+class PenaltyPaymentView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        try:
+            loan = OduncKaydi.objects.select_related("ogrenci").get(pk=pk)
+        except OduncKaydi.DoesNotExist:
+            return Response({"error": "Kayıt bulunamadı."}, status=status.HTTP_404_NOT_FOUND)
+
+        if loan.gecikme_cezasi is None or loan.gecikme_cezasi <= 0:
+            return Response({"error": "Bu kayıt için ödenecek ceza bulunmuyor."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if loan.gecikme_cezasi_odendi:
+            return Response({"error": "Ceza zaten ödenmiş."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if loan.teslim_tarihi is None:
+            return Response({"error": "Kitap teslim edilmeden ceza tahsil edilemez."}, status=status.HTTP_400_BAD_REQUEST)
+
+        amount = request.data.get("amount")
+        try:
+            amount_dec = Decimal(str(amount)) if amount is not None else Decimal(loan.gecikme_cezasi)
+        except (InvalidOperation, TypeError, ValueError):
+            return Response({"error": "Geçersiz tutar."}, status=status.HTTP_400_BAD_REQUEST)
+
+        amount_dec = amount_dec.quantize(Decimal("0.01"))
+        expected = Decimal(loan.gecikme_cezasi).quantize(Decimal("0.01"))
+        if amount_dec != expected:
+            return Response({"error": "Ödeme tutarı ceza tutarıyla uyuşmuyor."}, status=status.HTTP_400_BAD_REQUEST)
+
+        with transaction.atomic():
+            loan.gecikme_cezasi_odendi = True
+            loan.gecikme_odeme_tarihi = timezone.now()
+            loan.gecikme_odeme_tutari = amount_dec
+            loan.save(update_fields=["gecikme_cezasi_odendi", "gecikme_odeme_tarihi", "gecikme_odeme_tutari"])
+
+        summary = penalty_summary_for_student(loan.ogrenci, limit=10)
+        return Response(
+            {
+                "detail": "Ceza ödemesi kaydedildi.",
+                "summary": summary,
+                "loan_id": loan.id,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
+class UpdateOverdueLoansView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        try:
+            result = update_overdue_loans()
+        except Exception as exc:
+            return Response({"error": str(exc)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        if isinstance(result, dict) and "total_penalty" in result:
+            try:
+                total_penalty = result.get("total_penalty")
+                if total_penalty is not None:
+                    result["total_penalty"] = format(Decimal(total_penalty), ".2f")
+            except Exception:
+                result["total_penalty"] = str(result.get("total_penalty"))
+
+        return Response(
+            {
+                "detail": "Gecikme kayıtları güncellendi.",
+                "result": result,
+            },
+            status=status.HTTP_200_OK,
+        )
 
 
 class BookHistoryView(APIView):

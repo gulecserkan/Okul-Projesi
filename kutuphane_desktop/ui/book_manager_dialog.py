@@ -10,7 +10,8 @@ from PyQt5.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QWidget, QLineEdit,
     QTableWidget, QTableWidgetItem, QHeaderView, QPushButton, QLabel,
     QSizePolicy, QMessageBox, QToolButton, QFormLayout, QDialogButtonBox,
-    QListWidget, QListWidgetItem, QCompleter, QCheckBox
+    QListWidget, QListWidgetItem, QCompleter, QCheckBox, QSpinBox,
+    QStackedWidget, QAbstractItemView
 )
 
 from api import books as book_api
@@ -63,7 +64,7 @@ class LabelPrintDialog(QDialog):
     def __init__(self, copies, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Etiket Yazdır")
-        self.resize(360, 420)
+        self.resize(300, 360)
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(12, 12, 12, 12)
@@ -75,10 +76,8 @@ class LabelPrintDialog(QDialog):
         btn_row = QHBoxLayout()
         self.btn_all = QPushButton("Hepsi")
         self.btn_none = QPushButton("Hiçbiri")
-        self.btn_toggle = QPushButton("Seçimi Tersle")
         btn_row.addWidget(self.btn_all)
         btn_row.addWidget(self.btn_none)
-        btn_row.addWidget(self.btn_toggle)
         layout.addLayout(btn_row)
 
         self.list = QListWidget()
@@ -92,32 +91,29 @@ class LabelPrintDialog(QDialog):
             self.list.addItem(item)
         layout.addWidget(self.list, 1)
 
-        buttons = QDialogButtonBox(QDialogButtonBox.Close)
+        buttons = QHBoxLayout()
+        self.btn_close = QPushButton("Kapat")
+        self.btn_close.setObjectName("DialogCloseButton")
+        self.btn_close.clicked.connect(self.reject)
+
         self.btn_print = QPushButton("Yazdır")
+        self.btn_print.setObjectName("DialogWarnLargeButton")
         self.btn_print.setEnabled(self._has_checked())
-        buttons.addButton(self.btn_print, QDialogButtonBox.AcceptRole)
-        buttons.rejected.connect(self.reject)
+        self.btn_print.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
         self.btn_print.clicked.connect(self.accept)
-        layout.addWidget(buttons)
+
+        buttons.addWidget(self.btn_close)
+        buttons.addWidget(self.btn_print, 1)
+        layout.addLayout(buttons)
 
         self.btn_all.clicked.connect(lambda: self._set_all(Qt.Checked))
         self.btn_none.clicked.connect(lambda: self._set_all(Qt.Unchecked))
-        self.btn_toggle.clicked.connect(self._invert_selection)
         self.list.itemChanged.connect(lambda _: self._update_print_state())
 
     def _set_all(self, state):
         self.list.blockSignals(True)
         for i in range(self.list.count()):
             self.list.item(i).setCheckState(state)
-        self.list.blockSignals(False)
-        self._update_print_state()
-
-    def _invert_selection(self):
-        self.list.blockSignals(True)
-        for i in range(self.list.count()):
-            item = self.list.item(i)
-            new_state = Qt.Checked if item.checkState() == Qt.Unchecked else Qt.Unchecked
-            item.setCheckState(new_state)
         self.list.blockSignals(False)
         self._update_print_state()
 
@@ -155,6 +151,7 @@ class BookManagerDialog(QDialog):
         self._title_index = {}
         self._book_index = {}
         self._pending_duplicate_matches: List[Dict] = []
+        self._mode = "view"
 
         main = QVBoxLayout(self)
         main.setContentsMargins(12, 12, 12, 12)
@@ -193,7 +190,7 @@ class BookManagerDialog(QDialog):
         title_layout.setSpacing(6)
         title_layout.addWidget(self.input_title, 1)
         title_layout.addWidget(self.chk_titlecase)
-        form_v.addWidget(self._form_row_single("Başlık", title_container))
+        form_v.addWidget(self._form_row_single("Kitap Adı", title_container))
 
         self.title_suggestion_list = QListWidget()
         self.title_suggestion_list.setObjectName("TitleSuggestionList")
@@ -216,11 +213,13 @@ class BookManagerDialog(QDialog):
         self.author_suggestion_list.setSelectionMode(QListWidget.SingleSelection)
         self.author_suggestion_list.setVisible(False)
         self.author_suggestion_list.setMaximumHeight(140)
-        self.author_suggestion_list.itemClicked.connect(lambda item: self._apply_author_suggestion(item.text(), item.data(Qt.UserRole)))
-        btn_add_author = QToolButton()
-        btn_add_author.setText("+")
-        btn_add_author.setToolTip("Yeni yazar ekle")
-        btn_add_author.clicked.connect(self.add_author_quick)
+        self.author_suggestion_list.itemClicked.connect(
+            lambda item: self._apply_author_suggestion(item.text(), item.data(Qt.UserRole))
+        )
+        self.btn_add_author = QToolButton()
+        self.btn_add_author.setText("+")
+        self.btn_add_author.setToolTip("Yeni yazar ekle")
+        self.btn_add_author.clicked.connect(self.add_author_quick)
 
         self.input_category = TitleLineEdit()
         self.input_category.setPlaceholderText("Kategori")
@@ -245,7 +244,7 @@ class BookManagerDialog(QDialog):
         row2h = QHBoxLayout(row2)
         row2h.setContentsMargins(0, 0, 0, 0)
         row2h.setSpacing(8)
-        row2h.addWidget(self._form_row_labeled("Yazar", self.input_author, btn_add_author))
+        row2h.addWidget(self._form_row_labeled("Yazar", self.input_author, self.btn_add_author))
         row2h.addWidget(self._form_row_labeled("Kategori", self.input_category, self.btn_category_info))
         row2h.setStretch(0, 1)
         row2h.setStretch(1, 1)
@@ -259,6 +258,7 @@ class BookManagerDialog(QDialog):
 
         self.label_copy_count = QLabel("0")
         self.btn_manage_copies = QPushButton("Nüshaları Yönet")
+        self.btn_manage_copies.setEnabled(False)
         self.btn_manage_copies.clicked.connect(self.open_copies_dialog)
 
         row3 = QWidget()
@@ -282,37 +282,67 @@ class BookManagerDialog(QDialog):
 
         main.addWidget(self.form_container)
 
+        self._form_edit_widgets = [
+            self.input_title,
+            self.chk_titlecase,
+            self.title_suggestion_list,
+            self.input_author,
+            self.author_suggestion_list,
+            self.input_category,
+            self.category_suggestion_list,
+            self.input_isbn,
+            self.btn_add_author,
+            self.btn_category_info,
+        ]
+
         # Butonlar
         self.button_row_widget = QWidget()
         btn_row = QHBoxLayout(self.button_row_widget)
         btn_row.setContentsMargins(0, 0, 0, 0)
         btn_row.setSpacing(8)
         self.btn_new = QPushButton("Yeni")
-        self.btn_new.setObjectName("PrimaryNeutralButton")
+        self.btn_new.setObjectName("ActionNewButton")
+        self.btn_edit = QPushButton("Düzenle")
+        self.btn_edit.setObjectName("ActionEditButton")
         self.btn_save = QPushButton("Kaydet")
         self.btn_save.setObjectName("DialogPositiveButton")
+        self.btn_cancel_edit = QPushButton("İptal")
+        self.btn_cancel_edit.setObjectName("DialogNegativeButton")
         self.btn_delete = QPushButton("Sil")
         self.btn_delete.setObjectName("DialogNegativeButton")
         self.btn_print = QPushButton("Barkod Bas")
-        self.btn_print.setEnabled(True)
-        self.btn_close = QPushButton("Kapat")
+        self.btn_print.setEnabled(False)
+        self.btn_close = QPushButton("Pencereyi Kapat")
 
-        for b in (self.btn_new, self.btn_save, self.btn_delete, self.btn_print, self.btn_close):
+        for b in (
+            self.btn_new,
+            self.btn_edit,
+            self.btn_save,
+            self.btn_cancel_edit,
+            self.btn_delete,
+            self.btn_print,
+            self.btn_close,
+        ):
             b.setAutoDefault(False)
             b.setDefault(False)
 
         self.btn_save.setAutoDefault(True)
         self.btn_save.setDefault(True)
 
-        self.btn_new.clicked.connect(self.reset_form)
+        self.btn_new.clicked.connect(self.start_new_entry)
+        self.btn_edit.clicked.connect(self.start_edit_mode)
         self.btn_save.clicked.connect(self.save_book)
+        self.btn_cancel_edit.clicked.connect(self.cancel_editing)
         self.btn_delete.clicked.connect(self.delete_book)
         self.btn_print.clicked.connect(self.print_labels)
         self.btn_close.clicked.connect(self.accept)
 
         btn_row.addWidget(self.btn_new)
-        btn_row.addWidget(self.btn_save)
+        btn_row.addWidget(self.btn_edit)
         btn_row.addWidget(self.btn_delete)
+        btn_row.addStretch(1)
+        btn_row.addWidget(self.btn_save)
+        btn_row.addWidget(self.btn_cancel_edit)
         btn_row.addStretch(1)
         btn_row.addWidget(self.btn_print)
         main.addWidget(self.button_row_widget)
@@ -321,6 +351,7 @@ class BookManagerDialog(QDialog):
         self.setTabOrder(self.input_author, self.input_category)
         self.setTabOrder(self.input_category, self.input_isbn)
         self.setTabOrder(self.input_isbn, self.btn_save)
+        self._setup_enter_shortcuts()
 
         # Arama ve tablo
         self.search_box = QLineEdit()
@@ -351,6 +382,7 @@ class BookManagerDialog(QDialog):
         # Veri yükle
         self.load_reference_data()
         self.load_books()
+        self.reset_form()
 
     # --------------------------- UI helpers --------------------------- #
     def _form_row_single(self, label_text: str, widget):
@@ -846,8 +878,55 @@ class BookManagerDialog(QDialog):
         QMessageBox.information(self, "Kategoriler", lines)
 
     # --------------------------- Form ops --------------------------- #
-    def reset_form(self):
-        self.current_id = None
+    def _set_mode(self, mode: str):
+        if mode not in ("view", "create", "edit"):
+            mode = "view"
+        if self._mode != mode:
+            self._mode = mode
+        self._update_action_states()
+
+    def _update_action_states(self):
+        editing = self._mode in ("create", "edit")
+        has_book = bool(self.current_id)
+
+        for widget in self._form_edit_widgets:
+            widget.setEnabled(editing)
+
+        self.btn_save.setEnabled(editing)
+        self.btn_save.setDefault(editing)
+        self.btn_cancel_edit.setEnabled(editing)
+
+        self.btn_new.setEnabled(not editing)
+        self.btn_edit.setEnabled(not editing and has_book)
+        self.btn_delete.setEnabled(not editing and has_book)
+        self.btn_manage_copies.setEnabled((self._mode == "edit") and has_book)
+        self.btn_print.setEnabled(not editing and has_book)
+
+        self.table.setEnabled(not editing)
+        self.search_box.setEnabled(not editing)
+        self.toggle_form_button.setEnabled(not editing)
+        self.btn_close.setEnabled(not editing)
+
+    def _focus_widget(self, widget):
+        if not widget:
+            return
+        if widget.isEnabled():
+            widget.setFocus(Qt.TabFocusReason)
+        else:
+            widget.setFocus(Qt.OtherFocusReason)
+
+    def _setup_enter_shortcuts(self):
+        def bind_enter(source, target):
+            if not source or not hasattr(source, "returnPressed"):
+                return
+            source.returnPressed.connect(lambda target=target: self._focus_widget(target))
+
+        bind_enter(self.input_title, self.input_author)
+        bind_enter(self.input_author, self.input_category)
+        bind_enter(self.input_category, self.input_isbn)
+        bind_enter(self.input_isbn, self.btn_save)
+
+    def _clear_form_fields(self):
         self.input_title.clear()
         self.input_isbn.clear()
         self._selected_author_id = None
@@ -861,13 +940,47 @@ class BookManagerDialog(QDialog):
         self.input_category.blockSignals(False)
         self._hide_category_suggestions()
         self.label_copy_count.setText("0")
-        self.table.clearSelection()
         self._hide_title_suggestions()
-        self.input_title.setFocus()
+
+    def reset_form(self):
+        self.current_id = None
+        self.table.clearSelection()
+        self._clear_form_fields()
+        self._set_mode("view")
+
+    def start_new_entry(self):
+        self.current_id = None
+        self.table.clearSelection()
+        self._clear_form_fields()
+        self._set_mode("create")
+        self.input_title.setFocus(Qt.TabFocusReason)
+
+    def start_edit_mode(self):
+        if not self.current_id:
+            QMessageBox.information(self, "Bilgi", "Önce bir kitap seçin.")
+            return
+        self._set_mode("edit")
+        self.input_title.setFocus(Qt.TabFocusReason)
+
+    def cancel_editing(self):
+        if self._mode not in ("create", "edit"):
+            return
+        if self._mode == "create":
+            self.reset_form()
+            return
+        self._set_mode("view")
+        if self.table.selectedItems():
+            self.on_row_selected()
+        else:
+            self.reset_form()
 
     def on_row_selected(self):
         items = self.table.selectedItems()
         if not items:
+            self.current_id = None
+            self._update_action_states()
+            return
+        if self._mode in ("create", "edit"):
             return
         data = items[0].data(Qt.UserRole) or {}
         self.current_id = data.get("id")
@@ -887,6 +1000,7 @@ class BookManagerDialog(QDialog):
         if copies is None and self.current_id:
             copies = len(book_api.list_copies_for_book(self.current_id))
         self.label_copy_count.setText(str(copies or 0))
+        self._update_action_states()
 
     def _set_author_from_record(self, value):
         if isinstance(value, dict):
@@ -923,15 +1037,18 @@ class BookManagerDialog(QDialog):
 
         if not title:
             QMessageBox.warning(self, "Uyarı", "Başlık boş olamaz.")
+            self._focus_widget(self.input_title)
             return None
         if not self.current_id and self._has_duplicate_title(title):
             self._handle_duplicate_title(title)
             return None
         if isbn and not ISBN_PATTERN.fullmatch(isbn):
             QMessageBox.warning(self, "Uyarı", "ISBN 10 ya da 13 hane olmalıdır (rakam/X).")
+            self._focus_widget(self.input_isbn)
             return None
         if (self.input_category.text() or "").strip() and self._selected_category_id is None:
             QMessageBox.warning(self, "Uyarı", "Lütfen listeden geçerli bir kategori seçin.")
+            self._focus_widget(self.input_category)
             return None
 
         payload = {
@@ -987,6 +1104,9 @@ class BookManagerDialog(QDialog):
         self._pending_duplicate_matches = []
 
     def save_book(self):
+        if self._mode not in ("create", "edit"):
+            QMessageBox.information(self, "Bilgi", "Kaydetmek için önce Yeni veya Düzenle ile düzenleme moduna geçin.")
+            return
         data = self._collect_payload()
         if data is None:
             return
@@ -998,24 +1118,24 @@ class BookManagerDialog(QDialog):
             resp = book_api.update_book(self.current_id, data)
             ok = resp.status_code in (200, 202)
         if ok:
-            # yeni kayıttaysa varsayılan 1 nüshayI KITxxxxx şablonuyla oluştur
             if creating:
+                created = {}
                 try:
                     created = resp.json() or {}
-                    bid = created.get("id")
-                    if bid:
-                        try:
-                            barkod = book_api.get_next_barcode(prefix="KIT", width=6)
-                        except Exception:
-                            barkod = ""
-                        _resp = book_api.create_copy(bid, barkod)
-                        if _resp.status_code not in (200, 201):
-                            # Boş göndererek sunucu otomatik üretimini deneyelim
-                            _resp2 = book_api.create_copy(bid, "")
-                            if _resp2.status_code not in (200, 201):
-                                QMessageBox.warning(self, "Uyarı", "Varsayılan nüsha otomatik oluşturulamadı.")
                 except Exception:
-                    pass
+                    created = {}
+                book_id = created.get("id")
+                if not book_id:
+                    QMessageBox.warning(self, "Uyarı", "Kitap oluşturuldu ancak kimlik alınamadı. Lütfen listeyi yenileyin.")
+                    self.load_books()
+                    self.reset_form()
+                    return
+                context = self._build_print_context(created)
+                wizard = InitialCopyWizard(book_id, context, parent=self)
+                if wizard.exec_() != QDialog.Accepted:
+                    book_api.delete_book(book_id)
+                    QMessageBox.information(self, "İptal", "Nüsha eklenmediği için kitap kaydı iptal edildi.")
+                    return
             QMessageBox.information(self, "Başarılı", "Kitap kaydedildi.")
             self.load_books()
             self.reset_form()
@@ -1107,6 +1227,14 @@ class BookManagerDialog(QDialog):
 
         QMessageBox.information(self, "Etiket", f"{len(contexts)} etiket yazıcıya gönderildi.")
 
+
+        try:
+            print_label_batch(template_path, contexts)
+        except Exception as exc:
+            QMessageBox.warning(self, "Etiket", f"Etiketler yazdırılamadı:\n{exc}")
+            return
+        QMessageBox.information(self, "Etiket", f"{len(contexts)} etiket yazıcıya gönderildi.")
+
     def _ask_yes_no(self, title, text) -> bool:
         box = QMessageBox(self)
         box.setWindowTitle(title)
@@ -1143,6 +1271,7 @@ class BookManagerDialog(QDialog):
             "barcode": "",
             "shelf_code": "",
         }
+
 
     # ------------------------ Copies management ----------------------- #
     def open_copies_dialog(self):
@@ -1366,3 +1495,229 @@ class CopiesManagerDialog(QDialog):
             self.input_shelf.setText(self._last_shelf)
         else:
             self.input_shelf.clear()
+
+
+class InitialCopyWizard(QDialog):
+    def __init__(self, book_id, context, parent=None):
+        super().__init__(parent)
+        self.book_id = book_id
+        self.context = context or {}
+        self.created_copies: List[Dict] = []
+        self.setWindowTitle("Nüsha Oluştur")
+        self.resize(480, 420)
+
+        root = QVBoxLayout(self)
+        root.setContentsMargins(12, 12, 12, 12)
+        root.setSpacing(10)
+
+        self.stack = QStackedWidget()
+        root.addWidget(self.stack, 1)
+
+        config_page = QWidget()
+        config_layout = QVBoxLayout(config_page)
+        config_layout.setContentsMargins(0, 0, 0, 0)
+        config_layout.setSpacing(8)
+
+        info = QLabel(
+            "Bu kitap için oluşturulacak nüsha sayısını ve raf kodlarını girin.\n"
+            "En az bir nüsha oluşturmanız zorunludur."
+        )
+        info.setWordWrap(True)
+        config_layout.addWidget(info)
+
+        spin_row = QHBoxLayout()
+        spin_row.addWidget(QLabel("Nüsha sayısı:"))
+        self.spin_count = QSpinBox()
+        self.spin_count.setMinimum(1)
+        self.spin_count.setMaximum(100)
+        self.spin_count.setValue(1)
+        self.spin_count.valueChanged.connect(self._sync_copy_rows)
+        spin_row.addWidget(self.spin_count, 0)
+        spin_row.addStretch(1)
+        config_layout.addLayout(spin_row)
+
+        self.copy_table = QTableWidget(1, 1)
+        self.copy_table.setHorizontalHeaderLabels(["Raf Kodu (opsiyonel)"])
+        header = self.copy_table.horizontalHeader()
+        header.setSectionResizeMode(0, QHeaderView.Stretch)
+        self._last_shelf_value = ""
+        self.copy_table.itemChanged.connect(self._remember_last_shelf)
+        self._set_row_default(0)
+        config_layout.addWidget(self.copy_table, 1)
+
+        btn_row = QHBoxLayout()
+        btn_row.addStretch(1)
+        self.btn_cancel = QPushButton("İptal")
+        self.btn_create = QPushButton("Nüshaları Oluştur")
+        self.btn_cancel.setObjectName("DialogNegativeButton")
+        self.btn_cancel.setAutoDefault(False)
+        self.btn_cancel.setDefault(False)
+        self.btn_create.setObjectName("DialogPositiveButton")
+        self.btn_create.setAutoDefault(True)
+        self.btn_create.setDefault(True)
+        btn_row.addWidget(self.btn_cancel)
+        btn_row.addWidget(self.btn_create)
+        config_layout.addLayout(btn_row)
+
+        self.btn_cancel.clicked.connect(self.reject)
+        self.btn_create.clicked.connect(self._create_copies)
+
+        summary_page = QWidget()
+        summary_layout = QVBoxLayout(summary_page)
+        summary_layout.setContentsMargins(0, 0, 0, 0)
+        summary_layout.setSpacing(8)
+
+        self.summary_label = QLabel("")
+        summary_layout.addWidget(self.summary_label)
+
+        self.summary_table = QTableWidget(0, 2)
+        self.summary_table.setHorizontalHeaderLabels(["Barkod", "Raf"])
+        header = self.summary_table.horizontalHeader()
+        header.setSectionResizeMode(0, QHeaderView.Stretch)
+        header.setSectionResizeMode(1, QHeaderView.ResizeToContents)
+        summary_layout.addWidget(self.summary_table, 1)
+
+        summary_btn_row = QHBoxLayout()
+        summary_btn_row.addStretch(1)
+        self.btn_print = QPushButton("Etiket Yazdır")
+        self.btn_finish = QPushButton("Bitti")
+        self.btn_print.setAutoDefault(False)
+        self.btn_print.setDefault(False)
+        self.btn_finish.setObjectName("DialogPositiveButton")
+        self.btn_finish.setAutoDefault(True)
+        self.btn_finish.setDefault(False)
+        summary_btn_row.addWidget(self.btn_print)
+        summary_btn_row.addWidget(self.btn_finish)
+        summary_layout.addLayout(summary_btn_row)
+
+        self.btn_print.clicked.connect(self._print_labels)
+        self.btn_finish.clicked.connect(self.accept)
+
+        self.stack.addWidget(config_page)
+        self.stack.addWidget(summary_page)
+        self.stack.setCurrentIndex(0)
+        QTimer.singleShot(0, lambda: self.spin_count.setFocus(Qt.TabFocusReason))
+
+    def _sync_copy_rows(self, count):
+        current = self.copy_table.rowCount()
+        if count > current:
+            for _ in range(count - current):
+                row = self.copy_table.rowCount()
+                self.copy_table.insertRow(row)
+                self._set_row_default(row)
+        elif count < current:
+            for _ in range(current - count):
+                self.copy_table.removeRow(self.copy_table.rowCount() - 1)
+
+    def _set_row_default(self, row):
+        value = self._last_shelf_value or ""
+        item = QTableWidgetItem(value)
+        self.copy_table.setItem(row, 0, item)
+
+    def _remember_last_shelf(self, item):
+        if item and item.column() == 0:
+            text = item.text().strip()
+            if text:
+                self._last_shelf_value = text
+
+    def _create_copies(self):
+        count = self.spin_count.value()
+        shelves = []
+        for row in range(count):
+            item = self.copy_table.item(row, 0)
+            shelves.append((item.text().strip() if item else "") or None)
+
+        self.btn_create.setEnabled(False)
+        self.btn_cancel.setEnabled(False)
+        copies = []
+        for shelf in shelves:
+            resp = book_api.create_copy(self.book_id, "", shelf)
+            if resp.status_code not in (200, 201):
+                detail = book_api.extract_error(resp)
+                QMessageBox.warning(self, "Hata", f"Nüsha oluşturulamadı.\n\nDetay: {detail}")
+                self.btn_create.setEnabled(True)
+                self.btn_cancel.setEnabled(True)
+                return
+            try:
+                data = resp.json() or {}
+            except Exception:
+                data = {}
+            data.setdefault("raf_kodu", shelf or "")
+            copies.append(data)
+
+        if not copies:
+            QMessageBox.warning(self, "Hata", "Nüsha oluşturulamadı.")
+            self.btn_create.setEnabled(True)
+            self.btn_cancel.setEnabled(True)
+            return
+
+        self.created_copies = copies
+        self._populate_summary()
+        self.stack.setCurrentIndex(1)
+        self.btn_finish.setDefault(True)
+        self.btn_create.setDefault(False)
+
+    def _populate_summary(self):
+        self.summary_table.setRowCount(len(self.created_copies))
+        for row, cp in enumerate(self.created_copies):
+            self.summary_table.setItem(row, 0, QTableWidgetItem(str(cp.get("barkod") or "")))
+            self.summary_table.setItem(row, 1, QTableWidgetItem(str(cp.get("raf_kodu") or "")))
+        self.summary_label.setText(f"{len(self.created_copies)} nüsha oluşturuldu.")
+
+    def _print_labels(self):
+        if not self.created_copies:
+            return
+        template_path = get_default_template_path()
+        if not template_path:
+            QMessageBox.warning(self, "Etiket", "Varsayılan etiket şablonu bulunamadı. Etiket Editörü'nden seçin.")
+            return
+        contexts = []
+        title = self.context.get("title", "")
+        author = self.context.get("author", "")
+        category = self.context.get("category", "")
+        isbn = self.context.get("isbn", "")
+        for cp in self.created_copies:
+            contexts.append(
+                {
+                    "title": title,
+                    "author": author,
+                    "category": category,
+                    "isbn": isbn,
+                    "barcode": cp.get("barkod", ""),
+                    "shelf_code": cp.get("raf_kodu", ""),
+                }
+            )
+        try:
+            print_label_batch(template_path, contexts)
+        except Exception as exc:
+            QMessageBox.warning(self, "Etiket", f"Etiketler yazdırılamadı:\n{exc}")
+            return
+        QMessageBox.information(self, "Etiket", f"{len(contexts)} etiket yazıcıya gönderildi.")
+
+    def keyPressEvent(self, event):
+        if self.stack.currentIndex() == 0:
+            if event.key() in (Qt.Key_Return, Qt.Key_Enter):
+                if self.copy_table.state() == QAbstractItemView.EditingState:
+                    super().keyPressEvent(event)
+                    return
+                if self.btn_create.isEnabled():
+                    self.btn_create.click()
+                    event.accept()
+                    return
+            if event.key() in (Qt.Key_Up, Qt.Key_Down):
+                delta = 1 if event.key() == Qt.Key_Up else -1
+                new_value = max(
+                    self.spin_count.minimum(),
+                    min(self.spin_count.maximum(), self.spin_count.value() + delta)
+                )
+                if new_value != self.spin_count.value():
+                    self.spin_count.setValue(new_value)
+                event.accept()
+                return
+        super().keyPressEvent(event)
+
+    def reject(self):
+        if self.stack.currentIndex() == 0:
+            super().reject()
+        else:
+            super().accept()

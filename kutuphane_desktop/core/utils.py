@@ -5,6 +5,22 @@ from typing import Any
 import requests
 from api import auth
 
+_session_expired_handler = None
+
+
+def register_session_expired_handler(handler):
+    global _session_expired_handler
+    _session_expired_handler = handler
+
+
+def _notify_session_expired():
+    handler = _session_expired_handler
+    if callable(handler):
+        try:
+            handler()
+        except Exception:
+            pass
+
 TURKISH_MONTHS = [
     "Oca", "Şub", "Mar", "Nis", "May", "Haz",
     "Tem", "Ağu", "Eyl", "Eki", "Kas", "Ara"
@@ -79,17 +95,29 @@ def api_request(method, url, **kwargs):
         resp = requests.request(method, url, headers=headers, **kwargs)
     except requests.RequestException as exc:
         return _OfflineResponse(url, exc)
+    except Exception as exc:  # pragma: no cover - beklenmeyen kütüphane hataları
+        return _OfflineResponse(url, exc)
 
     # Eğer token süresi dolduysa → refresh et ve tekrar dene
-    if resp.status_code == 401 and auth.refresh_access_token():
-        token = auth.get_access_token()
-        headers["Authorization"] = f"Bearer {token}"
-        try:
-            resp = requests.request(method, url, headers=headers, **kwargs)
-        except requests.RequestException as exc:
-            return _OfflineResponse(url, exc)
+    if resp.status_code == 401:
+        if auth.refresh_access_token():
+            token = auth.get_access_token()
+            headers["Authorization"] = f"Bearer {token}"
+            try:
+                resp = requests.request(method, url, headers=headers, **kwargs)
+            except requests.RequestException as exc:
+                return _OfflineResponse(url, exc)
+            except Exception as exc:  # pragma: no cover
+                return _OfflineResponse(url, exc)
+            if resp.status_code == 401:
+                setattr(resp, "error_message", "Oturum süresi doldu. Lütfen tekrar giriş yapın.")
+                _notify_session_expired()
+        else:
+            setattr(resp, "error_message", "Oturum süresi doldu. Lütfen tekrar giriş yapın.")
+            _notify_session_expired()
 
-    setattr(resp, "error_message", None)
+    if not hasattr(resp, "error_message"):
+        setattr(resp, "error_message", None)
     return resp
 
 

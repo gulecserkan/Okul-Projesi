@@ -1,43 +1,56 @@
-KİTAP YENİ KAYIT:
+İSTATİSTİK TAB I (AYARLAR ALTINDA):
+    burada gecikme ve toplam ceza vb istatistiksel veriler gösterilse.
+
+
+'''KİTAP YENİ KAYIT:(Tamamlandı)
     kitap yeni kayıtta;
         raf numarası yok
         enter tuşu tab gibi işlesin
         nüsha ekleme olmuyor (yeni ise nüsha eklenip çıkarken kayıt yapmasın. tampon da tutsun. barkod basımını da sormasın. kaydette sorsun.)
         kaydedince barkod basımını sorsun    
 
-    kitap eklemede barkod basımı olacak
+    kitap eklemede barkod basımı olacak'''
 
-PERSONEL:
+'''PERSONEL: (Tamamlandı)
     personel tablosu boşta duruyor. 
-    login de bunu devreye sokalım ve bu personel adı fişlerde yazılsın.
+    login de bunu devreye sokalım ve bu personel adı fişlerde yazılsın.'''
 
-LOGGİNG:
+
+'''LOGGİNG: (Tamamlandı)
     yapılan herbir işlem için log kayıtları oluşturalım.
+    log kayıtlarında bir standart getirelim.'''
 
-ETİKET TEST:
-    etiket test edilecek (yer değişimi olduğu için) (hem kitap kaydederken hem de editörde)
+'''ETİKET TEST: (Tamamlandı)
+    etiket test edilecek (yer değişimi olduğu için) (hem kitap kaydederken hem de editörde)'''
 
-BİLDİRİM AYARLARI:
+FİŞ:
+    fiş editörü ve fiş basımı test edilecek.
+
+'''HIZLI ARAMA: (Tamamlandı)
+    hızlı aramada görsel bazı hatalar var.
+    olası hatalar için değişik senaryolara göre test çoğaltılacak'''
+
+
     Bildirim ayarlarında yazıcı kotrolü çalışıyor. 
+BİLDİRİM AYARLARI:(ileride Tamamlanacak İnşaallah)
     diğer sms, mail ve mobil bildirimler kaydediliyor.
     fakat gerçekte gönderme şimdilik yok. yapılınca test edilecek
 
-CEZA AYARLARI:
+'''CEZA AYARLARI: (Tamamlandı)
     test edildi çalışıyor.
-    fakat öğrenci no girilince  kitap için ceza 41, toplam ceza 40 görünüyor neden?
+    
+    öğrenci no ile aramada ceza detayında farklı bir ceza,
+    kitap barkod ile arayınca o kişiye ait farklı bir ceza çıkıyor?
+    kontrol edilecek'''
 
-ÖDÜNÇ AYARLARI:
-    test edildi çalışıyor.
-    hafta sonunu kaydır seçeneği tekrar test edilecek.
-
-SİMGE:
+SİMGE:(şart değil. şimdilik kaladursun)
     butonlara uygun simgeler bulunup butonlar simgeli olacak.
 
 RAPOR:
     rapor sayfası bir nevi istatistik sayfası olacak. burası beraber düşünülecek.
 
-SAYIM:
-    kitap sayım düşünülecek.
+'''SAYIM: (Tamamlandı)
+    kitap sayım düşünülecek.'''
 
 BAZI NOTLAR:
     Cron veya başka bir zamanlayıcıyı

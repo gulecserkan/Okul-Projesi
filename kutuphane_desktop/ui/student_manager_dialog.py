@@ -374,6 +374,11 @@ class StudentManagerDialog(QDialog):
                     break
             self.table.setRowHidden(row, not match)
 
+        # filtre sonrası durum ikonları kaybolmasın diye widgetları yenile
+        for row in range(self.table.rowCount()):
+            data = self.table.item(row, 0).data(Qt.UserRole) or {}
+            self._set_status_widget(row, bool(data.get("aktif", True)))
+
     def reset_form(self):
         self.current_id = None
         self.input_first_name.clear()
@@ -849,6 +854,39 @@ class StudentManagerDialog(QDialog):
             painter.drawLine(int(size*0.72), int(size*0.28), int(size*0.28), int(size*0.72))
         painter.end()
         return QIcon(pm)
+
+    def _status_icon_pixmap(self, is_active: bool, size: int = 16) -> QPixmap:
+        pm = QPixmap(size, size)
+        pm.fill(Qt.transparent)
+        painter = QPainter(pm)
+        painter.setRenderHint(QPainter.Antialiasing, True)
+        color = QColor(46, 204, 113) if is_active else QColor(231, 76, 60)
+        painter.setBrush(QBrush(color))
+        painter.setPen(Qt.NoPen)
+        painter.drawEllipse(0, 0, size - 1, size - 1)
+        pen = QPen(Qt.white)
+        pen.setWidth(2)
+        painter.setPen(pen)
+        if is_active:
+            painter.drawLine(int(size * 0.25), int(size * 0.55), int(size * 0.45), int(size * 0.75))
+            painter.drawLine(int(size * 0.45), int(size * 0.75), int(size * 0.78), int(size * 0.28))
+        else:
+            painter.drawLine(int(size * 0.28), int(size * 0.28), int(size * 0.72), int(size * 0.72))
+            painter.drawLine(int(size * 0.72), int(size * 0.28), int(size * 0.28), int(size * 0.72))
+        painter.end()
+        return pm
+
+    def _set_status_widget(self, row: int, is_active: bool):
+        status_col = self.table.columnCount() - 1
+        widget = self.table.cellWidget(row, status_col)
+        if widget is None:
+            lbl = QLabel()
+            lbl.setAlignment(Qt.AlignCenter)
+            lbl.setMargin(0)
+            self.table.setCellWidget(row, status_col, lbl)
+            widget = lbl
+        if isinstance(widget, QLabel):
+            widget.setPixmap(self._status_icon_pixmap(is_active, 16))
 
 
 PHONE_PATTERN = re.compile(r"^\(5\d{2}\)\s\d{3}\s\d{2}\s\d{2}$")
