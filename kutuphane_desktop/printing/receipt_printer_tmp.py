@@ -20,23 +20,7 @@ class ReceiptPrintError(RuntimeError):
     """Raised when receipt printing fails."""
 
 
-
 _PLACEHOLDER_PATTERN = re.compile(r"\{\{\s*([a-zA-Z0-9_]+)\s*\}\}")
-_MONTH_NAMES_TR = [
-    "",
-    "Ocak",
-    "Şubat",
-    "Mart",
-    "Nisan",
-    "Mayıs",
-    "Haziran",
-    "Temmuz",
-    "Ağustos",
-    "Eylül",
-    "Ekim",
-    "Kasım",
-    "Aralık",
-]
 
 
 def _to_decimal(value) -> Decimal:
@@ -194,35 +178,6 @@ def _nearest_return_deadline(student: Dict[str, Any]) -> str:
     return best_display
 
 
-def _entry_is_pending(entry: Dict[str, Any]) -> bool:
-    if not isinstance(entry, dict):
-        return False
-    if entry.get("pending_return"):
-        return True
-    teslim = entry.get("teslim_tarihi")
-    status = (entry.get("durum") or "").lower()
-    return teslim in (None, "", False) and status in {"oduncte", "gecikmis"}
-
-
-def _month_label_from_entry(entry: Dict[str, Any]) -> str:
-    if not isinstance(entry, dict):
-        return ""
-    for key in ("ay_adi", "month_name"):
-        val = entry.get(key)
-        if isinstance(val, str) and val.strip():
-            return val.strip()
-    numeric_month = entry.get("ay") or entry.get("month")
-    if isinstance(numeric_month, int) and 1 <= numeric_month <= 12:
-        return _MONTH_NAMES_TR[numeric_month]
-    for date_key in ("teslim_tarihi", "olusturma_tarihi", "created", "tarih"):
-        dt = _parse_due_datetime(entry.get(date_key))
-        if isinstance(dt, datetime):
-            month_index = dt.month if 1 <= dt.month <= 12 else None
-            if month_index:
-                return _MONTH_NAMES_TR[month_index]
-    return ""
-
-
 def _format_debt_items(entries) -> str:
     if not entries:
         return "Borç kaydı bulunmuyor."
@@ -234,44 +189,14 @@ def _format_debt_items(entries) -> str:
         barcode = entry.get("barkod") or entry.get("barcode") or ""
         amount = _format_amount(entry.get("gecikme_cezasi"))
         paid = entry.get("gecikme_cezasi_odendi")
-        pending = _entry_is_pending(entry)
-        if pending:
-            status = "İade bekleniyor"
-        elif paid:
-            status = "Ödendi"
-        else:
-            status = ""
-        month_label = _month_label_from_entry(entry)
-        label = str(book).strip() if book else "Ceza"
-        if month_label:
-            header = f"- {month_label} - {label}"
-        else:
-            header = f"- {label}"
-        detail_parts = []
+        status = "Ödendi" if paid else "Bekliyor"
+        pieces = []
+        if book:
+            pieces.append(str(book))
         if barcode:
-            detail_parts.append(f"Barkod: {barcode}")
-        if status:
-            detail_parts.append(f"Tutar: {amount} ₺ ({status})")
-        else:
-            detail_parts.append(f"Tutar: {amount} ₺")
-        lines.append(header)
-        lines.append("  " + " - ".join(detail_parts))
-    return "\n".join(lines)
-
-
-def _format_pending_debt_items(entries) -> str:
-    pending_entries = [entry for entry in entries or [] if _entry_is_pending(entry)]
-    if not pending_entries:
-        return "İade bekleyen kayıt bulunmuyor."
-    lines = []
-    for entry in pending_entries:
-        book = entry.get("kitap") or entry.get("book") or ""
-        barcode = entry.get("barkod") or entry.get("barcode") or ""
-        amount = _format_amount(entry.get("gecikme_cezasi"))
-        label = book or "Ceza"
-        barcode_text = barcode or "—"
-        lines.append(f"- {label}")
-        lines.append(f"  Barkod: {barcode_text} - Tutar: {amount} ₺")
+            pieces.append(f"#{barcode}")
+        label = " ".join(pieces) if pieces else "Ceza"
+        lines.append(f"- {label}: {amount} ₺ ({status})")
     return "\n".join(lines)
 
 
@@ -280,9 +205,6 @@ def build_receipt_context(summary: Dict[str, Any] | None, **overrides) -> Dict[s
     student = summary.get("student") or {}
     entries = summary.get("entries") or []
     now = datetime.now()
-
-    pending_notice_override = overrides.pop("pending_debt_notice", None)
-    pending_entries_override = overrides.pop("pending_entries", None)
     remaining = summary.get("outstanding_total")
     operator_name = overrides.pop(
         "operator_name",
@@ -301,22 +223,11 @@ def build_receipt_context(summary: Dict[str, Any] | None, **overrides) -> Dict[s
         "loan_count": _loan_count(student),
         "remaining_debt": _format_amount(overrides.pop("remaining_debt", remaining)),
         "debt_items": _format_debt_items(entries),
-        "pending_debt_items": "",
         "return_deadline": overrides.pop("return_deadline", _nearest_return_deadline(student)),
         "payment_amount": _format_amount(overrides.pop("payment_amount", 0)),
         "payment_currency": overrides.pop("payment_currency", "TL"),
     }
     context.update(overrides)
-    if pending_entries_override is not None:
-        pending_items_text = _format_pending_debt_items(pending_entries_override)
-        context["pending_debt_items"] = pending_items_text
-        has_pending = pending_items_text and "İade bekleyen kayıt bulunmuyor." not in pending_items_text
-    else:
-        context["pending_debt_items"] = ""
-        has_pending = False
-
-    pending_notice = pending_notice_override or ""
-    context.setdefault("pending_debt_notice", pending_notice)
     for key, value in list(context.items()):
         if value is None:
             context[key] = ""
@@ -340,22 +251,15 @@ def _render_template_text(template_body: str, context: Dict[str, str], *, escape
     return _PLACEHOLDER_PATTERN.sub(replacer, template_body or "")
 
 
-def render_receipt_html(
-    template_body: str,
-    context: Dict[str, str],
-    *,
-    font_pt: int = 10,
-    font_family: str | None = None,
-) -> str:
+def render_receipt_html(template_body: str, context: Dict[str, str]) -> str:
     """Render receipt template as HTML (placeholder values are escaped)."""
     rendered = _render_template_text(template_body, context, escape_values=True)
     rendered = rendered.replace("\r\n", "\n").replace("\r", "\n")
     if not rendered.strip():
         rendered = "&nbsp;"
-    css_family = font_family or "inherit"
     style = (
         "<style>"
-        f"body{{margin:0;padding:0;font-family:{css_family};font-size:{font_pt}pt;}}"
+        "body{margin:0;padding:0;font-family:inherit;}"
         ".receipt-body{white-space:pre-line;}"
         ".receipt-body hr{margin:4px 0;height:2px;background:#000;border:none;display:block;}"
         "</style>"
@@ -472,12 +376,7 @@ def print_receipt_from_template(template_key: str, context: Dict[str, Any]) -> N
     if not body:
         raise ReceiptPrintError("Fiş şablonu boş. Lütfen Ayarlar > Fiş sekmesinden güncelleyin.")
 
-    rendered_html = render_receipt_html(
-        body,
-        _stringify_context(context),
-        font_pt=int(receipt_prefs.get("font_pt", 10) or 10),
-        font_family=receipt_prefs.get("font_family"),
-    )
+    rendered_html = render_receipt_html(body, _stringify_context(context))
     if not rendered_html.strip():
         raise ReceiptPrintError("Fiş içeriği üretilemedi. Şablon ve verileri kontrol edin.")
 

@@ -16,6 +16,8 @@ RECEIPT_PLACEHOLDERS = [
     ("payment_currency", "Para birimi"),
     ("remaining_debt", "Öğrencinin kalan borcu"),
     ("debt_items", "Borç kalemleri listesini metin olarak ekler"),
+    ("pending_debt_items", "İade bekleyen kayıtların bugünkü tahmini cezaları"),
+    ("pending_debt_notice", "İade bekleyen ceza kalemleriyle ilgili açıklama"),
     ("loan_count", "Aktif ödünç sayısı"),
     ("return_deadline", "En yakın iade tarihi"),
 ]
@@ -71,6 +73,8 @@ DEFAULT_RECEIPT_TEMPLATES = {
             "Tarih   : {{ receipt_date }} {{ receipt_time }}\n"
             "\n"
             "{{ debt_items }}\n"
+            "{{ pending_debt_items }}\n"
+            "{{ pending_debt_notice }}\n"
             "\n"
             "İşlemi yapan: {{ operator_name }}\n"
         ),

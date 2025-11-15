@@ -35,6 +35,15 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Kütüphane Yönetim Sistemi")
+        icon_path = os.path.normpath(
+            os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "resources", "icons", "library.png")
+        )
+        if os.path.exists(icon_path):
+            app = QApplication.instance()
+            icon = QIcon(icon_path)
+            if app:
+                app.setWindowIcon(icon)
+            self.setWindowIcon(icon)
         self.last_quick_query = ""
         self._dlg_student = None
         self._dlg_author = None
@@ -42,7 +51,8 @@ class MainWindow(QMainWindow):
         self._scanner_buffer = []
         self._scanner_start_ts = 0.0
         self._scanner_capture = False
-        self._scanner_timeout_s = 0.5
+        self._scanner_timeout_s = 0.8
+        self._scanner_lock_widget = None
         self._is_logging_out = False
         self._inactivity_timer = None
         self._inactivity_minutes = None
@@ -170,16 +180,26 @@ class MainWindow(QMainWindow):
             self._register_activity()
 
         if event.type() == QEvent.KeyPress:
-            if self.quick_input.hasFocus() or obj is self.quick_input:
-                return super().eventFilter(obj, event)
-
             focus = QApplication.focusWidget()
-            if isinstance(focus, (QLineEdit, QTextEdit, QPlainTextEdit)) and focus is not self.quick_input:
+            lock_widget = getattr(self, "_scanner_lock_widget", None)
+            if lock_widget is not None:
+                try:
+                    if sip.isdeleted(lock_widget) or not lock_widget.isVisible():
+                        self._scanner_lock_widget = None
+                    elif focus is lock_widget:
+                        return super().eventFilter(obj, event)
+                except RuntimeError:
+                    self._scanner_lock_widget = None
+
+            if isinstance(focus, (QLineEdit, QTextEdit, QPlainTextEdit)) and focus not in (self.quick_input, lock_widget):
                 return super().eventFilter(obj, event)
 
             modifiers = event.modifiers()
             if modifiers & (Qt.ControlModifier | Qt.AltModifier | Qt.MetaModifier):
                 self._reset_scanner_capture()
+                return super().eventFilter(obj, event)
+
+            if focus is self.quick_input and not self._scanner_capture:
                 return super().eventFilter(obj, event)
 
             key = event.key()
@@ -191,19 +211,41 @@ class MainWindow(QMainWindow):
                         self._reset_scanner_capture()
                         if text:
                             self._handle_scanner_input(text)
+                            self.run_quick_search()
                             return True
                 self._reset_scanner_capture()
                 return super().eventFilter(obj, event)
 
             # Printable karakterler
+            key = event.key()
+            if key == Qt.Key_Shift:
+                now = time.monotonic()
+                if not self._scanner_capture or (now - self._scanner_start_ts) > self._scanner_timeout_s:
+                    self._scanner_buffer = []
+                    self._scanner_start_ts = now
+                    self._scanner_capture = True
+                    self.quick_input.clear()
+                    self.quick_input.setFocus()
+                return True
+
             text = event.text() or ""
+            if (not text) and (Qt.Key_A <= key <= Qt.Key_Z) and event.modifiers() & Qt.ShiftModifier:
+                text = chr(key)
+            if (not text) and (Qt.Key_0 <= key <= Qt.Key_9) and event.modifiers() & Qt.ShiftModifier:
+                text = chr(key)
             if text and text.isprintable():
                 now = time.monotonic()
                 if not self._scanner_capture or (now - self._scanner_start_ts) > self._scanner_timeout_s:
                     self._scanner_buffer = []
                     self._scanner_start_ts = now
                     self._scanner_capture = True
+                    self.quick_input.clear()
                 self._scanner_buffer.append(text)
+                current = "".join(self._scanner_buffer)
+                if current:
+                    self.quick_input.setText(current)
+                if not self.quick_input.hasFocus():
+                    self.quick_input.setFocus()
                 return True
 
             # Diğer tuşlar scanner senaryosu değil
@@ -211,6 +253,8 @@ class MainWindow(QMainWindow):
 
         elif event.type() == QEvent.FocusIn and obj is self.quick_input:
             self._register_activity()
+            if not self._scanner_capture:
+                self._reset_scanner_capture()
             QTimer.singleShot(0, self.quick_input.selectAll)
         return super().eventFilter(obj, event)
 
@@ -218,8 +262,17 @@ class MainWindow(QMainWindow):
         self.quick_input.clear()
         self.quick_input.setText(text)
         self.quick_input.setFocus()
-        self.quick_input.selectAll()
-        self.perform_quick_search(text)
+
+    def set_scanner_lock(self, widget):
+        if widget is None:
+            return
+        self._scanner_lock_widget = widget
+
+    def clear_scanner_lock(self, widget):
+        if self._scanner_lock_widget is widget:
+            self._scanner_lock_widget = None
+        self._reset_scanner_capture()
+        self.quick_input.setFocus()
 
     def _reset_scanner_capture(self):
         self._scanner_buffer = []

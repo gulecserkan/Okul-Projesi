@@ -1,6 +1,3 @@
-İSTATİSTİK TAB I (AYARLAR ALTINDA):
-    burada gecikme ve toplam ceza vb istatistiksel veriler gösterilse.
-
 
 '''KİTAP YENİ KAYIT:(Tamamlandı)
     kitap yeni kayıtta;
@@ -22,37 +19,19 @@
 
 '''ETİKET TEST: (Tamamlandı)
     etiket test edilecek (yer değişimi olduğu için) (hem kitap kaydederken hem de editörde)'''
-
-FİŞ:
-    fiş editörü ve fiş basımı test edilecek.
-
 '''HIZLI ARAMA: (Tamamlandı)
     hızlı aramada görsel bazı hatalar var.
     olası hatalar için değişik senaryolara göre test çoğaltılacak'''
-
-
-    Bildirim ayarlarında yazıcı kotrolü çalışıyor. 
-BİLDİRİM AYARLARI:(ileride Tamamlanacak İnşaallah)
-    diğer sms, mail ve mobil bildirimler kaydediliyor.
-    fakat gerçekte gönderme şimdilik yok. yapılınca test edilecek
-
 '''CEZA AYARLARI: (Tamamlandı)
     test edildi çalışıyor.
     
     öğrenci no ile aramada ceza detayında farklı bir ceza,
     kitap barkod ile arayınca o kişiye ait farklı bir ceza çıkıyor?
     kontrol edilecek'''
-
-SİMGE:(şart değil. şimdilik kaladursun)
-    butonlara uygun simgeler bulunup butonlar simgeli olacak.
-
-RAPOR:
-    rapor sayfası bir nevi istatistik sayfası olacak. burası beraber düşünülecek.
-
 '''SAYIM: (Tamamlandı)
     kitap sayım düşünülecek.'''
 
-BAZI NOTLAR:
+'''BAZI NOTLAR:
     Cron veya başka bir zamanlayıcıyı
         python manage.py run_scheduled_tasks 
     komutunu (örn. her 15 dakikada bir) çağıracak şekilde güncelleyin; 
@@ -60,8 +39,26 @@ BAZI NOTLAR:
 
     Gerçek bildirim göndermeyi başlatmak istediğinizde 
         dispatch_notifications() 
-    içini kanala özel implementasyonlarla doldurmanız yeterli olacak.
+    içini kanala özel implementasyonlarla doldurmanız yeterli olacak.'''
 
+'''FİŞ:
+    "bilgilendirme/genel fiş" ve "borcu yoktur" denenecek ve nerede bunlara erişilecek?'''
 
 PAKET HALİNE GETİRME:
-    paket haline getirme?
+    - Sunucu ve masaüstü için ayrı .deb paketleri + (opsiyonel) meta paket.
+    - build script / CI yazılacak (debuild vs.) ve paketler releases veya apt reposunda tutulacak.
+    - ortam değişkenleri (.env) ile gizli bilgiler yönetilecek; systemd/cron bu env dosyalarını okuyacak.
+
+RAPOR:
+    rapor sayfası bir nevi istatistik sayfası olacak. burası beraber düşünülecek.
+
+İSTATİSTİK TAB I (AYARLAR ALTINDA):
+    burada gecikme ve toplam ceza vb istatistiksel veriler gösterilse.
+
+SİMGE:(şart değil. şimdilik kaladursun)
+    butonlara uygun simgeler bulunup butonlar simgeli olacak.
+
+BİLDİRİM AYARLARI:(ileride Tamamlanacak İnşaallah)
+  Bildirim ayarlarında yazıcı kotrolü çalışıyor.
+    diğer sms, mail ve mobil bildirimler kaydediliyor.
+    fakat gerçekte gönderme şimdilik yok. yapılınca test edilecek

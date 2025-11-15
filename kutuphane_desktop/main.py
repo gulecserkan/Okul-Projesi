@@ -11,7 +11,13 @@ from api.system import health_check
 LOCK_FILENAME = "kutuphane_desktop.lock"
 
 def main():
+    # WM_CLASS ve launcher eşleşmesi için
+    os.environ.setdefault("QT_WMCLASS", "kutuphane")
+    os.environ.setdefault("QT_QPA_PLATFORMTHEME", os.environ.get("QT_QPA_PLATFORMTHEME", "gtk3"))
     app = QApplication(sys.argv)
+    app.setApplicationName("kutuphane")
+    app.setApplicationDisplayName("Kütüphane")
+    app.setDesktopFileName("kutuphane.desktop")
 
     lock_path = os.path.join(tempfile.gettempdir(), LOCK_FILENAME)
     lock = QLockFile(lock_path)

@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 from decimal import Decimal, InvalidOperation
+from typing import Any, Dict
 
-from PyQt5.QtCore import Qt, QTime, QTimer
+from PyQt5.QtCore import Qt, QTime, QTimer, QSize
+from PyQt5.QtGui import QImage, QPainter, QPixmap
 from PyQt5.QtWidgets import (
     QCheckBox,
     QDialog,
@@ -25,6 +27,7 @@ from PyQt5.QtWidgets import (
     QTimeEdit,
     QVBoxLayout,
     QWidget,
+    QSizePolicy,
 )
 
 from core.config import load_settings, save_settings
@@ -38,6 +41,7 @@ from core.receipt_templates import RECEIPT_SCENARIOS, DEFAULT_RECEIPT_TEMPLATES,
 from api import auth
 from api import settings as settings_api
 from api import roles as roles_api
+from printing import receipt_printer
 
 
 class LabelSettingsWidget(QWidget):
@@ -165,6 +169,75 @@ class LabelSettingsWidget(QWidget):
         self.load_preferences()
 
 
+class ReceiptPreviewWidget(QWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._pixmap: QPixmap | None = None
+        self._message: str = "Önizleme yok"
+        self.setMinimumHeight(220)
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+
+    def render_preview(self, receipt_prefs: dict, text: str):
+        if not text.strip():
+            self._pixmap = None
+            self._message = "Şablon boş"
+            self.update()
+            return
+        try:
+            doc, _, _ = receipt_printer.create_receipt_document(receipt_prefs, text)
+        except Exception as exc:
+            self._pixmap = None
+            self._message = str(exc)
+            self.update()
+            return
+
+        page_size = doc.pageSize()
+        width_points = max(1.0, page_size.width())
+        height_points = max(1.0, page_size.height())
+        scale = max(1.5, self.logicalDpiX() / 72.0)
+        img_width = max(1, int(width_points * scale))
+        img_height = max(1, int(height_points * scale))
+        image = QImage(img_width, img_height, QImage.Format_ARGB32)
+        image.fill(Qt.white)
+
+        painter = QPainter(image)
+        painter.scale(scale, scale)
+        doc.drawContents(painter)
+        painter.end()
+
+        self._pixmap = QPixmap.fromImage(image)
+        self._message = ""
+        self.update()
+
+    def clear_preview(self, message: str = ""):
+        self._pixmap = None
+        self._message = message
+        self.update()
+
+    def sizeHint(self):
+        return QSize(320, 220)
+
+    def minimumSizeHint(self):
+        return QSize(200, 200)
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.fillRect(self.rect(), self.palette().base())
+        if self._pixmap:
+            target_pix = self._pixmap.scaled(
+                max(10, self.width() - 20),
+                max(10, self.height() - 20),
+                Qt.KeepAspectRatio,
+                Qt.SmoothTransformation,
+            )
+            x = (self.width() - target_pix.width()) // 2
+            y = (self.height() - target_pix.height()) // 2
+            painter.drawPixmap(max(0, x), max(0, y), target_pix)
+        else:
+            painter.setPen(Qt.gray)
+            painter.drawText(self.rect(), Qt.AlignCenter, self._message or "Önizleme yok")
+        painter.end()
+
 
 class ReceiptSettingsWidget(QWidget):
     def __init__(self, parent=None):
@@ -192,7 +265,24 @@ class ReceiptSettingsWidget(QWidget):
         self.spin_width.setRange(40.0, 210.0)
         self.spin_width.setSingleStep(0.5)
         self.spin_width.setMaximumWidth(120)
-        size_form.addRow("Genişlik (mm)", self.spin_width)
+
+        font_row = QWidget()
+        font_row_layout = QHBoxLayout(font_row)
+        font_row_layout.setContentsMargins(0, 0, 0, 0)
+        font_row_layout.setSpacing(8)
+        font_row_layout.addWidget(self.spin_width)
+
+        font_label = QLabel("Yazı (pt)")
+        font_row_layout.addWidget(font_label)
+
+        self.spin_font = QSpinBox()
+        self.spin_font.setRange(4, 32)
+        self.spin_font.setValue(self.font_pt)
+        self.spin_font.setMaximumWidth(80)
+        font_row_layout.addWidget(self.spin_font)
+        font_row_layout.addStretch(1)
+
+        size_form.addRow("Genişlik / Yazı", font_row)
 
         root.addWidget(size_group)
 
@@ -200,18 +290,27 @@ class ReceiptSettingsWidget(QWidget):
         self.lbl_printer_info.setWordWrap(True)
         root.addWidget(self.lbl_printer_info)
 
+        hint = QLabel(
+            "İpucu: Şablonlarda aşağıdaki etiketleri kullanabilirsiniz:\n"
+            "• &lt;b&gt;kalın metin&lt;/b&gt;\n"
+            "• &lt;i&gt;italik metin&lt;/i&gt;\n"
+            "• &lt;u&gt;altı çizili metin&lt;/u&gt;\n"
+            "• &lt;center&gt;ortalanmış metin&lt;/center&gt;\n"
+            "• &lt;hr&gt; yatay çizgi"
+        )
+        hint.setWordWrap(True)
+        hint.setTextFormat(Qt.RichText)
+        root.addWidget(hint)
+
         template_group = QGroupBox("Şablonlar")
         template_layout = QVBoxLayout(template_group)
 
-        self.template_views: dict[str, QPlainTextEdit] = {}
+        self.template_previews: dict[str, ReceiptPreviewWidget] = {}
         for key, title in RECEIPT_SCENARIOS:
             box = QGroupBox(title)
             box_layout = QVBoxLayout(box)
-            preview = QPlainTextEdit()
-            preview.setReadOnly(True)
-            preview.setLineWrapMode(QPlainTextEdit.NoWrap)
-            preview.setFixedHeight(140)
-            self.template_views[key] = preview
+            preview = ReceiptPreviewWidget()
+            self.template_previews[key] = preview
             box_layout.addWidget(preview)
             btn_row = QHBoxLayout()
             btn_edit = QPushButton("Şablonu Düzenle…")
@@ -231,6 +330,8 @@ class ReceiptSettingsWidget(QWidget):
         main_layout.addWidget(scroll)
 
         self.load_preferences()
+        self.spin_width.valueChanged.connect(lambda _: self._refresh_template_previews())
+        self.spin_font.valueChanged.connect(lambda _: self._refresh_template_previews())
 
     # ------------------------------------------------------------------
     def load_preferences(self):
@@ -263,6 +364,7 @@ class ReceiptSettingsWidget(QWidget):
                 self.templates.setdefault(key, value.copy())
 
         self.spin_width.setValue(self.mm_w)
+        self.spin_font.setValue(self.font_pt)
         self._refresh_template_previews()
 
         self._refresh_printer_info(printing)
@@ -276,6 +378,7 @@ class ReceiptSettingsWidget(QWidget):
         self.mm_h = float(self.mm_h)
         self.dpi = int(self.dpi)
         self.rotate_print = bool(self.rotate_print)
+        self.font_pt = int(self.spin_font.value())
 
         receipts.update(
             {
@@ -309,10 +412,23 @@ class ReceiptSettingsWidget(QWidget):
         self.lbl_printer_info.setText(info)
 
     def _refresh_template_previews(self):
-        for slug, view in self.template_views.items():
+        if not hasattr(self, "template_previews"):
+            return
+        prefs = self._current_receipt_prefs()
+        context = self._preview_context()
+        for slug, widget in self.template_previews.items():
             tmpl = self.templates.get(slug) or {}
             body = tmpl.get("body", "").strip()
-            view.setPlainText(body)
+            if body:
+                rendered = receipt_printer.render_receipt_html(
+                    body,
+                    context,
+                    font_pt=int(self.spin_font.value()),
+                    font_family=None,
+                )
+                widget.render_preview(prefs, rendered)
+            else:
+                widget.clear_preview("Şablon boş")
 
     def _edit_template(self, slug: str, title: str):
         data = self.templates.get(slug) or {}
@@ -329,6 +445,34 @@ class ReceiptSettingsWidget(QWidget):
             "body": dialog.template_text(),
         }
         self._refresh_template_previews()
+
+    def _current_receipt_prefs(self) -> dict:
+        return {
+            "mm_w": float(self.spin_width.value()),
+            "mm_h": self.mm_h,
+            "dpi": self.dpi,
+            "rotate_print": self.rotate_print,
+            "font_pt": int(self.spin_font.value()),
+        }
+
+    def _preview_context(self) -> Dict[str, Any]:
+        sample_summary = {
+            "student": {
+                "ad": "Ayşe",
+                "soyad": "Yılmaz",
+                "ogrenci_no": "2024-001",
+                "sinif": {"ad": "10-A"},
+                "rol": "Öğrenci",
+                "telefon": "(533) 000 00 00",
+                "email": "ayse@example.com",
+            },
+            "entries": [
+                {"kitap": "Matematik 101", "barkod": "BK123456", "gecikme_cezasi": "12.50"},
+                {"kitap": "Fen Bilimleri", "barkod": "BK654321", "gecikme_cezasi": "5.00", "gecikme_cezasi_odendi": True},
+            ],
+            "outstanding_total": "12.50",
+        }
+        return receipt_printer.build_receipt_context(sample_summary, payment_amount="25.00")
 
 class PasswordSettingsWidget(QWidget):
     def __init__(self, parent=None):

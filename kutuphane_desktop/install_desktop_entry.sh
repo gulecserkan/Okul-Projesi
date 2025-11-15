@@ -4,6 +4,7 @@ set -euo pipefail
 APP_NAME="kutuphane"
 APP_TITLE="Kütüphane"
 APP_COMMENT="Okul kütüphanesi masaüstü istemcisi"
+APP_WMCLASS="kutuphane"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 APP_ROOT="$SCRIPT_DIR"
 ICON_SRC="${APP_ROOT}/resources/icons/library.png"
@@ -41,6 +42,7 @@ Icon=${APP_NAME}
 Terminal=false
 Categories=Education;Office;
 StartupNotify=true
+StartupWMClass=${APP_WMCLASS}
 DESKTOP
 
 update-desktop-database "$DESKTOP_DIR" >/dev/null 2>&1 || true

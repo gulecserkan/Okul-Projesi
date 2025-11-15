@@ -267,7 +267,7 @@ class PenaltyNoticeDialog(QDialog):
     RESULT_SKIP = 1
     RESULT_PAID = 2
 
-    def __init__(self, *, summary: dict | None = None, parent=None):
+    def __init__(self, *, summary: dict | None = None, parent=None, receipt_callback=None):
         super().__init__(parent)
         self.setWindowTitle("Öğrenci Borcu")
         self.setModal(True)
@@ -277,6 +277,8 @@ class PenaltyNoticeDialog(QDialog):
         self.result_code = self.RESULT_CANCEL
         self.updated_summary = None
         self._base_url = get_api_base_url().rstrip("/")
+        self._receipt_callback = receipt_callback
+        self._student_info = (self.summary.get("student") or {}).copy()
 
         student = self.summary.get("student") or {}
         total = self.summary.get("outstanding_total") or "0.00"
@@ -380,6 +382,8 @@ class PenaltyNoticeDialog(QDialog):
         if last_summary:
             self.summary = last_summary
             self.updated_summary = last_summary
+            if self._student_info and not self.summary.get("student"):
+                self.summary["student"] = self._student_info
         if payable:
             student = (self.summary or {}).get("student") or {}
             base_detail = build_log_detail(
@@ -417,6 +421,16 @@ class PenaltyNoticeDialog(QDialog):
             summary["entries"] = (self.summary or {}).get("entries") or []
         if "outstanding_total" not in summary:
             summary["outstanding_total"] = (self.summary or {}).get("outstanding_total")
+        student_info = summary.get("student")
+        if self._student_info and not student_info:
+            summary["student"] = student_info = self._student_info
+        print("[DBG] PenaltyNoticeDialog receipt student:", student_info)
+        if callable(self._receipt_callback):
+            try:
+                self._receipt_callback(summary, amount_dec)
+                return
+            except Exception:
+                pass
         try:
             print_fine_payment_receipt(summary, amount_dec)
         except ReceiptPrintError as exc:
@@ -427,13 +441,15 @@ class PenaltyNoticeDialog(QDialog):
 class PenaltyDetailDialog(QDialog):
     penaltyPaid = pyqtSignal(dict)
 
-    def __init__(self, *, summary: dict | None = None, parent=None):
+    def __init__(self, *, summary: dict | None = None, parent=None, receipt_callback=None):
         super().__init__(parent)
         self.setWindowTitle("Ceza Detayı")
         self.setModal(True)
         self.resize(560, 320)
         self.summary = summary or {}
         self._base_url = get_api_base_url().rstrip("/")
+        self._receipt_callback = receipt_callback
+        self._student_info = (self.summary.get("student") or {}).copy()
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(16, 16, 16, 16)
@@ -484,6 +500,32 @@ class PenaltyDetailDialog(QDialog):
             except (InvalidOperation, ValueError, TypeError):
                 return Decimal("0")
 
+    def _print_receipt(self, amount):
+        amount_dec = self._parse_decimal(amount)
+        if amount_dec <= Decimal("0"):
+            return
+        summary = dict(self.summary or {})
+        if "entries" not in summary or not summary.get("entries"):
+            summary["entries"] = (self.summary or {}).get("entries") or []
+        if "outstanding_total" not in summary:
+            summary["outstanding_total"] = (self.summary or {}).get("outstanding_total")
+        student_info = summary.get("student")
+        if self._student_info and not student_info:
+            summary["student"] = student_info = self._student_info
+        print("[DBG] PenaltyDetailDialog receipt student:", student_info)
+        if callable(self._receipt_callback):
+            try:
+                self._receipt_callback(summary, amount_dec)
+                return
+            except Exception:
+                pass
+        try:
+            print_fine_payment_receipt(summary, amount_dec)
+        except ReceiptPrintError as exc:
+            QMessageBox.warning(self, "Fiş Yazdırma", str(exc))
+        except Exception as exc:
+            QMessageBox.warning(self, "Fiş Yazdırma", f"Fiş yazdırma başarısız:\n{exc}")
+
     def _format_currency(self, amount) -> str:
         decimal_value = self._parse_decimal(amount)
         try:
@@ -497,22 +539,32 @@ class PenaltyDetailDialog(QDialog):
         self.table.setRowCount(len(entries))
 
         total = self._parse_decimal(self.summary.get("outstanding_total"))
+        has_pending = bool(self.summary.get("pending_notice"))
         if total > Decimal("0"):
             self.label_total.setText(f"Toplam bekleyen ceza: {self._format_currency(total)}")
-            self.info_label.setText("Teslim edilen kitapların cezalarını tek tek tahsil edebilirsiniz.")
         else:
             self.label_total.setText("Bekleyen ceza bulunmuyor.")
-            self.info_label.setText("Tüm cezalar tahsil edilmiş görünüyor.")
 
+        info_lines = []
+        if total > Decimal("0"):
+            info_lines.append("Teslim edilen kitapların cezalarını tek tek tahsil edebilirsiniz.")
+        else:
+            info_lines.append("Tüm cezalar tahsil edilmiş görünüyor.")
+
+        pending_detected = False
         for row, entry in enumerate(entries):
             amount = self._parse_decimal(entry.get("gecikme_cezasi"))
             paid = bool(entry.get("gecikme_cezasi_odendi"))
             durum = (entry.get("durum") or "").lower()
             teslim = entry.get("teslim_tarihi")
+            pending = bool(entry.get("pending_return")) or (teslim is None and durum in {"oduncte", "gecikmis"})
+            if pending:
+                pending_detected = True
 
             self.table.setItem(row, 0, QTableWidgetItem(entry.get("kitap", "")))
             self.table.setItem(row, 1, QTableWidgetItem(entry.get("barkod", "")))
-            self.table.setItem(row, 2, QTableWidgetItem(durum.title()))
+            status_label = "İade bekleniyor" if pending else durum.title()
+            self.table.setItem(row, 2, QTableWidgetItem(status_label))
             self.table.setItem(row, 3, QTableWidgetItem(format_date(teslim)))
             self.table.setItem(row, 4, QTableWidgetItem(self._format_currency(amount)))
             for col in range(5):
@@ -546,11 +598,24 @@ class PenaltyDetailDialog(QDialog):
                 btn_pay.clicked.connect(partial(self._handle_payment, entry))
                 self.table.setCellWidget(row, 5, btn_pay)
             else:
-                label = QLabel("Ödendi" if paid else "—")
-                label.setAlignment(Qt.AlignCenter)
                 if paid:
-                    label.setStyleSheet("color:#27ae60;font-weight:600;")
+                    label_text = "Ödendi"
+                    label_style = "color:#27ae60;font-weight:600;"
+                elif pending:
+                    label_text = "İade bekleniyor"
+                    label_style = "color:#f39c12;font-weight:600;"
+                else:
+                    label_text = "—"
+                    label_style = ""
+                label = QLabel(label_text)
+                label.setAlignment(Qt.AlignCenter)
+                if label_style:
+                    label.setStyleSheet(label_style)
                 self.table.setCellWidget(row, 5, label)
+
+        if pending_detected or has_pending:
+            info_lines.append("İade edilmeyen kayıtların ceza tutarları bilgilendirme amaçlıdır; kitap iade edilirken tutar yeniden hesaplanır ve bu ekrandan tahsil edilemez.")
+        self.info_label.setText(" ".join(info_lines))
 
     def _handle_payment(self, entry):
         loan_id = entry.get("id")
@@ -600,6 +665,8 @@ class PenaltyDetailDialog(QDialog):
         summary = data.get("summary") or {}
         if summary:
             self.summary = summary
+            if self._student_info and not self.summary.get("student"):
+                self.summary["student"] = self._student_info
         student = (self.summary or {}).get("student") or {}
         detail = build_log_detail(
             student=student,
