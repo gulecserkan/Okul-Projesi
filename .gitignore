@@ -17,6 +17,9 @@ dist/
 *.egg
 *.manifest
 *.spec
+kutuphane_desktop/packaging/.build/
+kutuphane_desktop/packaging/dist/
+kutuphane_desktop/packaging/apt-repo/
 
 # Django runtime data
 db.sqlite3

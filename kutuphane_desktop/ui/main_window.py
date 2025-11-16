@@ -34,7 +34,12 @@ _active_login_window = None
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Kütüphane Yönetim Sistemi")
+        try:
+            from core.version import get_version
+            version_str = get_version()
+        except Exception:
+            version_str = "dev"
+        self.setWindowTitle(f"Kütüphane Yönetim Sistemi v{version_str}")
         icon_path = os.path.normpath(
             os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "resources", "icons", "library.png")
         )
