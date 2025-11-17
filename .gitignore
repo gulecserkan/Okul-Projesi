@@ -20,6 +20,8 @@ dist/
 kutuphane_desktop/packaging/.build/
 kutuphane_desktop/packaging/dist/
 kutuphane_desktop/packaging/apt-repo/
+kutuphane_desktop/packaging/manager.sh
+kutuphane_desktop/packaging/defaults.txt
 
 # Django runtime data
 db.sqlite3
