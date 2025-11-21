@@ -10,22 +10,51 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
+import os
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+ENV_FILE = Path("/etc/kutuphane/.env")
+LOCAL_ENV_FILE = BASE_DIR / ".env"
+
+
+def load_env(path: Path) -> None:
+    """Basit .env yükleyici; key=value satırlarını os.environ'a yazar (varsa)."""
+    if not path.exists():
+        return
+    try:
+        content = path.read_text()
+    except OSError:
+        return
+    for raw in content.splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        os.environ.setdefault(key.strip(), value.strip())
+
+
+load_env(ENV_FILE)
+load_env(LOCAL_ENV_FILE)
 
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-!%^83i8%pdx-a_$&^0+fb1)lh38@yf43(n5i6yac4qmp^kv2m8'
+SECRET_KEY = os.environ.get(
+    "SECRET_KEY", "django-insecure-!%^83i8%pdx-a_$&^0+fb1)lh38@yf43(n5i6yac4qmp^kv2m8"
+)
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.environ.get("DEBUG", "False").lower() == "true"
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [
+    host.strip()
+    for host in os.environ.get("ALLOWED_HOSTS", "127.0.0.1,localhost").split(",")
+    if host.strip()
+]
 
 
 # Application definition
@@ -46,6 +75,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -81,11 +111,11 @@ WSGI_APPLICATION = 'kutuphane.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'kutuphane_db',      # oluşturacağın veritabanı adı
-        'USER': 'kutuphane_user',    # PostgreSQL kullanıcı adı
-        'PASSWORD': '12345678',         # PostgreSQL kullanıcı şifresi
-        'HOST': 'localhost',
-        'PORT': '5432',
+        'NAME': os.environ.get('DB_NAME', 'kutuphane'),
+        'USER': os.environ.get('DB_USER', 'kutuphane'),
+        'PASSWORD': os.environ.get('DB_PASSWORD', ''),
+        'HOST': os.environ.get('DB_HOST', 'localhost'),
+        'PORT': os.environ.get('DB_PORT', '5432'),
     }
 }
 
@@ -125,13 +155,13 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
 STATIC_URL = 'static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-
-import os
 
 MEDIA_URL = "/media/"
 MEDIA_ROOT =  BASE_DIR / "media"
@@ -144,4 +174,3 @@ REST_FRAMEWORK = {
         "rest_framework.permissions.IsAuthenticated",
     ),
 }
-

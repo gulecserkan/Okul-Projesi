@@ -8,8 +8,36 @@ fi
 
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SERVICE_NAME="kutuphane-backend"
-USER_NAME="${SUDO_USER:-$(logname)}"
-GROUP_NAME="$(id -gn "$USER_NAME")"
+
+detect_user() {
+    if [[ -n "${SERVICE_USER:-}" ]]; then
+        echo "${SERVICE_USER}"
+        return
+    fi
+    if [[ -n "${SUDO_USER:-}" ]]; then
+        echo "${SUDO_USER}"
+        return
+    fi
+    owner="$(stat -c '%U' "${PROJECT_ROOT}" 2>/dev/null || true)"
+    if [[ -n "$owner" && "$owner" != "root" ]]; then
+        echo "$owner"
+        return
+    fi
+    login_user="$(logname 2>/dev/null || true)"
+    if [[ -n "$login_user" && "$login_user" != "root" ]]; then
+        echo "$login_user"
+        return
+    fi
+    fallback="$(getent passwd 1000 2>/dev/null | cut -d: -f1)"
+    if [[ -n "$fallback" ]]; then
+        echo "$fallback"
+        return
+    fi
+    echo "root"
+}
+
+USER_NAME="$(detect_user)"
+GROUP_NAME="$(id -gn "$USER_NAME" 2>/dev/null || echo "$USER_NAME")"
 VENV_DIR="${PROJECT_ROOT}/venv"
 GUNICORN_BIN="${VENV_DIR}/bin/gunicorn"
 LOG_DIR="/var/log/kutuphane"

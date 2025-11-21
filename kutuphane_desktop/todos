@@ -44,11 +44,15 @@
 '''FİŞ:
     "bilgilendirme/genel fiş" ve "borcu yoktur" denenecek ve nerede bunlara erişilecek?'''
 
-PAKET HALİNE GETİRME:
+'''PAKET HALİNE GETİRME:
     - Sunucu ve masaüstü için ayrı .deb paketleri + (opsiyonel) meta paket.
     - build script / CI yazılacak (debuild vs.) ve paketler releases veya apt reposunda tutulacak.
-    - ortam değişkenleri (.env) ile gizli bilgiler yönetilecek; systemd/cron bu env dosyalarını okuyacak.
+    - ortam değişkenleri (.env) ile gizli bilgiler yönetilecek; systemd/cron bu env dosyalarını okuyacak.'''
 
+LOGIN:
+    geliştirme aşamasında login e girmeden direkt anasayfa açılıyor. sebebi de çıkışta token.json u silmemesi idi. 
+    ileride bu iptal edilip çıkışta token.json silinecek
+    
 RAPOR:
     rapor sayfası bir nevi istatistik sayfası olacak. burası beraber düşünülecek.
 
