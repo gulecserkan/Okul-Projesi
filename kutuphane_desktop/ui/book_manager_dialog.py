@@ -3,9 +3,10 @@ from __future__ import annotations
 import re
 import random
 from datetime import datetime
-from typing import Dict, List
+from typing import Dict, List, Set
 
-from PyQt5.QtCore import Qt, QStringListModel, pyqtSignal, QTimer
+from PyQt5.QtCore import Qt, QStringListModel, pyqtSignal, QTimer, QEvent
+from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QWidget, QLineEdit,
     QTableWidget, QTableWidgetItem, QHeaderView, QPushButton, QLabel,
@@ -152,6 +153,8 @@ class BookManagerDialog(QDialog):
         self._book_index = {}
         self._pending_duplicate_matches: List[Dict] = []
         self._mode = "view"
+        self._pending_copy_plan: List[str] = []
+        self._pending_label_contexts: List[Dict] = []
 
         main = QVBoxLayout(self)
         main.setContentsMargins(12, 12, 12, 12)
@@ -313,6 +316,9 @@ class BookManagerDialog(QDialog):
         self.btn_print = QPushButton("Barkod Bas")
         self.btn_print.setEnabled(False)
         self.btn_close = QPushButton("Pencereyi Kapat")
+        self.chk_serial_entry = QCheckBox("Seri kitap kaydı")
+        self.chk_serial_entry.setToolTip("Kaydettikten sonra otomatik yeni kayıt başlat")
+        self.chk_serial_entry.setVisible(False)
 
         for b in (
             self.btn_new,
@@ -326,8 +332,7 @@ class BookManagerDialog(QDialog):
             b.setAutoDefault(False)
             b.setDefault(False)
 
-        self.btn_save.setAutoDefault(True)
-        self.btn_save.setDefault(True)
+        self.btn_save.installEventFilter(self)
 
         self.btn_new.clicked.connect(self.start_new_entry)
         self.btn_edit.clicked.connect(self.start_edit_mode)
@@ -340,6 +345,7 @@ class BookManagerDialog(QDialog):
         btn_row.addWidget(self.btn_new)
         btn_row.addWidget(self.btn_edit)
         btn_row.addWidget(self.btn_delete)
+        btn_row.addWidget(self.chk_serial_entry)
         btn_row.addStretch(1)
         btn_row.addWidget(self.btn_save)
         btn_row.addWidget(self.btn_cancel_edit)
@@ -564,6 +570,8 @@ class BookManagerDialog(QDialog):
         self._hide_title_suggestions()
         if self._suppress_similarity_check:
             self._suppress_similarity_check = False
+            return
+        if self._maybe_switch_to_existing_title():
             return
         self._check_title_similarity()
 
@@ -893,7 +901,6 @@ class BookManagerDialog(QDialog):
             widget.setEnabled(editing)
 
         self.btn_save.setEnabled(editing)
-        self.btn_save.setDefault(editing)
         self.btn_cancel_edit.setEnabled(editing)
 
         self.btn_new.setEnabled(not editing)
@@ -906,6 +913,10 @@ class BookManagerDialog(QDialog):
         self.search_box.setEnabled(not editing)
         self.toggle_form_button.setEnabled(not editing)
         self.btn_close.setEnabled(not editing)
+
+        serial_visible = self._mode == "create"
+        self.chk_serial_entry.setVisible(serial_visible)
+        self.chk_serial_entry.setEnabled(serial_visible)
 
     def _focus_widget(self, widget):
         if not widget:
@@ -924,11 +935,47 @@ class BookManagerDialog(QDialog):
         bind_enter(self.input_title, self.input_author)
         bind_enter(self.input_author, self.input_category)
         bind_enter(self.input_category, self.input_isbn)
-        bind_enter(self.input_isbn, self.btn_save)
+        if hasattr(self.input_isbn, "returnPressed"):
+            try:
+                self.input_isbn.returnPressed.disconnect(self._handle_isbn_enter)
+            except Exception:
+                pass
+            self.input_isbn.returnPressed.connect(self._handle_isbn_enter)
+
+    def _prompt_initial_copy_plan(self) -> bool:
+        context = self._build_print_context()
+        wizard = InitialCopyWizard(None, context, parent=self, plan_only=True)
+        result = wizard.exec_()
+        if result == QDialog.Accepted:
+            raw_plan = wizard.planned_shelves() or []
+            plan = [str(item or "").strip() for item in raw_plan]
+            if plan:
+                self._pending_copy_plan = plan
+                self.label_copy_count.setText(str(len(plan)))
+                return True
+            QMessageBox.warning(self, "Nüsha", "En az bir nüsha planlamanız gerekiyor.")
+        self._clear_copy_plan()
+        self.label_copy_count.setText("0")
+        return False
+
+    def _handle_isbn_enter(self):
+        if self._mode == "create":
+            planned = self._prompt_initial_copy_plan()
+            if planned:
+                self._focus_widget(self.btn_save)
+            else:
+                self._focus_widget(self.input_isbn)
+            return
+        if self.btn_manage_copies.isEnabled():
+            self.btn_manage_copies.click()
+            return
+        self._focus_widget(self.btn_save)
 
     def _clear_form_fields(self):
         self.input_title.clear()
         self.input_isbn.clear()
+        self._clear_copy_plan()
+        self._pending_label_contexts = []
         self._selected_author_id = None
         self._selected_category_id = None
         self.input_author.blockSignals(True)
@@ -942,11 +989,15 @@ class BookManagerDialog(QDialog):
         self.label_copy_count.setText("0")
         self._hide_title_suggestions()
 
+    def _clear_copy_plan(self):
+        self._pending_copy_plan = []
+
     def reset_form(self):
         self.current_id = None
         self.table.clearSelection()
         self._clear_form_fields()
         self._set_mode("view")
+        self.chk_serial_entry.setChecked(False)
 
     def start_new_entry(self):
         self.current_id = None
@@ -1081,27 +1132,64 @@ class BookManagerDialog(QDialog):
             return
 
         book = matches[0]
-        book_title = book.get("baslik", title)
-        box = QMessageBox(self)
-        box.setIcon(QMessageBox.Warning)
-        box.setWindowTitle("Kitap zaten mevcut")
-        box.setText(
-            f"'{book_title}' başlıklı bir kitap zaten kayıtlı.\n"
-            "Yeni bir kayıt oluşturmak yerine mevcut kitaba nüsha eklemelisiniz."
-        )
-        btn_add = box.addButton("Nüsha Ekle", QMessageBox.AcceptRole)
-        btn_cancel = box.addButton("Vazgeç", QMessageBox.RejectRole)
-        box.setDefaultButton(btn_add)
-        box.exec_()
-        if box.clickedButton() == btn_add:
-            self._open_copies_dialog_for_book(book, select_in_table=True)
-        else:
-            QMessageBox.information(
-                self,
-                "Bilgi",
-                "Aynı başlıkla ikinci bir kitap eklenemez. Lütfen mevcut kayıt için nüsha ekleyin."
-            )
+        self._prompt_existing_book_switch(book, title)
         self._pending_duplicate_matches = []
+        return True
+
+    def _maybe_switch_to_existing_title(self, explicit_title: str | None = None) -> bool:
+        if self._mode != "create":
+            return False
+        text = (explicit_title or self.input_title.text() or "").strip()
+        if not text:
+            return False
+        norm = self._normalize_for_compare(text)
+        if not norm:
+            return False
+        matches = [bk for bk in self._title_index.get(norm, []) if bk.get("id")]
+        if not matches:
+            return False
+        self._prompt_existing_book_switch(matches[0], text)
+        return True
+
+    def _prompt_existing_book_switch(self, book: Dict, typed_title: str) -> bool:
+        if not book:
+            return False
+        book_title = book.get("baslik") or typed_title
+        msg = QMessageBox(self)
+        msg.setIcon(QMessageBox.Warning)
+        msg.setWindowTitle("Kitap zaten kayıtlı")
+        msg.setText(
+            f"'{book_title}' başlıklı bir kitap zaten kayıtlı.\n"
+            "Yeni kayıt oluşturmak yerine bu kitap düzenleme modunda açılacak ve nüsha ekleme penceresi gösterilecek."
+        )
+        btn_open = msg.addButton("Nüsha ekle", QMessageBox.AcceptRole)
+        btn_cancel = msg.addButton("İptal", QMessageBox.RejectRole)
+        msg.setDefaultButton(btn_open)
+        msg.exec_()
+        if msg.clickedButton() == btn_open:
+            self._switch_to_existing_book(book)
+        else:
+            self.input_title.clear()
+            self._focus_widget(self.input_title)
+        return True
+
+    def _switch_to_existing_book(self, book: Dict):
+        book_id = book.get("id") if isinstance(book, dict) else None
+        if not book_id:
+            QMessageBox.warning(self, "Uyarı", "Mevcut kitap kaydı bulunamadı.")
+            return
+        self.chk_serial_entry.setChecked(False)
+        self._set_mode("view")
+        found = self._select_book_in_table(book_id)
+        if not found:
+            self.load_books()
+            found = self._select_book_in_table(book_id)
+        if not found:
+            QMessageBox.warning(self, "Uyarı", "Kitap listede bulunamadı.")
+            return
+        self.on_row_selected()
+        self.start_edit_mode()
+        QTimer.singleShot(0, lambda: self._open_copies_dialog_for_book(book, select_in_table=True))
 
     def save_book(self):
         if self._mode not in ("create", "edit"):
@@ -1111,6 +1199,12 @@ class BookManagerDialog(QDialog):
         if data is None:
             return
         creating = not bool(self.current_id)
+        if creating and not self._pending_copy_plan:
+            if not self._prompt_initial_copy_plan():
+                QMessageBox.information(self, "Nüsha", "Kaydetmeden önce nüsha planı oluşturmanız gerekiyor.")
+                self._focus_widget(self.input_isbn)
+                return
+        serial_loop = creating and self.chk_serial_entry.isChecked()
         if creating:
             resp = book_api.create_book(data)
             ok = resp.status_code in (200, 201)
@@ -1131,14 +1225,27 @@ class BookManagerDialog(QDialog):
                     self.reset_form()
                     return
                 context = self._build_print_context(created)
-                wizard = InitialCopyWizard(book_id, context, parent=self)
-                if wizard.exec_() != QDialog.Accepted:
+                copies, errors = self._create_initial_copies_for_plan(book_id)
+                if errors:
+                    detail = "\n".join(f"- {err}" for err in errors if err)
+                    QMessageBox.warning(self, "Nüsha", f"Bazı nüshalar eklenemedi:\n{detail}")
+                if not copies:
                     book_api.delete_book(book_id)
                     QMessageBox.information(self, "İptal", "Nüsha eklenmediği için kitap kaydı iptal edildi.")
+                    self._clear_copy_plan()
                     return
+                QMessageBox.information(self, "Nüsha", f"{len(copies)} nüsha oluşturuldu.")
+                self._offer_initial_copy_print(context, copies)
             QMessageBox.information(self, "Başarılı", "Kitap kaydedildi.")
             self.load_books()
-            self.reset_form()
+            if not creating and self._pending_label_contexts:
+                self._flush_label_print_queue()
+            self._clear_copy_plan()
+            if serial_loop:
+                self.start_new_entry()
+                self.chk_serial_entry.setChecked(True)
+            else:
+                self.reset_form()
         else:
             detail = book_api.extract_error(resp)
             QMessageBox.warning(self, "Hata", f"Kitap kaydedilemedi.\n\nDetay: {detail}")
@@ -1272,6 +1379,109 @@ class BookManagerDialog(QDialog):
             "shelf_code": "",
         }
 
+    def _create_initial_copies_for_plan(self, book_id: int):
+        plan = list(self._pending_copy_plan or [])
+        created = []
+        errors = []
+        for shelf in plan:
+            resp = book_api.create_copy(book_id, "", shelf or None)
+            if resp.status_code in (200, 201):
+                try:
+                    data = resp.json() or {}
+                except Exception:
+                    data = {}
+                if shelf and not data.get("raf_kodu"):
+                    data["raf_kodu"] = shelf
+                created.append(data)
+            else:
+                errors.append(book_api.extract_error(resp))
+        return created, errors
+
+    def _compose_label_contexts(self, base_context, copies):
+        contexts = []
+        if not copies:
+            return contexts
+        title = base_context.get("title", "")
+        author = base_context.get("author", "")
+        category = base_context.get("category", "")
+        isbn = base_context.get("isbn", "")
+        for cp in copies:
+            contexts.append(
+                {
+                    "title": title,
+                    "author": author,
+                    "category": category,
+                    "isbn": isbn,
+                    "barcode": str(cp.get("barkod", "") or ""),
+                    "shelf_code": str(cp.get("raf_kodu", "") or ""),
+                }
+            )
+        return contexts
+
+    def _offer_initial_copy_print(self, context, copies):
+        if not copies:
+            return
+        template_path = get_default_template_path()
+        if not template_path:
+            QMessageBox.warning(
+                self,
+                "Etiket",
+                "Varsayılan etiket şablonu bulunamadı. Lütfen Etiket Editörü'nde şablon seçin."
+            )
+            return
+        reply = QMessageBox.question(
+            self,
+            "Etiket Yazdır",
+            "Yeni eklenen nüshalar için barkod yazdırmak ister misiniz?",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.Yes,
+        )
+        if reply != QMessageBox.Yes:
+            return
+        contexts = self._compose_label_contexts(context, copies)
+        if not contexts:
+            return
+        try:
+            print_label_batch(template_path, contexts)
+            QMessageBox.information(self, "Etiket", f"{len(contexts)} etiket yazıcıya gönderildi.")
+        except Exception as exc:
+            QMessageBox.warning(self, "Etiket", f"Etiketler yazdırılamadı:\n{exc}")
+
+    def _queue_label_prints(self, contexts):
+        if not contexts:
+            return
+        self._pending_label_contexts.extend(contexts)
+
+    def _flush_label_print_queue(self):
+        if not self._pending_label_contexts:
+            return
+        template_path = get_default_template_path()
+        if not template_path:
+            QMessageBox.warning(
+                self,
+                "Etiket",
+                "Varsayılan etiket şablonu bulunamadı. Lütfen Etiket Editörü'nde şablon seçin."
+            )
+            self._pending_label_contexts = []
+            return
+        reply = QMessageBox.question(
+            self,
+            "Etiket Yazdır",
+            "Nüsha yönetimi sırasında eklenen yeni barkodları yazdırmak ister misiniz?",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.Yes,
+        )
+        if reply != QMessageBox.Yes:
+            self._pending_label_contexts = []
+            return
+        try:
+            print_label_batch(template_path, self._pending_label_contexts)
+            QMessageBox.information(self, "Etiket", f"{len(self._pending_label_contexts)} etiket yazıcıya gönderildi.")
+        except Exception as exc:
+            QMessageBox.warning(self, "Etiket", f"Etiketler yazdırılamadı:\n{exc}")
+        finally:
+            self._pending_label_contexts = []
+
 
     # ------------------------ Copies management ----------------------- #
     def open_copies_dialog(self):
@@ -1302,36 +1512,10 @@ class BookManagerDialog(QDialog):
 
         context = self._build_print_context(book)
         dlg = CopiesManagerDialog(book_id, context, self)
-        dlg.exec_()
-        if dlg.new_copies:
-            template_path = get_default_template_path()
-            if not template_path:
-                QMessageBox.warning(
-                    self,
-                    "Etiket",
-                    "Varsayılan etiket şablonu bulunamadı. Lütfen Etiket Editörü'nde şablon seçin."
-                )
-            else:
-                reply = QMessageBox.question(
-                    self,
-                    "Etiket Yazdır",
-                    "Yeni eklenen nüshalar için barkod yazdırmak ister misiniz?",
-                    QMessageBox.Yes | QMessageBox.No,
-                    QMessageBox.Yes,
-                )
-                if reply == QMessageBox.Yes:
-                    contexts = []
-                    for cp in dlg.new_copies:
-                        ctx = dict(context)
-                        ctx["barcode"] = str(cp.get("barkod", "") or "")
-                        ctx["shelf_code"] = str(cp.get("raf_kodu", "") or "")
-                        contexts.append(ctx)
-                    if contexts:
-                        try:
-                            print_label_batch(template_path, contexts)
-                            QMessageBox.information(self, "Etiket", f"{len(contexts)} etiket yazıcıya gönderildi.")
-                        except Exception as exc:
-                            QMessageBox.warning(self, "Etiket", f"Etiketler yazdırılamadı:\n{exc}")
+        result = dlg.exec_()
+        if result == QDialog.Accepted and dlg.new_copies:
+            contexts = self._compose_label_contexts(context, dlg.new_copies)
+            self._queue_label_prints(contexts)
 
         if self.current_id == book_id:
             count = len(book_api.list_copies_for_book(book_id))
@@ -1349,7 +1533,16 @@ class BookManagerDialog(QDialog):
             if data and data.get("id") == book_id:
                 self.table.setCurrentCell(row, 0)
                 self.table.selectRow(row)
-                return
+                return True
+        return False
+
+    def eventFilter(self, source, event):
+        if source is self.btn_save and event.type() == QEvent.KeyPress:
+            if event.key() in (Qt.Key_Return, Qt.Key_Enter):
+                if self.btn_save.isEnabled():
+                    self.btn_save.click()
+                return True
+        return super().eventFilter(source, event)
 
 
 class CopiesManagerDialog(QDialog):
@@ -1358,11 +1551,16 @@ class CopiesManagerDialog(QDialog):
         self.book_id = book_id
         self.parent_context = context or {}
         self.new_copies: List[Dict] = []
-        self._existing_ids = set()
         self._last_shelf = ""
         self._shelf_model = QStringListModel()
+        self._shelf_values: Set[str] = set()
+        self._row_ids: List[int] = []
+        self._row_meta: Dict[int, Dict] = {}
+        self._original_data: Dict[int, Dict] = {}
+        self._session_new_ids: Set[int] = set()
+        self._session_deleted_ids: Set[int] = set()
         self.setWindowTitle("Nüsha Yönetimi")
-        self.resize(520, 380)
+        self.resize(480, 360)
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(10, 10, 10, 10)
@@ -1392,13 +1590,13 @@ class CopiesManagerDialog(QDialog):
         self.table = QTableWidget(0, 3)
         self.table.setHorizontalHeaderLabels(["Barkod", "Raf", "İşlem"])
         header = self.table.horizontalHeader()
+        header.setStretchLastSection(False)
         header.setSectionResizeMode(QHeaderView.Stretch)
-        header.setSectionResizeMode(0, QHeaderView.ResizeToContents)
-        header.setSectionResizeMode(2, QHeaderView.ResizeToContents)
         layout.addWidget(self.table, 1)
 
-        # Kapat
-        bb = QDialogButtonBox(QDialogButtonBox.Close)
+        # Alt butonlar
+        bb = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        bb.accepted.connect(self.accept)
         bb.rejected.connect(self.reject)
         layout.addWidget(bb)
 
@@ -1408,38 +1606,135 @@ class CopiesManagerDialog(QDialog):
     def load_copies(self):
         data = book_api.list_copies_for_book(self.book_id) or []
         self.table.setRowCount(len(data))
+        self._row_ids = [None] * len(data)
+        self._row_meta = {}
+        self._original_data = {}
+        self._session_new_ids.clear()
+        self._session_deleted_ids.clear()
         shelves = []
-        self._existing_ids = set()
         for i, cp in enumerate(data):
-            barkod = str(cp.get("barkod", ""))
+            self._populate_row(i, cp, state="existing")
             raf = str(cp.get("raf_kodu", "") or "")
-            self.table.setItem(i, 0, QTableWidgetItem(barkod))
-            self.table.setItem(i, 1, QTableWidgetItem(raf))
-            if cp.get("id") is not None:
-                self._existing_ids.add(cp.get("id"))
             if raf:
                 shelves.append(raf)
-            btn = QPushButton("Sil")
-            btn.setObjectName("DialogNegativeButton")
-            btn.clicked.connect(lambda _, cid=cp.get("id"): self.delete_copy(cid))
-            w = QWidget()
-            h = QHBoxLayout(w)
-            h.setContentsMargins(0, 0, 0, 0)
-            h.addStretch(1)
-            h.addWidget(btn)
-            self.table.setCellWidget(i, 2, w)
         if shelves:
             self._last_shelf = shelves[-1]
         elif not shelves and not self.new_copies:
             self._last_shelf = ""
-        self._shelf_model.setStringList(sorted(set(shelves)))
+        self._shelf_values = set(shelves)
+        self._shelf_model.setStringList(sorted(self._shelf_values))
         return data
+
+    def _populate_row(self, row: int, copy_data: Dict, state: str = "existing"):
+        barkod = str(copy_data.get("barkod", "") or "")
+        raf = str(copy_data.get("raf_kodu", "") or "")
+        barkod_item = QTableWidgetItem(barkod)
+        barkod_item.setFlags(Qt.ItemIsSelectable | Qt.ItemIsEnabled)
+        barkod_item.setData(Qt.UserRole, copy_data.get("id"))
+        raf_item = QTableWidgetItem(raf)
+        raf_item.setFlags(Qt.ItemIsSelectable | Qt.ItemIsEnabled)
+        self.table.setItem(row, 0, barkod_item)
+        self.table.setItem(row, 1, raf_item)
+        self._register_row_meta(row, copy_data, state)
+        self._render_action_cell(row, copy_data.get("id"), state)
+        self._apply_row_style(row, state)
+
+    def _register_row_meta(self, row: int, copy_data: Dict, state: str):
+        copy_id = copy_data.get("id")
+        while len(self._row_ids) <= row:
+            self._row_ids.append(None)
+        self._row_ids[row] = copy_id
+        if copy_id is not None:
+            meta = self._row_meta.get(copy_id, {})
+            meta["data"] = copy_data
+            meta["state"] = state
+            self._row_meta[copy_id] = meta
+            if copy_id not in self._original_data:
+                self._original_data[copy_id] = dict(copy_data)
+
+    def _state_for_copy(self, copy_id) -> str:
+        meta = self._row_meta.get(copy_id)
+        if not meta:
+            return "existing"
+        return meta.get("state", "existing")
+
+    def _apply_row_style(self, row: int, state: str):
+        color_map = {
+            "existing": QColor("#86efac"),  # canlı yeşil
+            "new": QColor("#fef08a"),       # açık sarı
+            "deleted": QColor("#d1d5db"),   # gri
+        }
+        color = color_map.get(state, QColor("white"))
+        for col in range(2):
+            item = self.table.item(row, col)
+            if item:
+                item.setBackground(color)
+
+    def _render_action_cell(self, row: int, copy_id, state: str):
+        widget = QWidget()
+        layout = QHBoxLayout(widget)
+        layout.setContentsMargins(4, 2, 4, 2)
+        if state == "deleted":
+            btn = QPushButton("Geri Al")
+            btn.setObjectName("DialogPositiveButton")
+            btn.clicked.connect(lambda _, cid=copy_id: self.undo_delete_copy(cid))
+            btn.setStyleSheet("background-color: #bfdbfe; color: #1e3a8a;")
+        else:
+            btn = QPushButton("Sil")
+            btn.setObjectName("DialogNegativeButton")
+            btn.clicked.connect(lambda _, cid=copy_id: self.delete_copy(cid))
+            btn.setStyleSheet("background-color: #fda4af; color: #7f1d1d;")
+        btn.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
+        layout.addWidget(btn)
+        self.table.setCellWidget(row, 2, widget)
+
+    def _append_copy(self, copy_data: Dict, state: str = "existing"):
+        row = self.table.rowCount()
+        self.table.insertRow(row)
+        self._populate_row(row, copy_data, state)
+        shelf = str(copy_data.get("raf_kodu", "") or "")
+        if shelf:
+            if shelf not in self._shelf_values:
+                self._shelf_values.add(shelf)
+                self._shelf_model.setStringList(sorted(self._shelf_values))
+            self._last_shelf = shelf
+
+    def _find_row_by_copy_id(self, copy_id) -> int:
+        for idx, cid in enumerate(self._row_ids):
+            if cid == copy_id:
+                return idx
+        return -1
+
+    def _remove_row(self, copy_id):
+        row = self._find_row_by_copy_id(copy_id)
+        if row == -1:
+            return
+        self.table.removeRow(row)
+        if 0 <= row < len(self._row_ids):
+            self._row_ids.pop(row)
+        self._row_meta.pop(copy_id, None)
+
+    def _mark_row_deleted(self, copy_id):
+        row = self._find_row_by_copy_id(copy_id)
+        if row == -1:
+            return
+        meta = self._row_meta.get(copy_id, {})
+        data = meta.get("data") or {}
+        meta["state"] = "deleted"
+        self._row_meta[copy_id] = meta
+        self._populate_row(row, data, state="deleted")
+
+    def _update_new_copy_records(self, copy_id):
+        if not self.new_copies:
+            return
+        self.new_copies = [cp for cp in self.new_copies if cp.get("id") != copy_id]
+        if copy_id in self._session_new_ids:
+            self._session_new_ids.discard(copy_id)
 
     def add_copy(self):
         barkod = (self.input_barcode.text() or "").strip()
         shelf = self.input_shelf.text().strip() or None
         # Barkod boşsa sunucu otomatik üretecek
-        prev_ids = set(self._existing_ids)
         resp = book_api.create_copy(self.book_id, barkod, shelf)
         if resp.status_code in (200, 201):
             self.input_shelf.clear()
@@ -1448,18 +1743,12 @@ class CopiesManagerDialog(QDialog):
                 created = resp.json() or {}
             except Exception:
                 created = None
-            data = self.load_copies()
             self._prepare_next_barcode()
-            if not created or created.get("id") in prev_ids:
-                created = None
-                for cp in data:
+            if not created:
+                snapshot = book_api.list_copies_for_book(self.book_id) or []
+                for cp in snapshot:
                     cid = cp.get("id")
-                    if cid is not None and cid not in prev_ids:
-                        created = cp
-                        break
-            if not created and barkod:
-                for cp in data:
-                    if str(cp.get("barkod", "")) == barkod:
+                    if cid and cid not in self._row_meta:
                         created = cp
                         break
             if created:
@@ -1467,6 +1756,17 @@ class CopiesManagerDialog(QDialog):
                     created["raf_kodu"] = shelf
                 created.setdefault("barkod", barkod or "")
                 self.new_copies.append(created)
+                cid = created.get("id")
+                if cid:
+                    self._session_new_ids.add(cid)
+                self._append_copy(created, state="new")
+                if shelf:
+                    self._last_shelf = shelf
+                    if shelf not in self._shelf_values:
+                        self._shelf_values.add(shelf)
+                        self._shelf_model.setStringList(sorted(self._shelf_values))
+            else:
+                QMessageBox.warning(self, "Hata", "Sunucudan nüsha bilgisi alınamadı.")
         else:
             detail = book_api.extract_error(resp)
             QMessageBox.warning(self, "Hata", f"Nüsha eklenemedi.\n\nDetay: {detail}")
@@ -1474,16 +1774,97 @@ class CopiesManagerDialog(QDialog):
     def delete_copy(self, copy_id):
         if not copy_id:
             return
+        state = self._state_for_copy(copy_id)
         if QMessageBox.question(self, "Onay", "Bu nüshayı silmek istiyor musunuz?",
                                 QMessageBox.Yes | QMessageBox.No, QMessageBox.No) != QMessageBox.Yes:
             return
         resp = book_api.delete_copy(copy_id)
         if resp.status_code in (200, 204):
-            self.load_copies()
+            if state == "new":
+                self._remove_row(copy_id)
+                self._update_new_copy_records(copy_id)
+            else:
+                self._session_deleted_ids.add(copy_id)
+                self._mark_row_deleted(copy_id)
         else:
             detail = book_api.extract_error(resp)
             QMessageBox.warning(self, "Hata", f"Nüsha silinemedi.\n\nDetay: {detail}")
 
+    def undo_delete_copy(self, copy_id):
+        if not copy_id:
+            return
+        meta = self._row_meta.get(copy_id)
+        if not meta:
+            return
+        data = meta.get("data") or {}
+        barkod = data.get("barkod", "")
+        shelf = data.get("raf_kodu") or None
+        resp = book_api.create_copy(self.book_id, barkod, shelf)
+        if resp.status_code not in (200, 201):
+            detail = book_api.extract_error(resp)
+            QMessageBox.warning(self, "Hata", f"Nüsha geri alınamadı.\n\nDetay: {detail}")
+            return
+        try:
+            created = resp.json() or {}
+        except Exception:
+            created = {}
+        if shelf and not created.get("raf_kodu"):
+            created["raf_kodu"] = shelf
+        self._session_deleted_ids.discard(copy_id)
+        row = self._find_row_by_copy_id(copy_id)
+        self._row_meta.pop(copy_id, None)
+        if row != -1:
+            self.table.removeRow(row)
+            if 0 <= row < len(self._row_ids):
+                self._row_ids.pop(row)
+            self.table.insertRow(row)
+            self._row_ids.insert(row, None)
+            self._populate_row(row, created, state="existing")
+        else:
+            self._append_copy(created, state="existing")
+
+    def _rollback_changes(self) -> bool:
+        errors = []
+        for cid in list(self._session_new_ids):
+            resp = book_api.delete_copy(cid)
+            if resp.status_code not in (200, 204):
+                detail = book_api.extract_error(resp)
+                errors.append(f"Yeni nüsha silinemedi (ID {cid}): {detail}")
+            else:
+                self._session_new_ids.discard(cid)
+                self._update_new_copy_records(cid)
+        for cid in list(self._session_deleted_ids):
+            data = self._original_data.get(cid) or ((self._row_meta.get(cid) or {}).get("data") or {})
+            barkod = data.get("barkod", "")
+            shelf = data.get("raf_kodu") or None
+            resp = book_api.create_copy(self.book_id, barkod, shelf)
+            if resp.status_code not in (200, 201):
+                detail = book_api.extract_error(resp)
+                errors.append(f"Nüsha geri alınamadı (ID {cid}): {detail}")
+            else:
+                self._session_deleted_ids.discard(cid)
+        if errors:
+            QMessageBox.warning(
+                self,
+                "Nüsha",
+                "Aşağıdaki değişiklikler geri alınamadı:\n\n" + "\n".join(errors)
+            )
+            return False
+        self.new_copies = []
+        return True
+
+    def accept(self):
+        self._session_new_ids.clear()
+        self._session_deleted_ids.clear()
+        super().accept()
+
+    def reject(self):
+        if self._session_new_ids or self._session_deleted_ids:
+            if not self._rollback_changes():
+                return
+        else:
+            self.new_copies = []
+        super().reject()
     # --- Helpers ---
     def _prepare_next_barcode(self):
         try:
@@ -1498,12 +1879,14 @@ class CopiesManagerDialog(QDialog):
 
 
 class InitialCopyWizard(QDialog):
-    def __init__(self, book_id, context, parent=None):
+    def __init__(self, book_id, context, parent=None, plan_only=False):
         super().__init__(parent)
         self.book_id = book_id
         self.context = context or {}
         self.created_copies: List[Dict] = []
-        self.setWindowTitle("Nüsha Oluştur")
+        self.plan_only = bool(plan_only)
+        self._planned_shelves: List[str] = []
+        self.setWindowTitle("Nüsha Oluştur" if not self.plan_only else "Nüsha Planı")
         self.resize(480, 420)
 
         root = QVBoxLayout(self)
@@ -1518,10 +1901,15 @@ class InitialCopyWizard(QDialog):
         config_layout.setContentsMargins(0, 0, 0, 0)
         config_layout.setSpacing(8)
 
-        info = QLabel(
+        info_text = (
+            "Bu kitap için oluşturulacak nüshaları planlayın ve raf kodlarını girin.\n"
+            "En az bir nüsha tanımlamanız zorunludur."
+            if self.plan_only
+            else
             "Bu kitap için oluşturulacak nüsha sayısını ve raf kodlarını girin.\n"
             "En az bir nüsha oluşturmanız zorunludur."
         )
+        info = QLabel(info_text)
         info.setWordWrap(True)
         config_layout.addWidget(info)
 
@@ -1555,6 +1943,8 @@ class InitialCopyWizard(QDialog):
         self.btn_create.setObjectName("DialogPositiveButton")
         self.btn_create.setAutoDefault(True)
         self.btn_create.setDefault(True)
+        if self.plan_only:
+            self.btn_create.setText("Planı Kaydet")
         btn_row.addWidget(self.btn_cancel)
         btn_row.addWidget(self.btn_create)
         config_layout.addLayout(btn_row)
@@ -1596,7 +1986,11 @@ class InitialCopyWizard(QDialog):
         self.stack.addWidget(config_page)
         self.stack.addWidget(summary_page)
         self.stack.setCurrentIndex(0)
-        QTimer.singleShot(0, lambda: self.spin_count.setFocus(Qt.TabFocusReason))
+        if self.plan_only:
+            self.btn_print.setVisible(False)
+            QTimer.singleShot(0, self._focus_plan_entry)
+        else:
+            QTimer.singleShot(0, lambda: self.spin_count.setFocus(Qt.TabFocusReason))
 
     def _sync_copy_rows(self, count):
         current = self.copy_table.rowCount()
@@ -1620,12 +2014,35 @@ class InitialCopyWizard(QDialog):
             if text:
                 self._last_shelf_value = text
 
+    def _focus_plan_entry(self):
+        if not self.plan_only:
+            return
+        if self.copy_table.rowCount() == 0:
+            self.copy_table.insertRow(0)
+            self._set_row_default(0)
+        self.copy_table.setCurrentCell(0, 0)
+        item = self.copy_table.item(0, 0)
+        if item is None:
+            item = QTableWidgetItem("")
+            self.copy_table.setItem(0, 0, item)
+        self.copy_table.setFocus(Qt.TabFocusReason)
+        QTimer.singleShot(0, lambda: self.copy_table.editItem(item))
+
     def _create_copies(self):
         count = self.spin_count.value()
         shelves = []
         for row in range(count):
             item = self.copy_table.item(row, 0)
             shelves.append((item.text().strip() if item else "") or None)
+
+        if self.plan_only:
+            self._planned_shelves = [shelf or "" for shelf in shelves]
+            if not self._planned_shelves:
+                QMessageBox.warning(self, "Nüsha", "En az bir nüsha planlamanız gerekiyor.")
+                return
+            self.created_copies = [{"barkod": "", "raf_kodu": shelf} for shelf in self._planned_shelves]
+            self.accept()
+            return
 
         self.btn_create.setEnabled(False)
         self.btn_cancel.setEnabled(False)
@@ -1696,16 +2113,30 @@ class InitialCopyWizard(QDialog):
 
     def keyPressEvent(self, event):
         if self.stack.currentIndex() == 0:
-            if event.key() in (Qt.Key_Return, Qt.Key_Enter):
+            key = event.key()
+            if self.plan_only and key in (Qt.Key_Left, Qt.Key_Right):
+                if key == Qt.Key_Left and self.btn_create.hasFocus():
+                    self.btn_cancel.setFocus(Qt.TabFocusReason)
+                    event.accept()
+                    return
+                if key == Qt.Key_Right and self.btn_cancel.hasFocus():
+                    self.btn_create.setFocus(Qt.TabFocusReason)
+                    event.accept()
+                    return
+            if key in (Qt.Key_Return, Qt.Key_Enter):
                 if self.copy_table.state() == QAbstractItemView.EditingState:
                     super().keyPressEvent(event)
+                    return
+                if self.plan_only and not self.btn_create.hasFocus():
+                    self.btn_create.setFocus(Qt.TabFocusReason)
+                    event.accept()
                     return
                 if self.btn_create.isEnabled():
                     self.btn_create.click()
                     event.accept()
                     return
-            if event.key() in (Qt.Key_Up, Qt.Key_Down):
-                delta = 1 if event.key() == Qt.Key_Up else -1
+            if key in (Qt.Key_Up, Qt.Key_Down):
+                delta = 1 if key == Qt.Key_Up else -1
                 new_value = max(
                     self.spin_count.minimum(),
                     min(self.spin_count.maximum(), self.spin_count.value() + delta)
@@ -1721,3 +2152,6 @@ class InitialCopyWizard(QDialog):
             super().reject()
         else:
             super().accept()
+
+    def planned_shelves(self) -> List[str]:
+        return list(self._planned_shelves)
