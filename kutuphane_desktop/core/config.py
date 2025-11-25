@@ -56,3 +56,9 @@ def normalize_api_base(url):
 
 # backward compatibility – avoid using directly, prefer get_api_base_url()
 API_BASE_URL = get_api_base_url()
+
+
+def is_debug_mode() -> bool:
+    """Returns True when settings.json has debug_mode enabled."""
+    settings = load_settings()
+    return bool(settings.get("debug_mode"))

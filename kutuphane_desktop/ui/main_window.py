@@ -17,7 +17,7 @@ from widgets.quick_result_panel import QuickResultPanel
 from widgets.book_table import BookTable, HEADERS
 import json, os, sys, subprocess, time
 import sip
-from core.config import SETTINGS_FILE, get_api_base_url, load_settings, save_settings
+from core.config import SETTINGS_FILE, TOKEN_FILE, get_api_base_url, load_settings, save_settings, is_debug_mode
 from core.utils import register_session_expired_handler
 from PyQt5.QtPrintSupport import QPrinterInfo
 from core.utils import api_request, format_date, response_error_message
@@ -361,6 +361,11 @@ class MainWindow(QMainWindow):
         if self._is_logging_out:
             super().closeEvent(event)
             return
+        if (not is_debug_mode()) and os.path.exists(TOKEN_FILE):
+            try:
+                os.remove(TOKEN_FILE)
+            except OSError:
+                pass
         # Geliştirme sürecinde doğrudan kapanmasına izin ver.
         self.side_menu.force_hide()
         self.save_settings()
