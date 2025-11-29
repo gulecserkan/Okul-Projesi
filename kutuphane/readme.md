@@ -43,6 +43,11 @@ Komple restore (geri yükleme) — 3 adımlı güvenlik onaylı
 
 Etiket / Barkod desteği (termal yazıcı entegrasyonu için backend hazır)
 
+📥 Öğrenci CSV içe aktarma formatı
+- Başlık satırı zorunlu, virgül ayraçlı, değerler yalın (tırnaksız) yazılabilir.
+- Kolonlar: `ogrenci_no,ad,soyad,sinif,rol` (sinif ve rol mevcut ad alanlarıyla eşleşir).
+- Kodlama: UTF-8
+
 🛠️ Kurulum
 1. Depoyu klonla
 git clone <repo-url>

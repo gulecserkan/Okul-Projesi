@@ -2,7 +2,7 @@
 from import_export import resources, fields
 from import_export.widgets import ForeignKeyWidget
 from django.utils.timezone import now
-from .models import Ogrenci, Sinif
+from .models import Ogrenci, Sinif, Rol
 
 class OgrenciResource(resources.ModelResource):
     sinif = fields.Field(
@@ -11,10 +11,16 @@ class OgrenciResource(resources.ModelResource):
         widget=ForeignKeyWidget(Sinif, "ad"),
     )
 
+    rol = fields.Field(
+        column_name="rol",
+        attribute="rol",
+        widget=ForeignKeyWidget(Rol, "ad"),
+    )
+
     class Meta:
         model = Ogrenci
         import_id_fields = ('ogrenci_no',)     # eşleşme anahtarı
-        fields = ('ogrenci_no', 'ad', 'soyad', 'sinif')  # CSV’de beklenen minimum
+        fields = ('ogrenci_no', 'ad', 'soyad', 'sinif', 'rol')  # CSV’de beklenen minimum
         skip_unchanged = True
         report_skipped = True
 

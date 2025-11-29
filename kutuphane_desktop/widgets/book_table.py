@@ -2,12 +2,13 @@ from datetime import datetime, date, timedelta
 from decimal import Decimal
 
 from PyQt5.QtWidgets import (
-    QWidget, QVBoxLayout, QLineEdit, QLabel, QTableView, QMenu, QHBoxLayout, QComboBox
+    QWidget, QVBoxLayout, QLineEdit, QLabel, QTableView, QMenu, QHBoxLayout, QComboBox, QStackedLayout,
+    QSizePolicy
 )
 from PyQt5.QtCore import (
     Qt, QSortFilterProxyModel, QAbstractTableModel, QDate, QModelIndex, QPoint
 )
-from PyQt5.QtGui import QColor, QFont
+from PyQt5.QtGui import QColor, QFont, QPixmap
 from core.config import SETTINGS_FILE, get_api_base_url, load_settings
 from core.utils import api_request, format_date
 import json, os
@@ -295,7 +296,23 @@ class BookTable(QWidget):
         # Seçim değiştiğinde modeli bilgilendir
         self.table.selectionModel().selectionChanged.connect(self.on_selection_changed)
 
-        layout.addWidget(self.table)
+        # Kayıt yoksa gösterilecek görsel
+        self.empty_label = QLabel("Ödünç kaydı bulunamadı")
+        self.empty_label.setAlignment(Qt.AlignCenter)
+        self.empty_label.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Ignored)
+        self.empty_label.setMinimumSize(0, 0)
+        img_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "resources", "resim.png")
+        if os.path.exists(img_path):
+            pix = QPixmap(img_path)
+            if not pix.isNull():
+                self._empty_pixmap = pix
+                self.empty_label.setPixmap(pix)
+        self.empty_label.setStyleSheet("color: #777; font-size: 14px;")
+
+        self.stack = QStackedLayout()
+        self.stack.addWidget(self.table)
+        self.stack.addWidget(self.empty_label)
+        layout.addLayout(self.stack)
         self.setLayout(layout)
 
         # Sağ tık menü → header
@@ -313,6 +330,8 @@ class BookTable(QWidget):
         self.search_box.textChanged.connect(lambda _: self.apply_filter())
         self.filter_combo.currentIndexChanged.connect(self.on_filter_changed)
         self.apply_filter(status=initial_filter)
+        self._update_empty_state()
+        self.stack.currentChanged.connect(self._resize_empty_image)
 
     def reload_data(self):
         data, row_meta = self.fetch_data(statuses=self._active_statuses)
@@ -506,6 +525,27 @@ class BookTable(QWidget):
             status = self.filter_combo.currentData()
         self.proxy.set_status_filter(status)
         self.proxy.setFilterFixedString(text)
+        self._update_empty_state()
+
+    def _update_empty_state(self):
+        show_empty = self.proxy.rowCount() == 0
+        self.stack.setCurrentWidget(self.empty_label if show_empty else self.table)
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self._resize_empty_image()
+
+    def _resize_empty_image(self):
+        label = getattr(self, "empty_label", None)
+        pix = getattr(self, "_empty_pixmap", None)
+        if not label or not pix or pix.isNull():
+            return
+        area = self.stack.geometry()
+        avail_w = area.width() or self.width()
+        avail_h = area.height() or self.height()
+        # Kullanılabilir alanı neredeyse tamamen doldur (orantıyı koru)
+        scaled = pix.scaled(int(avail_w), int(avail_h), Qt.KeepAspectRatio, Qt.SmoothTransformation)
+        label.setPixmap(scaled)
 
     def _determine_statuses(self, filter_code):
         if filter_code == "overdue":

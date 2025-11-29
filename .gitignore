@@ -55,3 +55,6 @@ etiket*.json
 # OS-specific
 .DS_Store
 Thumbs.db
+
+# Fazladan arkaPlan Resimleri
+arkaplanResimleri/
