@@ -1887,7 +1887,9 @@ class InitialCopyWizard(QDialog):
         self.plan_only = bool(plan_only)
         self._planned_shelves: List[str] = []
         self.setWindowTitle("Nüsha Oluştur" if not self.plan_only else "Nüsha Planı")
-        self.resize(480, 420)
+        # Daha kompakt; minimum değer de tanımla
+        self.resize(400, 360)
+        self.setMinimumSize(360, 320)
 
         root = QVBoxLayout(self)
         root.setContentsMargins(12, 12, 12, 12)
