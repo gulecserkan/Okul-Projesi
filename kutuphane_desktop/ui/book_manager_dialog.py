@@ -7,6 +7,7 @@ from typing import Dict, List, Set
 
 from PyQt5.QtCore import Qt, QStringListModel, pyqtSignal, QTimer, QEvent
 from PyQt5.QtGui import QColor
+from PyQt5.QtPrintSupport import QPrinterInfo
 from PyQt5.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QWidget, QLineEdit,
     QTableWidget, QTableWidgetItem, QHeaderView, QPushButton, QLabel,
@@ -16,6 +17,8 @@ from PyQt5.QtWidgets import (
 )
 
 from api import books as book_api
+from core.config import load_settings
+from printing.printer_guard import ensure_printer_ready, enforce_media_type
 from printing.template_renderer import get_default_template_path, print_label_batch
 from ui.entity_manager_dialog import AuthorManagerDialog, CategoryManagerDialog, normalize_entity_text
 
@@ -319,6 +322,10 @@ class BookManagerDialog(QDialog):
         self.chk_serial_entry = QCheckBox("Seri kitap kaydı")
         self.chk_serial_entry.setToolTip("Kaydettikten sonra otomatik yeni kayıt başlat")
         self.chk_serial_entry.setVisible(False)
+        self.chk_auto_label = QCheckBox("Etiketi otomatik yazdır")
+        self.chk_auto_label.setToolTip("Kaydettikten sonra barkod etiketini otomatik yazdır")
+        self.chk_auto_label.setVisible(False)
+        self.chk_auto_label.toggled.connect(self._handle_auto_label_toggle)
 
         for b in (
             self.btn_new,
@@ -346,6 +353,7 @@ class BookManagerDialog(QDialog):
         btn_row.addWidget(self.btn_edit)
         btn_row.addWidget(self.btn_delete)
         btn_row.addWidget(self.chk_serial_entry)
+        btn_row.addWidget(self.chk_auto_label)
         btn_row.addStretch(1)
         btn_row.addWidget(self.btn_save)
         btn_row.addWidget(self.btn_cancel_edit)
@@ -917,6 +925,8 @@ class BookManagerDialog(QDialog):
         serial_visible = self._mode == "create"
         self.chk_serial_entry.setVisible(serial_visible)
         self.chk_serial_entry.setEnabled(serial_visible)
+        self.chk_auto_label.setVisible(serial_visible)
+        self.chk_auto_label.setEnabled(serial_visible)
 
     def _focus_widget(self, widget):
         if not widget:
@@ -941,6 +951,70 @@ class BookManagerDialog(QDialog):
             except Exception:
                 pass
             self.input_isbn.returnPressed.connect(self._handle_isbn_enter)
+
+    # --------------------------- Auto label helpers --------------------------- #
+    def _set_auto_label_checked(self, value: bool):
+        self.chk_auto_label.blockSignals(True)
+        self.chk_auto_label.setChecked(bool(value))
+        self.chk_auto_label.blockSignals(False)
+
+    def _auto_label_enabled(self) -> bool:
+        return self.chk_auto_label.isVisible() and self.chk_auto_label.isChecked()
+
+    def _handle_auto_label_toggle(self, checked: bool):
+        if not checked:
+            return
+        if not self._ensure_label_print_ready(show_warning=True):
+            self._set_auto_label_checked(False)
+
+    def _set_default_auto_label(self):
+        ready = bool(self._ensure_label_print_ready(show_warning=False))
+        self._set_auto_label_checked(ready)
+
+    def _ensure_label_print_ready(self, show_warning: bool = True):
+        template_path = get_default_template_path()
+        if not template_path:
+            if show_warning:
+                QMessageBox.warning(
+                    self,
+                    "Etiket",
+                    "Varsayılan etiket şablonu bulunamadı. Lütfen Etiket Editörü'nde şablon seçin."
+                )
+            return None
+
+        settings = load_settings() or {}
+        label_prefs = settings.get("label_editor", {}) or {}
+        printing_prefs = settings.get("printing", {}) or {}
+        printer_name = (printing_prefs.get("label_printer") or label_prefs.get("default_printer")) or ""
+
+        if not printer_name:
+            if show_warning:
+                QMessageBox.warning(
+                    self,
+                    "Etiket",
+                    "Varsayılan etiket yazıcısı seçilmemiş. Yazıcı Ayarları sekmesinden bir yazıcı belirleyin."
+                )
+            return None
+
+        try:
+            available = {p.printerName() for p in QPrinterInfo.availablePrinters()}
+        except Exception:
+            available = set()
+
+        if available and printer_name not in available:
+            if show_warning:
+                QMessageBox.warning(self, "Etiket", f"'{printer_name}' adlı yazıcı sistemde bulunamadı.")
+            return None
+
+        try:
+            ensure_printer_ready(printer_name)
+            enforce_media_type("label", printer_name, printing_prefs)
+        except Exception as exc:
+            if show_warning:
+                QMessageBox.warning(self, "Etiket", str(exc))
+            return None
+
+        return template_path
 
     def _prompt_initial_copy_plan(self) -> bool:
         context = self._build_print_context()
@@ -988,6 +1062,7 @@ class BookManagerDialog(QDialog):
         self._hide_category_suggestions()
         self.label_copy_count.setText("0")
         self._hide_title_suggestions()
+        self._set_auto_label_checked(False)
 
     def _clear_copy_plan(self):
         self._pending_copy_plan = []
@@ -998,12 +1073,14 @@ class BookManagerDialog(QDialog):
         self._clear_form_fields()
         self._set_mode("view")
         self.chk_serial_entry.setChecked(False)
+        self._set_auto_label_checked(False)
 
     def start_new_entry(self):
         self.current_id = None
         self.table.clearSelection()
         self._clear_form_fields()
         self._set_mode("create")
+        self._set_default_auto_label()
         self.input_title.setFocus(Qt.TabFocusReason)
 
     def start_edit_mode(self):
@@ -1205,6 +1282,7 @@ class BookManagerDialog(QDialog):
                 self._focus_widget(self.input_isbn)
                 return
         serial_loop = creating and self.chk_serial_entry.isChecked()
+        auto_label = creating and self._auto_label_enabled()
         if creating:
             resp = book_api.create_book(data)
             ok = resp.status_code in (200, 201)
@@ -1235,7 +1313,7 @@ class BookManagerDialog(QDialog):
                     self._clear_copy_plan()
                     return
                 QMessageBox.information(self, "Nüsha", f"{len(copies)} nüsha oluşturuldu.")
-                self._offer_initial_copy_print(context, copies)
+                self._offer_initial_copy_print(context, copies, force_auto=auto_label)
             QMessageBox.information(self, "Başarılı", "Kitap kaydedildi.")
             self.load_books()
             if not creating and self._pending_label_contexts:
@@ -1297,6 +1375,8 @@ class BookManagerDialog(QDialog):
             QMessageBox.information(self, "Bilgi", "Bu kitap için nüsha bulunamadı.")
             return
         dlg = LabelPrintDialog(copies, self)
+        dlg.setWindowModality(Qt.ApplicationModal)
+        dlg.setResult(QDialog.Rejected)  # her açılışta temiz başlangıç
         if dlg.exec_() != QDialog.Accepted:
             return
         selected = dlg.selected_copies()
@@ -1332,14 +1412,6 @@ class BookManagerDialog(QDialog):
             QMessageBox.warning(self, "Etiket", f"Etiketler yazdırılamadı:\n{exc}")
             return
 
-        QMessageBox.information(self, "Etiket", f"{len(contexts)} etiket yazıcıya gönderildi.")
-
-
-        try:
-            print_label_batch(template_path, contexts)
-        except Exception as exc:
-            QMessageBox.warning(self, "Etiket", f"Etiketler yazdırılamadı:\n{exc}")
-            return
         QMessageBox.information(self, "Etiket", f"{len(contexts)} etiket yazıcıya gönderildi.")
 
     def _ask_yes_no(self, title, text) -> bool:
@@ -1418,29 +1490,26 @@ class BookManagerDialog(QDialog):
             )
         return contexts
 
-    def _offer_initial_copy_print(self, context, copies):
+    def _offer_initial_copy_print(self, context, copies, force_auto: bool = False):
         if not copies:
             return
-        template_path = get_default_template_path()
+        auto = force_auto or self._auto_label_enabled()
+        template_path = self._ensure_label_print_ready(show_warning=not auto)
         if not template_path:
-            QMessageBox.warning(
-                self,
-                "Etiket",
-                "Varsayılan etiket şablonu bulunamadı. Lütfen Etiket Editörü'nde şablon seçin."
-            )
-            return
-        reply = QMessageBox.question(
-            self,
-            "Etiket Yazdır",
-            "Yeni eklenen nüshalar için barkod yazdırmak ister misiniz?",
-            QMessageBox.Yes | QMessageBox.No,
-            QMessageBox.Yes,
-        )
-        if reply != QMessageBox.Yes:
             return
         contexts = self._compose_label_contexts(context, copies)
         if not contexts:
             return
+        if not auto:
+            reply = QMessageBox.question(
+                self,
+                "Etiket Yazdır",
+                "Yeni eklenen nüshalar için barkod yazdırmak ister misiniz?",
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.Yes,
+            )
+            if reply != QMessageBox.Yes:
+                return
         try:
             print_label_batch(template_path, contexts)
             QMessageBox.information(self, "Etiket", f"{len(contexts)} etiket yazıcıya gönderildi.")

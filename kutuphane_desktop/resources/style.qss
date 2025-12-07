@@ -1,12 +1,12 @@
 /* login ekranı için ekstra boşluk */
 QWidget {
     background-color: #f5f6fa;
-    font-family: "Segoe UI";
+    font-family: "DejaVu Sans", "Noto Sans", sans-serif;
     font-size: 11pt;
 }
 
 QLabel {
-    font-family: "Noto Sans", "Noto Color Emoji", sans-serif;
+    font-family: "DejaVu Sans", "Noto Sans", "Noto Color Emoji", sans-serif;
     margin-bottom: 10px;
 }
 

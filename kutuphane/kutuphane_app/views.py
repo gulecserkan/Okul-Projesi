@@ -7,6 +7,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.exceptions import ValidationError as DRFValidationError
 from django.db import transaction
 from django.db.models import Count, Sum, Avg, Q, F
+from django.contrib.postgres.search import TrigramSimilarity
 from django.shortcuts import get_object_or_404
 from datetime import timedelta
 from decimal import Decimal, InvalidOperation
@@ -604,15 +605,23 @@ class FastQueryView(APIView):
         # 2. ISBN kontrolü
         kitap = Kitap.objects.filter(isbn=q).select_related("yazar", "kategori").first()
         if kitap:
-            return Response({
-                "type": "isbn",
-                "exists": True,
-                "book": serialize_book_payload(kitap, request),
-                "copy_summary": self._isbn_copy_summary(kitap),
-                "policy": policy_data,
-            })
+            return Response(self._book_payload(kitap, "isbn", policy_data))
         if len(q) >= 10 and q.replace("-", "").isdigit():
-            return Response({"type": "isbn", "exists": False})
+            return Response({"type": "book_availability", "query_kind": "isbn", "exists": False})
+
+        # 2b. Kitap adı (en az 3 karakter)
+        if len(q) >= 3:
+            matches = (
+                Kitap.objects
+                .annotate(similarity=TrigramSimilarity("baslik", q))
+                .filter(similarity__gt=0.2)
+                .select_related("yazar", "kategori")
+                .order_by("-similarity", "baslik")[:10]
+            )
+            if matches:
+                suggestions = self._title_suggestions(matches, request, limit=10)
+                primary = matches[0]
+                return Response(self._book_payload(primary, "title", policy_data, suggestions=suggestions))
 
         # 3. Öğrenci numarası kontrolü
         ogrenci = Ogrenci.objects.filter(ogrenci_no=q).select_related("sinif", "rol").first()
@@ -784,6 +793,76 @@ class FastQueryView(APIView):
             }
 
         return data
+
+    def _copies_with_loans(self, kitap):
+        copies = list(
+            KitapNusha.objects
+            .filter(kitap=kitap)
+            .select_related("kitap")
+            .order_by("barkod")
+            .values("id", "barkod", "raf_kodu", "durum")
+        )
+
+        loan_map = {
+            od.kitap_nusha_id: od
+            for od in OduncKaydi.objects
+            .filter(
+                kitap_nusha__kitap=kitap,
+                durum__in=["oduncte", "gecikmis"]
+            )
+            .select_related("ogrenci")
+        }
+
+        result = []
+        for cp in copies:
+            entry = {
+                "id": cp.get("id"),
+                "barkod": cp.get("barkod"),
+                "raf_kodu": cp.get("raf_kodu"),
+                "durum": cp.get("durum"),
+            }
+            loan = loan_map.get(cp.get("id"))
+            if loan:
+                ogr = loan.ogrenci
+                entry["loan"] = {
+                    "id": loan.id,
+                    "durum": loan.durum,
+                    "iade_tarihi": loan.iade_tarihi,
+                    "ogrenci": {
+                        "id": ogr.id,
+                        "ad": ogr.ad,
+                        "soyad": ogr.soyad,
+                        "ogrenci_no": ogr.ogrenci_no,
+                    } if ogr else None,
+                }
+            result.append(entry)
+        return result
+
+    def _book_payload(self, kitap, query_kind: str, policy_data, suggestions=None):
+        return {
+            "type": "book_availability",
+            "query_kind": query_kind,
+            "book": serialize_book_payload(kitap, self.request),
+            "copy_summary": self._isbn_copy_summary(kitap),
+            "copies": self._copies_with_loans(kitap),
+            "policy": policy_data,
+            "suggestions": suggestions or [],
+        }
+
+    def _title_suggestions(self, matches, request, limit=10):
+        items = list(matches[:limit])
+        result = []
+        for kitap in items:
+            payload = serialize_book_payload(kitap, request)
+            result.append({
+                "id": kitap.id,
+                "baslik": kitap.baslik,
+                "isbn": kitap.isbn,
+                "similarity": getattr(kitap, "similarity", None),
+                "copy_summary": self._isbn_copy_summary(kitap),
+                "book": payload,
+            })
+        return result
 
     def _serialize_role_policy(self, snapshot, role):
         penalty_max_loan = penalty_max_per_loan_for_role(snapshot, role)

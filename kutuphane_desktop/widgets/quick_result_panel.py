@@ -267,6 +267,84 @@ class QuickResultPanel(QWidget):
 
         #     self.student_no = no
 
+        # ---- KİTAP MEVCUTLUK (ISBN/BAŞLIK) ----
+        if t == "book_availability":
+            book = data.get("book") or {}
+            summary = data.get("copy_summary") or {}
+            copies = data.get("copies") or []
+            kategori = book.get("kategori")
+            kategori_ad = kategori.get("ad") if isinstance(kategori, dict) else (kategori or "")
+            info_lines = [
+                (book.get("baslik", ""), f"ISBN: {book.get('isbn','') or '—'}"),
+                (f"Yazar: {book.get('yazar',{}).get('ad_soyad','') if isinstance(book.get('yazar'), dict) else book.get('yazar','')}", f"Kategori: {kategori_ad}"),
+                (
+                    f"Toplam: {summary.get('count',0)}",
+                    f"Uygun: {summary.get('available',0)} | Ödünçte: {summary.get('loaned',0)}"
+                ),
+            ]
+            info_card = self.create_card_group("📚 Kitap", [self.create_card(None, info_lines, "InfoCard")])
+            top_layout.addWidget(info_card, 0, Qt.AlignTop)
+
+            status_text_map = {
+                "mevcut": "Mevcut",
+                "oduncte": "Ödünçte",
+                "gecikmis": "Gecikmiş",
+                "kayip": "Kayıp",
+                "hasarli": "Hasarlı",
+            }
+
+            copy_cards = []
+            for cp in copies:
+                loan = cp.get("loan") or {}
+                ogr = loan.get("ogrenci") or {}
+                barkod = cp.get("barkod") or "—"
+                raf = cp.get("raf_kodu") or "—"
+                durum = (loan.get("durum") or cp.get("durum") or "").lower()
+                status_label = status_text_map.get(durum, durum.title() if durum else "Durum bilinmiyor")
+                line_left = f"Barkod: {barkod} | Raf: {raf}"
+                if loan:
+                    adsoyad = f"{ogr.get('ad','')} {ogr.get('soyad','')}".strip()
+                    due = format_date(loan.get("iade_tarihi"))
+                    line_right = f"{status_label} — {adsoyad or 'Öğrenci?'} (İade: {due or '—'})"
+                else:
+                    line_right = status_label
+                copy_cards.append(self.create_card(None, [(line_left, line_right)], "HistoryCard"))
+
+            copies_box = QVBoxLayout()
+            lbl_copies = QLabel("📦 Nüsha Durumu")
+            lbl_copies.setStyleSheet("font-size:19px; font-weight:bold;")
+            copies_box.addWidget(lbl_copies)
+
+            copies_host = QWidget()
+            copies_layout = QVBoxLayout(copies_host)
+            copies_layout.setContentsMargins(0, 0, 0, 0)
+            copies_layout.setSpacing(6)
+            if copy_cards:
+                for card in copy_cards:
+                    copies_layout.addWidget(card, 0, Qt.AlignTop)
+            else:
+                copies_layout.addWidget(
+                    self.create_card(None, ["Bu kitap için kayıtlı nüsha bulunamadı."], "HistoryCard"),
+                    0,
+                    Qt.AlignTop,
+                )
+
+            scroll = QScrollArea()
+            scroll.setWidgetResizable(True)
+            scroll.setFrameShape(QFrame.NoFrame)
+            scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+            scroll.setWidget(copies_host)
+            max_cards = min(5, max(1, len(copy_cards)))
+            scroll.setFixedHeight(max(100, int(self.LOAN_CARD_HEIGHT_HINT * min(self.LOAN_CARD_VISIBLE_ROWS, max_cards))))
+            copies_box.addWidget(scroll)
+
+            top_layout.addLayout(copies_box, 1)
+
+            suggestions = data.get("suggestions") or []
+            if suggestions:
+                sugg_card = self._build_suggestion_card(suggestions)
+                top_layout.addWidget(sugg_card, 0, Qt.AlignTop)
+
         # ---- KİTAP NÜSHA ----
         if t == "book_copy":
             book = data.get("book", {}) or {}
@@ -550,6 +628,21 @@ class QuickResultPanel(QWidget):
         
         frame.setLayout(vbox)
         return frame
+
+    def _build_suggestion_card(self, suggestions):
+        rows = []
+        for s in suggestions:
+            title = s.get("baslik") or "—"
+            isbn = s.get("isbn") or "—"
+            summary = s.get("copy_summary") or {}
+            counts = f"Toplam: {summary.get('count',0)}, Uygun: {summary.get('available',0)}, Ödünçte: {summary.get('loaned',0)}"
+            rows.append((title, f"ISBN: {isbn}"))
+            rows.append((counts, ""))
+            rows.append(("—", ""))
+
+        if not rows:
+            rows = [("Benzer başlık bulunamadı.", "")]
+        return self.create_card_group("🔍 Olası eşleşmeler", [self.create_card(None, rows, "HistoryCard")])
 
 
     def create_card_group(self, group_title, cards):

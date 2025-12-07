@@ -1,4 +1,5 @@
 from django.db import models
+from django.contrib.postgres.indexes import GinIndex
 from datetime import time
 from django.db.models.signals import post_save
 from django.dispatch import receiver
@@ -138,6 +139,15 @@ class Kitap(models.Model):
 
     def __str__(self):
         return self.baslik
+
+    class Meta:
+        indexes = [
+            GinIndex(
+                name="kitap_baslik_trgm",
+                fields=["baslik"],
+                opclasses=["gin_trgm_ops"],
+            ),
+        ]
 
 
 # --- Kitap Nüshaları (Fiziksel Kopya) ---

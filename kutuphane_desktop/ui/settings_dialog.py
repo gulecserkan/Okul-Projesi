@@ -1593,7 +1593,17 @@ class SettingsDialog(QDialog):
     ):
         super().__init__(parent)
         self.setWindowTitle("Ayarlar")
-        self.resize(560, 300)
+        # Ekrana göre boyutlandır
+        from PyQt5.QtWidgets import QApplication
+        screen = QApplication.primaryScreen()
+        avail = screen.availableGeometry() if screen else None
+        avail_w = avail.width() if avail else 800
+        avail_h = avail.height() if avail else 600
+        width = min(720, int(avail_w * 0.9))
+        height = min(520, int(avail_h * 0.9))
+        self.resize(width, height)
+        self.setMinimumSize(480, 320)
+        self.setMaximumSize(avail_w, avail_h)
         self.admin_access = bool(admin_access)
 
         layout = QVBoxLayout(self)
@@ -1662,6 +1672,11 @@ class SettingsDialog(QDialog):
             self.tabs.setCurrentIndex(self._tab_map[initial_tab])
         elif not self.admin_access and "password" in self._tab_map:
             self.tabs.setCurrentIndex(self._tab_map["password"])
+        # Ekran içinde ortala
+        if avail:
+            frame = self.frameGeometry()
+            frame.moveCenter(avail.center())
+            self.move(frame.topLeft())
 
     def _on_apply_clicked(self):
         current_index = self.tabs.currentIndex()

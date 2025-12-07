@@ -93,6 +93,7 @@ class SnapTextItem(QGraphicsTextItem):
 
 
 class Code128GraphicsItem(QGraphicsItem):
+    DEFAULT_QUIET_MODULES = 10
     CODE128_PATTERNS = [
         "212222",
         "222122",
@@ -207,6 +208,7 @@ class Code128GraphicsItem(QGraphicsItem):
         super().__init__(parent)
         self._text = text
         self._module = max(1, int(module_px))
+        self._quiet_modules = self.DEFAULT_QUIET_MODULES
         self._height = max(10, int(height_px))
         self._human_visible = True
         self._human_font_px = 12
@@ -296,7 +298,8 @@ class Code128GraphicsItem(QGraphicsItem):
     def _update_geometry(self):
         codes = self.code128_encode_b(self._text)
         total = self.code128_total_modules(codes)
-        width = total * self._module
+        quiet_px = self._quiet_modules * self._module
+        width = total * self._module + quiet_px * 2
         extra_h = (self._human_font_px + 6) if self._human_visible else 0
         self._bounds = QRectF(0, 0, width, self._height + extra_h)
 
@@ -305,7 +308,8 @@ class Code128GraphicsItem(QGraphicsItem):
 
     def paint(self, painter: QPainter, option, widget=None):
         codes = self.code128_encode_b(self._text)
-        curr_x = 0
+        quiet_px = self._quiet_modules * self._module
+        curr_x = quiet_px
         for val in codes:
             pattern = self.CODE128_PATTERNS[val]
             black = True
@@ -734,6 +738,9 @@ class LabelEditorDialog(QDialog):
         self.spin_bar_text_px = QSpinBox()
         self.spin_bar_text_px.setRange(6, 72)
         self.spin_bar_text_px.setValue(12)
+        self.lbl_barcode_warn = QLabel("")
+        self.lbl_barcode_warn.setStyleSheet("color:#c0392b; font-weight:600;")
+        self.lbl_barcode_warn.setWordWrap(True)
 
         self._rows_common = [(self.prop_rotation,)]
         self._rows_text = [
@@ -748,6 +755,7 @@ class LabelEditorDialog(QDialog):
             (self.prop_target_w,),
             (self.chk_bar_text,),
             (self.spin_bar_text_px,),
+            (self.lbl_barcode_warn,),
         ]
 
         prop_layout.addRow(QLabel("Yazı Boyutu:"), self.prop_font)
@@ -759,6 +767,7 @@ class LabelEditorDialog(QDialog):
         prop_layout.addRow(QLabel("Barkod Genişliği (mm):"), self.prop_target_w)
         prop_layout.addRow(self.chk_bar_text)
         prop_layout.addRow(QLabel("Metin Boyutu (px):"), self.spin_bar_text_px)
+        prop_layout.addRow(self.lbl_barcode_warn)
 
         prop_scroll = QScrollArea()
         prop_scroll.setWidgetResizable(True)
@@ -925,6 +934,8 @@ class LabelEditorDialog(QDialog):
         self.prop_text.setEnabled(False)
         self.prop_rotation.setEnabled(False)
         self.prop_text.clear()
+        if hasattr(self, "lbl_barcode_warn"):
+            self.lbl_barcode_warn.setText("")
 
     def _show_text_properties(self, item: QGraphicsTextItem):
         field = item.data(1)
@@ -973,7 +984,8 @@ class LabelEditorDialog(QDialog):
         self.prop_height.setValue(item.barHeight())
         self.prop_height.blockSignals(False)
         total_modules = Code128GraphicsItem.code128_total_modules(Code128GraphicsItem.code128_encode_b(item.text()))
-        actual_mm = px_to_mm(total_modules * item.module(), self.dpi)
+        quiet_px = item._quiet_modules * item.module()
+        actual_mm = px_to_mm(total_modules * item.module() + 2 * quiet_px, self.dpi)
         self.prop_target_w.blockSignals(True)
         self.prop_target_w.setValue(actual_mm)
         self.prop_target_w.blockSignals(False)
@@ -983,6 +995,7 @@ class LabelEditorDialog(QDialog):
         self.spin_bar_text_px.blockSignals(True)
         self.spin_bar_text_px.setValue(item.humanTextSize())
         self.spin_bar_text_px.blockSignals(False)
+        self._update_barcode_warnings(item)
         for widgets in self._rows_text:
             for w in widgets:
                 w.setEnabled(False)
@@ -1046,6 +1059,25 @@ class LabelEditorDialog(QDialog):
             px = mm_to_px(float(mm_val), self.dpi)
             item.setTextWidth(px)
             self._trigger_auto_save()
+        elif isinstance(item, Code128GraphicsItem):
+            # Hedef genişlik bilgilendirme amacıyla; doğrudan modülü ayarlayın
+            pass
+
+    def _update_barcode_warnings(self, item: Code128GraphicsItem):
+        warnings = []
+        if item.module() < 2:
+            warnings.append("Modül değeri çok düşük. Okuyucular için en az 2 px önerilir.")
+        if item.barHeight() < 80:
+            warnings.append("Bar yüksekliği düşük. 80px ve üzeri daha güvenli okunur.")
+        left_mm = px_to_mm(item.pos().x(), self.dpi)
+        width_px = item.boundingRect().width()
+        right_mm = self.mm_w - px_to_mm(item.pos().x() + width_px, self.dpi)
+        if left_mm < 2.0 or right_mm < 2.0:
+            warnings.append("Barkod kenarlara çok yakın. Sağ/sol en az 2 mm boşluk bırakın.")
+        if warnings:
+            self.lbl_barcode_warn.setText("• " + "\n• ".join(warnings))
+        else:
+            self.lbl_barcode_warn.setText("Okunabilirlik kontrolü: sorun tespit edilmedi.")
 
     def _apply_prop_rotation(self, angle: float):
         items = self.scene.selectedItems()
@@ -1063,10 +1095,12 @@ class LabelEditorDialog(QDialog):
         if isinstance(item, Code128GraphicsItem):
             item.setModule(int(value))
             total = Code128GraphicsItem.code128_total_modules(Code128GraphicsItem.code128_encode_b(item.text()))
-            actual_mm = px_to_mm(total * item.module(), self.dpi)
+            quiet_px = item._quiet_modules * item.module()
+            actual_mm = px_to_mm(total * item.module() + 2 * quiet_px, self.dpi)
             self.prop_target_w.blockSignals(True)
             self.prop_target_w.setValue(actual_mm)
             self.prop_target_w.blockSignals(False)
+            self._update_barcode_warnings(item)
             self._trigger_auto_save()
 
     def _apply_prop_height(self, value: int):
@@ -1076,6 +1110,7 @@ class LabelEditorDialog(QDialog):
         item = items[0]
         if isinstance(item, Code128GraphicsItem):
             item.setBarHeight(int(value))
+            self._update_barcode_warnings(item)
             self._trigger_auto_save()
 
     def _apply_barcode_target_width(self, mm_val: float):
@@ -1097,10 +1132,12 @@ class LabelEditorDialog(QDialog):
             self.prop_module.blockSignals(True)
             self.prop_module.setValue(module_px)
             self.prop_module.blockSignals(False)
-            actual_mm = px_to_mm(total * module_px, self.dpi)
+            quiet_px = item._quiet_modules * module_px
+            actual_mm = px_to_mm(total * module_px + 2 * quiet_px, self.dpi)
             self.prop_target_w.blockSignals(True)
             self.prop_target_w.setValue(actual_mm)
             self.prop_target_w.blockSignals(False)
+            self._update_barcode_warnings(item)
             self._trigger_auto_save()
         except Exception:
             pass

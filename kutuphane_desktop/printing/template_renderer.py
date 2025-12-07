@@ -34,6 +34,7 @@ def _known_printer_names() -> set[str]:
 
 
 class Code128GraphicsItem:
+    DEFAULT_QUIET_MODULES = 10
     CODE128_PATTERNS = [
         '212222','222122','222221','121223','121322','131222','122213','122312','132212','221213',
         '221312','231212','112232','122132','122231','113222','123122','123221','223211','221132',
@@ -51,6 +52,7 @@ class Code128GraphicsItem:
     def __init__(self, text="KIT000001", height_px=160, module_px=2, font_family=None):
         self._text = text
         self._module = max(1, int(module_px))
+        self._quiet_modules = self.DEFAULT_QUIET_MODULES
         self._height = max(10, int(height_px))
         self._human_visible = True
         self._human_font_px = 12
@@ -87,7 +89,8 @@ class Code128GraphicsItem:
     def _update_geometry(self):
         codes = self.code128_encode_b(self._text)
         total = self.code128_total_modules(codes)
-        width = total * self._module
+        quiet_px = self._quiet_modules * self._module
+        width = total * self._module + quiet_px * 2
         extra_h = (self._human_font_px + 6) if self._human_visible else 0
         self._bounds = QRectF(0, 0, width, self._height + extra_h)
 
@@ -120,7 +123,8 @@ class Code128GraphicsItem:
         painter.save()
         painter.translate(pos)
         codes = self.code128_encode_b(self._text)
-        curr_x = 0
+        quiet_px = self._quiet_modules * self._module
+        curr_x = quiet_px
         for val in codes:
             pattern = self.CODE128_PATTERNS[val]
             black = True

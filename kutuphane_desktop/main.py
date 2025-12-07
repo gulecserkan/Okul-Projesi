@@ -3,6 +3,7 @@ import sys
 import tempfile
 from PyQt5.QtCore import QLockFile
 from PyQt5.QtWidgets import QApplication, QMessageBox
+from PyQt5.QtGui import QFont
 from ui.login_window import LoginWindow
 from ui.main_window import MainWindow
 from api import auth
@@ -17,7 +18,8 @@ def main():
     app = QApplication(sys.argv)
     app.setApplicationName("kutuphane")
     app.setApplicationDisplayName("Kütüphane")
-    app.setDesktopFileName("kutuphane.desktop")
+    if hasattr(app, "setDesktopFileName"):
+        app.setDesktopFileName("kutuphane.desktop")
 
     lock_path = os.path.join(tempfile.gettempdir(), LOCK_FILENAME)
     lock = QLockFile(lock_path)
@@ -39,6 +41,8 @@ def main():
                 app.setStyleSheet(qss)
         except Exception as e:
             print("QSS yüklenemedi:", e)
+        # Varsayılan fontu sistemde yaygın olan DejaVu Sans'a sabitle
+        app.setFont(QFont("DejaVu Sans"))
 
         auth.load_tokens()
 

@@ -1,9 +1,9 @@
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
     QPushButton, QTableWidget, QTableWidgetItem, QToolButton, QMessageBox, QCheckBox,
-    QPlainTextEdit, QTextEdit
+    QPlainTextEdit, QTextEdit, QCompleter
 )
-from PyQt5.QtCore import Qt, QRect, QTimer, QEvent
+from PyQt5.QtCore import Qt, QRect, QTimer, QEvent, QStringListModel
 from PyQt5.QtWidgets import QStyle
 from PyQt5.QtGui import QIcon
 from ui.detail_window import DetailWindow, BOOK_TAB_ICON, STUDENT_TAB_ICON, COPIES_TAB_ICON
@@ -39,7 +39,8 @@ class MainWindow(QMainWindow):
             version_str = get_version()
         except Exception:
             version_str = "dev"
-        self.setWindowTitle(f"Kütüphane Yönetim Sistemi v{version_str}")
+        user_name = auth.get_current_full_name() or auth.get_current_username() or "Misafir"
+        self.setWindowTitle(f"Kütüphane Yönetim Sistemi ({user_name}) - Versiyon: {version_str}")
         icon_path = os.path.normpath(
             os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "resources", "icons", "library.png")
         )
@@ -79,12 +80,23 @@ class MainWindow(QMainWindow):
 
         # 🔹 Hızlı işlem kutusu
         self.quick_input = QLineEdit()
-        self.quick_input.setPlaceholderText("Barkod veya Öğrenci No...")
+        self.quick_input.setPlaceholderText("Kitap adı / ISBN / Barkod / Öğrenci No...")
         self.quick_input.setFixedWidth(300)
         self.quick_input.setAlignment(Qt.AlignCenter)
         self.quick_input.setObjectName("QuickInput")
         self.quick_input.returnPressed.connect(self.run_quick_search)
         self.quick_input.installEventFilter(self)
+        self._quick_suggest_model = QStringListModel(self)
+        self._quick_completer = QCompleter(self._quick_suggest_model, self)
+        self._quick_completer.setCaseSensitivity(False)
+        self._quick_completer.setFilterMode(Qt.MatchContains)
+        self._quick_completer.activated[str].connect(self.perform_quick_search)
+        self.quick_input.setCompleter(self._quick_completer)
+        self._quick_suggest_timer = QTimer(self)
+        self._quick_suggest_timer.setSingleShot(True)
+        self._quick_suggest_timer.setInterval(250)
+        self._quick_suggest_timer.timeout.connect(self._run_quick_suggestion_query)
+        self.quick_input.textEdited.connect(self._schedule_quick_suggestions)
 
         top_row = QHBoxLayout()
         top_row.setContentsMargins(0, 0, 0, 0)
@@ -451,13 +463,43 @@ class MainWindow(QMainWindow):
             return
         self.perform_quick_search(query)
 
+    def _schedule_quick_suggestions(self, text: str):
+        text = (text or "").strip()
+        if len(text) < 3:
+            self._quick_suggest_timer.stop()
+            self._quick_suggest_model.setStringList([])
+            return
+        self._last_suggest_query = text
+        self._quick_suggest_timer.start()
+
+    def _run_quick_suggestion_query(self):
+        query = getattr(self, "_last_suggest_query", "").strip()
+        if len(query) < 3:
+            return
+        resp = api_request("GET", self._api_url("fast-query/"), params={"q": query})
+        titles = []
+        if resp.status_code == 200:
+            try:
+                data = resp.json() or {}
+            except Exception:
+                data = {}
+            if isinstance(data, dict) and data.get("type") == "book_availability":
+                book = data.get("book") or {}
+                if book.get("baslik"):
+                    titles.append(book.get("baslik"))
+                for s in data.get("suggestions") or []:
+                    title = s.get("baslik")
+                    if title and title not in titles:
+                        titles.append(title)
+        self._quick_suggest_model.setStringList(titles)
+
     def perform_quick_search(self, query):
         query = (query or "").strip()
         if not query:
             return
 
         self.last_quick_query = query
-        resp = api_request("GET", self._api_url(f"fast-query/?q={query}"))
+        resp = api_request("GET", self._api_url("fast-query/"), params={"q": query})
         if resp.status_code == 200:
             data = resp.json()
             if isinstance(data, dict):

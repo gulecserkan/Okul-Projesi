@@ -94,7 +94,18 @@ class CustomAdminSite(admin.AdminSite):
         filepath = backups_dir / filename
 
         buffer = io.StringIO()
-        management.call_command("dumpdata", stdout=buffer, indent=2)
+        management.call_command(
+            "dumpdata",
+            stdout=buffer,
+            indent=2,
+            exclude=[
+                "contenttypes",
+                "auth.permission",
+                "admin.logentry",
+                "sessions",
+                "sessions.session",
+            ],
+        )
 
         with open(filepath, "w", encoding="utf-8") as f:
             f.write(buffer.getvalue())
