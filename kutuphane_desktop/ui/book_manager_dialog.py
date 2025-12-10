@@ -29,6 +29,18 @@ BOOK_TABLE_HEADERS = ["Başlık", "Yazar", "Kategori", "ISBN", "Nüsha"]
 ISBN_PATTERN = re.compile(r"^(97[89]\d{10}|\d{9}[\dXx])$")
 
 
+class NumericTableWidgetItem(QTableWidgetItem):
+    """Sayısal sıralama için QTableWidgetItem."""
+
+    def __lt__(self, other):
+        if isinstance(other, QTableWidgetItem):
+            try:
+                return float(self.text()) < float(other.text())
+            except Exception:
+                pass
+        return super().__lt__(other)
+
+
 class TitleLineEdit(QLineEdit):
     focusLost = pyqtSignal()
     suggestionsNavigate = pyqtSignal(int)
@@ -488,12 +500,16 @@ class BookManagerDialog(QDialog):
             if book_id is not None:
                 self._book_index[book_id] = bk
 
-            values = [title, author, category, isbn, str(copies)]
+            values = [title, author, category, isbn, copies]
             for col, val in enumerate(values):
-                it = QTableWidgetItem(val or "")
-                it.setFlags(Qt.ItemIsSelectable | Qt.ItemIsEnabled)
-                if col in (3, 4):
+                if col == 4:
+                    it = NumericTableWidgetItem(str(val if val is not None else 0))
+                    it.setData(Qt.UserRole, val if val is not None else 0)
                     it.setTextAlignment(Qt.AlignCenter)
+                else:
+                    it = QTableWidgetItem(val or "")
+                    it.setTextAlignment(Qt.AlignCenter if col == 3 else Qt.AlignLeft)
+                it.setFlags(Qt.ItemIsSelectable | Qt.ItemIsEnabled)
                 self.table.setItem(row, col, it)
             # raw veriyi sakla
             self.table.item(row, 0).setData(Qt.UserRole, bk)

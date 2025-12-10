@@ -58,3 +58,29 @@ Thumbs.db
 
 # Fazladan arkaPlan Resimleri
 arkaplanResimleri/
+
+# Flutter / mobil projeleri (mobil/ altında tutulanlar)
+mobil/**/.dart_tool/
+mobil/**/.packages
+mobil/**/.flutter-plugins
+mobil/**/.flutter-plugins-dependencies
+mobil/**/.pub-cache/
+mobil/**/build/
+mobil/**/.idea/
+mobil/**/.vscode/
+mobil/**/.DS_Store
+mobil/**/android/.gradle/
+mobil/**/android/local.properties
+mobil/**/android/app/build/
+mobil/**/android/key.properties
+mobil/**/ios/Pods/
+mobil/**/ios/.symlinks/
+mobil/**/ios/Flutter/App.framework
+mobil/**/ios/Flutter/Flutter.framework
+mobil/**/ios/Flutter/Flutter.podspec
+mobil/**/ios/Flutter/Generated.xcconfig
+mobil/**/ios/Flutter/ephemeral/
+mobil/**/ios/Runner/GeneratedPluginRegistrant.*
+mobil/**/macos/Flutter/ephemeral/
+mobil/**/macos/Pods/
+mobil/**/macos/Runner/GeneratedPluginRegistrant.*

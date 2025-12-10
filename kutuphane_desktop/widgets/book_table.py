@@ -177,7 +177,8 @@ class LoanSortFilterProxyModel(QSortFilterProxyModel):
 
     def lessThan(self, left, right):
         column = left.column()
-        if self.sourceModel().headerData(column, Qt.Horizontal, Qt.DisplayRole) == "İade Tarihi":
+        header = self.sourceModel().headerData(column, Qt.Horizontal, Qt.DisplayRole)
+        if header == "İade Tarihi":
             source = self.sourceModel()
             get_due = getattr(source, "get_due_qdate", None)
             if callable(get_due):
@@ -186,6 +187,19 @@ class LoanSortFilterProxyModel(QSortFilterProxyModel):
                 if isinstance(left_date, QDate) and isinstance(right_date, QDate):
                     if left_date.isValid() and right_date.isValid():
                         return left_date < right_date
+        if header == "No":
+            try:
+                return float(self.sourceModel().data(left, Qt.DisplayRole)) < float(self.sourceModel().data(right, Qt.DisplayRole))
+            except Exception:
+                return super().lessThan(left, right)
+        if header == "Ceza":
+            def _parse_decimal(idx):
+                val = self.sourceModel().data(idx, Qt.DisplayRole)
+                try:
+                    return float(str(val).replace(",", "."))
+                except Exception:
+                    return 0.0
+            return _parse_decimal(left) < _parse_decimal(right)
         return super().lessThan(left, right)
     
     # 🔹 Başlıkları doğrudan source model'den al
