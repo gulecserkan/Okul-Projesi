@@ -71,6 +71,9 @@ class KitapBaseSerializer(serializers.ModelSerializer):
         source="kategori", queryset=Kategori.objects.all(), write_only=True, required=False, allow_null=True
     )
     nusha_sayisi = serializers.IntegerField(read_only=True)
+    image_count = serializers.IntegerField(read_only=True)
+    aciklama_var = serializers.BooleanField(read_only=True)
+    raf_kodlari = serializers.ListField(child=serializers.CharField(), read_only=True)
 
     class Meta:
         model = Kitap
@@ -84,6 +87,9 @@ class KitapBaseSerializer(serializers.ModelSerializer):
             "yazar_id",
             "kategori_id",
             "nusha_sayisi",
+            "image_count",
+            "aciklama_var",
+            "raf_kodlari",
         ]
 
 

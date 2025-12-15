@@ -4,9 +4,11 @@ from rest_framework.generics import ListAPIView
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.exceptions import ValidationError as DRFValidationError
 from django.db import transaction
-from django.db.models import Count, Sum, Avg, Q, F
+from django.db.models import Count, Sum, Avg, Q, F, Value, Case, When, IntegerField, BooleanField
+from django.contrib.postgres.aggregates import ArrayAgg
 from django.contrib.postgres.search import TrigramSimilarity
 from django.shortcuts import get_object_or_404
 from datetime import timedelta
@@ -170,6 +172,20 @@ def penalty_summary_for_student(ogrenci, limit=None):
         "has_more": has_more,
     }
 
+
+class ConditionalPageNumberPagination(PageNumberPagination):
+    page_size = 50
+    page_size_query_param = "page_size"
+    max_page_size = 200
+
+    def paginate_queryset(self, queryset, request, view=None):
+        params = request.query_params
+        has_page = params.get(self.page_query_param)
+        has_page_size = params.get(self.page_size_query_param)
+        if not has_page and not has_page_size:
+            return None
+        return super().paginate_queryset(queryset, request, view)
+
 class RolViewSet(viewsets.ModelViewSet):
     queryset = Rol.objects.all()
     serializer_class = RolSerializer
@@ -194,6 +210,7 @@ class KategoriViewSet(viewsets.ModelViewSet):
 class KitapViewSet(viewsets.ModelViewSet):
     queryset = Kitap.objects.all()
     serializer_class = KitapSerializer
+    pagination_class = ConditionalPageNumberPagination
 
     def get_serializer_class(self):
         if self.action in ("list",):
@@ -211,7 +228,104 @@ class KitapViewSet(viewsets.ModelViewSet):
         arama = self.request.query_params.get("q")
         if arama:
             qs = qs.filter(baslik__icontains=arama)
-        return qs.annotate(nusha_sayisi=Count('nushalar', distinct=True))
+        isbn = self.request.query_params.get("isbn") or self.request.query_params.get("isbn_query")
+        barkod = self.request.query_params.get("barkod") or self.request.query_params.get("barcode")
+        if isbn and barkod and isbn == barkod:
+            qs = qs.filter(Q(isbn__icontains=isbn) | Q(nushalar__barkod__icontains=barkod))
+        elif isbn:
+            qs = qs.filter(isbn__icontains=isbn)
+        elif barkod:
+            qs = qs.filter(nushalar__barkod__icontains=barkod)
+        raf_query = (
+            self.request.query_params.get("raf_query")
+            or self.request.query_params.get("raf")
+            or self.request.query_params.get("raf_kodu")
+        )
+        if raf_query:
+            qs = qs.filter(nushalar__raf_kodu__icontains=raf_query)
+        raf_prefix = self.request.query_params.get("raf_prefix")
+        if raf_prefix:
+            qs = qs.filter(nushalar__raf_kodu__startswith=raf_prefix)
+        def _image_present(field_name):
+            return Case(
+                When(**{f"{field_name}__isnull": True}, then=Value(0)),
+                When(**{field_name: ""}, then=Value(0)),
+                default=Value(1),
+                output_field=IntegerField(),
+            )
+
+        image_count_expr = (
+            _image_present("resim1")
+            + _image_present("resim2")
+            + _image_present("resim3")
+            + _image_present("resim4")
+            + _image_present("resim5")
+        )
+
+        qs = qs.annotate(
+            nusha_sayisi=Count('nushalar', distinct=True),
+            image_count=image_count_expr,
+            aciklama_var=Case(
+                When(Q(aciklama__isnull=False) & ~Q(aciklama=""), then=Value(True)),
+                default=Value(False),
+                output_field=BooleanField(),
+            ),
+        )
+        qs = qs.annotate(
+            raf_kodlari=ArrayAgg(
+                'nushalar__raf_kodu',
+                filter=Q(nushalar__raf_kodu__isnull=False) & ~Q(nushalar__raf_kodu=""),
+                distinct=True
+            )
+        )
+
+        image_count_param = self.request.query_params.get("image_count")
+        if image_count_param is not None:
+            try:
+                value = int(image_count_param)
+                qs = qs.filter(image_count=value)
+            except (TypeError, ValueError):
+                pass
+
+        min_image_count = self.request.query_params.get("min_image_count")
+        if min_image_count is not None:
+            try:
+                value = int(min_image_count)
+                qs = qs.filter(image_count__gte=value)
+            except (TypeError, ValueError):
+                pass
+
+        max_image_count = self.request.query_params.get("max_image_count")
+        if max_image_count is not None:
+            try:
+                value = int(max_image_count)
+                qs = qs.filter(image_count__lte=value)
+            except (TypeError, ValueError):
+                pass
+
+        aciklama_filter = self.request.query_params.get("aciklama_var")
+        if aciklama_filter is not None:
+            normalized = str(aciklama_filter).strip().lower()
+            truthy = normalized in ("1", "true", "yes", "evet")
+            falsy = normalized in ("0", "false", "hayir", "hayır", "no")
+            if truthy or falsy:
+                qs = qs.filter(aciklama_var=truthy)
+
+        return qs.distinct()
+
+
+class ShelfCodeListView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        codes = (
+            KitapNusha.objects.exclude(raf_kodu__isnull=True)
+            .exclude(raf_kodu="")
+            .order_by("raf_kodu")
+            .values_list("raf_kodu", flat=True)
+            .distinct()
+        )
+        return Response(list(codes))
 
 class KitapNushaViewSet(viewsets.ModelViewSet):
     queryset = KitapNusha.objects.all()
@@ -224,7 +338,8 @@ class KitapNushaViewSet(viewsets.ModelViewSet):
             qs = qs.filter(kitap_id=kitap)
         barkod = self.request.query_params.get('barkod')
         if barkod:
-            qs = qs.filter(barkod=barkod)
+            clean_barkod = "".join(str(barkod).split())
+            qs = qs.filter(barkod__iexact=clean_barkod)
         prefix = self.request.query_params.get('prefix')
         if prefix:
             qs = qs.filter(barkod__startswith=prefix)
@@ -556,7 +671,8 @@ class StudentPenaltySummaryView(APIView):
 
 class FastQueryView(APIView):
     def get(self, request):
-        q = request.query_params.get("q", "").strip()
+        raw_q = request.query_params.get("q", "") or ""
+        q = "".join(raw_q.split())  # tüm whitespace kaldır
         if not q:
             return Response({"error": "No query provided"}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -567,7 +683,11 @@ class FastQueryView(APIView):
 
         # 1. Barkod kontrolü
         try:
-            nusha = KitapNusha.objects.select_related("kitap", "kitap__yazar", "kitap__kategori").get(barkod=q)
+            nusha = (
+                KitapNusha.objects
+                .select_related("kitap", "kitap__yazar", "kitap__kategori")
+                .get(barkod__iexact=q)
+            )
             loan = (
                 OduncKaydi.objects
                 .filter(kitap_nusha=nusha, durum__in=["oduncte", "gecikmis"])

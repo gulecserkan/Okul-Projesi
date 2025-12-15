@@ -41,8 +41,39 @@ def extract_error(resp):
 
 
 def list_students(params=None):
-    resp = api_request("GET", _base_url(), params=params or {})
-    return _default_list(resp)
+    """Tüm sayfaları çekerek öğrenci listesini döndürür.
+
+    DRF pagination kullanıldığında yalnızca ilk sayfa geliyordu;
+    bu da "kayıt silindi" gibi görünen durumlara yol açıyordu.
+    """
+    url = _base_url()
+    query = params or {}
+    results = []
+    safety_page_limit = 50  # sonsuz döngü koruması
+
+    for _ in range(safety_page_limit):
+        resp = api_request("GET", url, params=query)
+        if resp.status_code != 200:
+            break
+        try:
+            data = resp.json()
+        except ValueError:
+            break
+
+        if isinstance(data, dict) and "results" in data:
+            results.extend(data.get("results") or [])
+            next_url = data.get("next")
+            if not next_url:
+                break
+            url = next_url
+            query = None  # next URL zaten parametreyi içeriyor
+            continue
+
+        if isinstance(data, list):
+            results = data
+        break
+
+    return results
 
 
 def create_student(payload):

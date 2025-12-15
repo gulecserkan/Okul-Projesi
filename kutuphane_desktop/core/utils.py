@@ -1,5 +1,6 @@
 # Ortak yardımcı fonksiyonlar
 import datetime
+import os
 from typing import Any
 
 import requests

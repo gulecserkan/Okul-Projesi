@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import re
 
-from PyQt5.QtCore import Qt, QEvent, QTimer
-from PyQt5.QtGui import QColor, QIcon, QPixmap, QPainter, QPen, QBrush, QFont
+from PyQt5.QtCore import Qt, QTimer, QThread, pyqtSignal
+from PyQt5.QtGui import QColor, QIcon, QPixmap, QPainter, QPen, QBrush
 from PyQt5.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -38,6 +38,18 @@ from ui.entity_manager_dialog import normalize_entity_text
 TABLE_HEADERS = ["Ad", "Soyad", "No", "Sınıf", "Rol", "Telefon", "E-posta", "Durum"]
 
 
+class StudentFetchThread(QThread):
+    finished = pyqtSignal(list)
+    error = pyqtSignal(str)
+
+    def run(self):
+        try:
+            data = student_api.list_students() or []
+            self.finished.emit(data)
+        except Exception as exc:
+            self.error.emit(str(exc))
+
+
 class StudentManagerDialog(QDialog):
     """Öğrenci kayıtlarını yönetmek için diyalog."""
 
@@ -53,6 +65,7 @@ class StudentManagerDialog(QDialog):
         self._last_role_index = 0
         self._classes = []
         self._roles = []
+        self._fetch_thread = None
 
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(12, 12, 12, 12)
@@ -213,11 +226,8 @@ class StudentManagerDialog(QDialog):
         self.table.setStyleSheet(
             "QTableWidget::item:selected{background: transparent; color: black;}"
         )
-        # Yazı tipi vurgusu için ayrı bir sinyal daha: selectionChanged
-        try:
-            self.table.selectionModel().selectionChanged.connect(self.on_table_selection_changed)
-        except Exception:
-            pass
+        # Daha önce tüm satırları dolaşarak kalınlaştırma yapıyorduk; büyük listelerde UI'yi kitliyordu.
+        # Bu vurguyu kaldırdık; gerekirse sadece Qt varsayılan seçimini kullanır.
 
         main_layout.addWidget(self.table, stretch=1)
 
@@ -258,12 +268,32 @@ class StudentManagerDialog(QDialog):
             self.combo_role.setCurrentIndex(0)
 
     def load_students(self):
+        if self._fetch_thread and self._fetch_thread.isRunning():
+            return
         self.table.setSortingEnabled(False)
-        data = student_api.list_students()
-        self.table.setRowCount(len(data))
+        self.table.setEnabled(False)
+        QApplication.setOverrideCursor(Qt.WaitCursor)
+        self._fetch_thread = StudentFetchThread()
+        self._fetch_thread.finished.connect(self._on_students_fetched)
+        self._fetch_thread.error.connect(self._on_students_error)
+        self._fetch_thread.start()
+
+    def _on_students_error(self, message: str):
+        QApplication.restoreOverrideCursor()
+        self.table.setEnabled(True)
+        QMessageBox.warning(self, "Öğrenciler", f"Liste alınamadı:\n{message}")
+
+    def _on_students_fetched(self, data: list):
+        QApplication.restoreOverrideCursor()
+        self._populate_students(data)
+        self.table.setEnabled(True)
+
+    def _populate_students(self, data: list):
+        shown_data = data or []
+        self.table.setRowCount(len(shown_data))
         self._students = []
 
-        for row, raw in enumerate(data):
+        for row, raw in enumerate(shown_data):
             student = dict(raw or {})
 
             sinif_display, sinif_id = self._resolve_class(student)
@@ -273,7 +303,6 @@ class StudentManagerDialog(QDialog):
             phone_display = _format_phone_display(phone_raw)
             email = student.get("eposta") or ""
             is_active = bool(student.get("aktif", True))
-            # Durum sütunu için metin yerine ikon kullanacağız
 
             row_values = [
                 normalize_entity_text(student.get("ad", "")),
@@ -313,8 +342,8 @@ class StudentManagerDialog(QDialog):
         self.apply_filter(self.search_box.text())
         # Durum sütunundaki widget ikonlarını yerleştir
         for r in range(self.table.rowCount()):
-            data = self.table.item(r, 0).data(Qt.UserRole) or {}
-            self._set_status_widget(r, bool(data.get("aktif", True)))
+            data_row = self.table.item(r, 0).data(Qt.UserRole) or {}
+            self._set_status_widget(r, bool(data_row.get("aktif", True)))
 
         if self._pending_focus_number:
             number = self._pending_focus_number
@@ -436,22 +465,11 @@ class StudentManagerDialog(QDialog):
             elif isinstance(rol_info, int):
                 rol_id = rol_info
         self._set_combo_index(self.combo_role, rol_id)
+        return
 
     def on_table_selection_changed(self, selected, deselected):
-        try:
-            sel_indexes = self.table.selectedIndexes()
-            sel_row = sel_indexes[0].row() if sel_indexes else -1
-            for r in range(self.table.rowCount()):
-                for c in range(self.table.columnCount()):
-                    it = self.table.item(r, c)
-                    if not it:
-                        continue
-                    f = QFont(it.font())
-                    f.setBold(r == sel_row)
-                    f.setPointSize(it.font().pointSize())
-                    it.setFont(f)
-        except Exception:
-            pass
+        # Seçim vurgusunu manuel bold/loop ile yapmıyoruz; boş bırakıldı.
+        return
 
     def _set_combo_index(self, combo: QComboBox, value):
         if value is None:

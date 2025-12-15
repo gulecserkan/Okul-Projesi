@@ -13,7 +13,7 @@ from PyQt5.QtWidgets import (
     QTableWidget, QTableWidgetItem, QHeaderView, QPushButton, QLabel,
     QSizePolicy, QMessageBox, QToolButton, QFormLayout, QDialogButtonBox,
     QListWidget, QListWidgetItem, QCompleter, QCheckBox, QSpinBox,
-    QStackedWidget, QAbstractItemView
+    QStackedWidget, QAbstractItemView, QApplication
 )
 
 from api import books as book_api
@@ -170,6 +170,8 @@ class BookManagerDialog(QDialog):
         self._mode = "view"
         self._pending_copy_plan: List[str] = []
         self._pending_label_contexts: List[Dict] = []
+        self._pending_books_data: List[Dict] = []
+        self._pending_book_row = 0
 
         main = QVBoxLayout(self)
         main.setContentsMargins(12, 12, 12, 12)
@@ -475,13 +477,29 @@ class BookManagerDialog(QDialog):
             self._apply_category_suggestion(current_category_text, None)
 
     def load_books(self):
+        # UI donmasın diye kitapları parça parça doldur
         self.table.setSortingEnabled(False)
-        data = book_api.list_books() or []
+        self.table.setEnabled(False)
+        QApplication.setOverrideCursor(Qt.WaitCursor)
+
         self._title_index = {}
         self._book_index = {}
         self._all_titles = []
-        self.table.setRowCount(len(data))
-        for row, bk in enumerate(data):
+        self._pending_books_data = book_api.list_books() or []
+        self._pending_book_row = 0
+        self.table.clearContents()
+        self.table.setRowCount(len(self._pending_books_data))
+        self._populate_books_chunk()
+
+    def _populate_books_chunk(self, chunk_size: int = 200):
+        """Kitap tablosunu küçük parçalarla doldur (UI donmasın)."""
+        data = self._pending_books_data or []
+        total = len(data)
+        start = self._pending_book_row
+        end = min(start + chunk_size, total)
+
+        for row in range(start, end):
+            bk = data[row]
             title = bk.get("baslik", "")
             norm_title = self._normalize_for_compare(title)
             if norm_title:
@@ -492,7 +510,6 @@ class BookManagerDialog(QDialog):
             isbn = bk.get("isbn", "")
             copies = bk.get("nusha_sayisi")
             if copies is None:
-                # Eski backend versiyonları için geriye dönük destek
                 copies = len(book_api.list_copies_for_book(bk.get("id"))) if bk.get("id") else 0
                 bk["nusha_sayisi"] = copies
 
@@ -514,11 +531,45 @@ class BookManagerDialog(QDialog):
             # raw veriyi sakla
             self.table.item(row, 0).setData(Qt.UserRole, bk)
 
-        self.table.setSortingEnabled(True)
+        self._pending_book_row = end
+        if end >= total:
+            # tamamlandı
+            self.table.setSortingEnabled(True)
+            self.apply_filter(self.search_box.text())
+            self._hide_title_suggestions()
+            self._hide_author_suggestions()
+            self._hide_category_suggestions()
+            self.table.setEnabled(True)
+            QApplication.restoreOverrideCursor()
+            self._pending_books_data = []
+        else:
+            QTimer.singleShot(0, lambda: self._populate_books_chunk(chunk_size))
+
+    def _add_or_update_book_local(self, book: dict):
+        """Backend dönüşünü tablo ve indekslere uygula."""
+        if not book:
+            return
+        book_id = book.get("id")
+        row = self._find_row_by_book_id(book_id) if book_id is not None else -1
+        if row >= 0:
+            old = self.table.item(row, 0).data(Qt.UserRole) if self.table.item(row, 0) else None
+            self._unregister_book_from_indexes(old)
+            self._register_book_in_indexes(book)
+            self._set_book_row(row, book)
+        else:
+            self._register_book_in_indexes(book)
+            row = self.table.rowCount()
+            self.table.insertRow(row)
+            self._set_book_row(row, book)
         self.apply_filter(self.search_box.text())
-        self._hide_title_suggestions()
-        self._hide_author_suggestions()
-        self._hide_category_suggestions()
+
+    def _remove_book_local(self, book_id: int):
+        row = self._find_row_by_book_id(book_id)
+        if row >= 0:
+            it = self.table.item(row, 0)
+            self._unregister_book_from_indexes(it.data(Qt.UserRole) if it else None)
+            self.table.removeRow(row)
+            self.apply_filter(self.search_box.text())
 
     def _resolve_author(self, author):
         if isinstance(author, dict):
@@ -529,6 +580,70 @@ class BookManagerDialog(QDialog):
         if isinstance(category, dict):
             return category.get("ad", "")
         return str(category or "")
+
+    def _find_row_by_book_id(self, book_id: int) -> int:
+        if book_id is None:
+            return -1
+        for row in range(self.table.rowCount()):
+            it = self.table.item(row, 0)
+            data = it.data(Qt.UserRole) if it else None
+            if isinstance(data, dict) and data.get("id") == book_id:
+                return row
+        return -1
+
+    def _unregister_book_from_indexes(self, book: dict | None):
+        if not book:
+            return
+        book_id = book.get("id")
+        self._book_index.pop(book_id, None)
+        title = book.get("baslik", "")
+        norm = self._normalize_for_compare(title)
+        if norm and norm in self._title_index:
+            lst = self._title_index.get(norm, [])
+            self._title_index[norm] = [b for b in lst if b.get("id") != book_id]
+            if not self._title_index[norm]:
+                self._title_index.pop(norm, None)
+        try:
+            if title in self._all_titles:
+                self._all_titles.remove(title)
+        except ValueError:
+            pass
+
+    def _register_book_in_indexes(self, book: dict | None):
+        if not book:
+            return
+        book_id = book.get("id")
+        if book_id is not None:
+            self._book_index[book_id] = book
+        title = book.get("baslik", "")
+        norm = self._normalize_for_compare(title)
+        if norm:
+            self._title_index.setdefault(norm, []).append(book)
+        if title and title not in self._all_titles:
+            self._all_titles.append(title)
+
+    def _set_book_row(self, row: int, book: dict):
+        title = book.get("baslik", "")
+        author = self._resolve_author(book.get("yazar"))
+        category = self._resolve_category(book.get("kategori"))
+        isbn = book.get("isbn", "")
+        copies = book.get("nusha_sayisi")
+        if copies is None:
+            copies = len(book_api.list_copies_for_book(book.get("id"))) if book.get("id") else 0
+            book["nusha_sayisi"] = copies
+
+        values = [title, author, category, isbn, copies]
+        for col, val in enumerate(values):
+            if col == 4:
+                it = NumericTableWidgetItem(str(val if val is not None else 0))
+                it.setData(Qt.UserRole, val if val is not None else 0)
+                it.setTextAlignment(Qt.AlignCenter)
+            else:
+                it = QTableWidgetItem(val or "")
+                it.setTextAlignment(Qt.AlignCenter if col == 3 else Qt.AlignLeft)
+            it.setFlags(Qt.ItemIsSelectable | Qt.ItemIsEnabled)
+            self.table.setItem(row, col, it)
+        self.table.item(row, 0).setData(Qt.UserRole, book)
 
     def apply_filter(self, text: str):
         q = (text or "").strip().lower()
@@ -1331,7 +1446,26 @@ class BookManagerDialog(QDialog):
                 QMessageBox.information(self, "Nüsha", f"{len(copies)} nüsha oluşturuldu.")
                 self._offer_initial_copy_print(context, copies, force_auto=auto_label)
             QMessageBox.information(self, "Başarılı", "Kitap kaydedildi.")
-            self.load_books()
+            if creating:
+                created["nusha_sayisi"] = len(copies)
+                self._add_or_update_book_local(created)
+            else:
+                updated = {}
+                try:
+                    updated = resp.json() or {}
+                except Exception:
+                    updated = {}
+                if not updated:
+                    current = dict(self._book_index.get(self.current_id, {}) or {})
+                    current.update({
+                        "baslik": data.get("baslik"),
+                        "isbn": data.get("isbn"),
+                        "yazar_id": data.get("yazar_id"),
+                        "kategori_id": data.get("kategori_id"),
+                    })
+                    updated = current
+                self._add_or_update_book_local(updated)
+
             if not creating and self._pending_label_contexts:
                 self._flush_label_print_queue()
             self._clear_copy_plan()
@@ -1359,7 +1493,7 @@ class BookManagerDialog(QDialog):
         resp = book_api.delete_book(self.current_id)
         if resp.status_code in (200, 204):
             QMessageBox.information(self, "Başarılı", "Kitap silindi.")
-            self.load_books()
+            self._remove_book_local(self.current_id)
             self.reset_form()
         else:
             detail = book_api.extract_error(resp)
@@ -1605,10 +1739,12 @@ class BookManagerDialog(QDialog):
         if self.current_id == book_id:
             count = len(book_api.list_copies_for_book(book_id))
             self.label_copy_count.setText(str(count))
-
-        self.load_books()
-        self._select_book_in_table(book_id)
+            if book_id in self._book_index:
+                bk = dict(self._book_index[book_id])
+                bk["nusha_sayisi"] = count
+                self._add_or_update_book_local(bk)
         if select_in_table or self.current_id == book_id:
+            self._select_book_in_table(book_id)
             self.current_id = book_id
 
     def _select_book_in_table(self, book_id):

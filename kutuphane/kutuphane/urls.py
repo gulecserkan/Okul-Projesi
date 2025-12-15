@@ -28,6 +28,7 @@ from kutuphane_app.views import (
     UpdateOverdueLoansView,
     AuditLogView,
     InventorySessionViewSet,
+    ShelfCodeListView,
 )
 
 from rest_framework_simplejwt.views import TokenRefreshView as BaseTokenRefreshView
@@ -65,6 +66,7 @@ urlpatterns = [
     path('api/student-penalties/<str:ogrenci_no>/', StudentPenaltySummaryView.as_view(), name="student-penalties"),
     path('api/health/', HealthCheckView.as_view(), name="health"),
     path('api/checkout/', CheckoutView.as_view(), name="checkout"),
+    path('api/raf-kodlari/', ShelfCodeListView.as_view(), name="shelf-codes"),
     path('api/change-password/', ChangePasswordView.as_view(), name="change-password"),
     path('api/settings/loans/', LoanPolicyView.as_view(), name="loan-policy-settings"),
     path('api/settings/loans/roles/', RoleLoanPolicyView.as_view(), name="role-loan-policy-settings"),

@@ -1,7 +1,7 @@
 from django.db import models
 from django.contrib.postgres.indexes import GinIndex
 from datetime import time
-from django.db.models.signals import post_save
+from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
 from django.contrib.auth import get_user_model
 from django.contrib.auth.hashers import make_password, check_password
@@ -148,6 +148,26 @@ class Kitap(models.Model):
                 opclasses=["gin_trgm_ops"],
             ),
         ]
+
+
+def _delete_replaced_images(sender, instance, **kwargs):
+    if not instance.pk:
+        return
+    try:
+        old = sender.objects.get(pk=instance.pk)
+    except sender.DoesNotExist:
+        return
+
+    image_fields = ["resim1", "resim2", "resim3", "resim4", "resim5"]
+    for field in image_fields:
+        old_file = getattr(old, field, None)
+        new_file = getattr(instance, field, None)
+        if old_file and old_file != new_file:
+            # Temizle, aksi halde diskte eski dosya kalır
+            old_file.delete(save=False)
+
+
+pre_save.connect(_delete_replaced_images, sender=Kitap)
 
 
 # --- Kitap Nüshaları (Fiziksel Kopya) ---

@@ -530,6 +530,7 @@ class BookTable(QWidget):
             )
 
         del loans
+        # Performans logu kaldırıldı
         return data, row_meta
 
     def apply_filter(self, text=None, *, status=None):
