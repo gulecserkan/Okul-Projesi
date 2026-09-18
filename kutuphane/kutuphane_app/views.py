@@ -3,7 +3,7 @@ from rest_framework.views import APIView
 from rest_framework.generics import ListAPIView
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, BasePermission
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.exceptions import ValidationError as DRFValidationError
 from django.db import transaction
@@ -118,6 +118,21 @@ def _client_ip_from_request(request):
     return request.META.get("REMOTE_ADDR")
 
 
+class IsAdminPersonel(BasePermission):
+    """Yalnızca süper kullanıcı/staff veya 'admin' rotlu personel erişebilir."""
+
+    message = "Bu işlem için yönetici yetkisi gerekli."
+
+    def has_permission(self, request, view):
+        user = getattr(request, "user", None)
+        if not user or not user.is_authenticated:
+            return False
+        if user.is_superuser or user.is_staff:
+            return True
+        personel = getattr(user, "personel", None)
+        return personel is not None and getattr(personel, "rol", None) == "admin"
+
+
 def penalty_summary_for_student(ogrenci, limit=None):
     if not ogrenci:
         return {
@@ -196,8 +211,9 @@ class SinifViewSet(viewsets.ModelViewSet):
     serializer_class = SinifSerializer
 
 class OgrenciViewSet(viewsets.ModelViewSet):
-    queryset = Ogrenci.objects.all()
+    queryset = Ogrenci.objects.select_related("sinif", "rol").all()
     serializer_class = OgrenciSerializer
+    pagination_class = ConditionalPageNumberPagination
 
 class YazarViewSet(viewsets.ModelViewSet):
     queryset = Yazar.objects.all()
@@ -218,7 +234,7 @@ class KitapViewSet(viewsets.ModelViewSet):
         return KitapDetailSerializer
 
     def get_queryset(self):
-        qs = super().get_queryset()
+        qs = super().get_queryset().select_related("yazar", "kategori")
         yazar_id = self.request.query_params.get("yazar")
         if yazar_id:
             qs = qs.filter(yazar_id=yazar_id)
@@ -328,8 +344,9 @@ class ShelfCodeListView(APIView):
         return Response(list(codes))
 
 class KitapNushaViewSet(viewsets.ModelViewSet):
-    queryset = KitapNusha.objects.all()
+    queryset = KitapNusha.objects.select_related("kitap").all()
     serializer_class = KitapNushaSerializer
+    pagination_class = ConditionalPageNumberPagination
 
     def get_queryset(self):
         qs = super().get_queryset()
@@ -349,8 +366,14 @@ class KitapNushaViewSet(viewsets.ModelViewSet):
         return qs
 
 class OduncKaydiViewSet(viewsets.ModelViewSet):
-    queryset = OduncKaydi.objects.all()
+    queryset = OduncKaydi.objects.select_related(
+        "ogrenci__sinif",
+        "ogrenci__rol",
+        "kitap_nusha__kitap__yazar",
+        "kitap_nusha__kitap__kategori",
+    ).all()
     serializer_class = OduncKaydiSerializer
+    pagination_class = ConditionalPageNumberPagination
 
     def get_queryset(self):
         qs = super().get_queryset()
@@ -363,6 +386,11 @@ class PersonelViewSet(viewsets.ModelViewSet):
     queryset = Personel.objects.all()
     serializer_class = PersonelSerializer
     permission_classes = [IsAuthenticated]
+
+    def get_permissions(self):
+        if self.action in ("create", "update", "partial_update", "destroy"):
+            return [IsAdminPersonel()]
+        return [IsAuthenticated()]
 
 
 class InventorySessionViewSet(viewsets.ModelViewSet):

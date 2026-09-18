@@ -124,23 +124,38 @@ class KitapNushaSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         barkod = validated_data.get("barkod")
-        if not barkod:
-            from .models import KitapNusha
-            import re
+        if barkod:
+            return super().create(validated_data)
 
-            prefix = "KIT"
-            max_n = 0
-            for code in KitapNusha.objects.filter(barkod__startswith=prefix).values_list("barkod", flat=True):
-                m = re.match(r"^%s(\d+)$" % prefix, code or "")
-                if m:
-                    try:
-                        n = int(m.group(1))
-                        if n > max_n:
-                            max_n = n
-                    except Exception:
-                        continue
-            validated_data["barkod"] = f"{prefix}{max_n+1:06d}"
-        return super().create(validated_data)
+        from django.db import IntegrityError, transaction
+        from django.db.models import Func, IntegerField, Max, Value
+        from django.db.models.functions import Cast
+
+        prefix = "KIT"
+        pattern = rf"^{prefix}\d+$"
+        strip_expr = Func("barkod", Value(prefix), Value(""), function="regexp_replace")
+
+        def _next_number():
+            value = (
+                KitapNusha.objects.filter(barkod__regex=pattern)
+                .annotate(n=Cast(strip_expr, output_field=IntegerField()))
+                .aggregate(m=Max("n"))["m"]
+            )
+            return (value or 0) + 1
+
+        for _attempt in range(10):
+            candidate = f"{prefix}{_next_number():06d}"
+            try:
+                with transaction.atomic():
+                    payload = dict(validated_data)
+                    payload["barkod"] = candidate
+                    return super().create(payload)
+            except IntegrityError:
+                continue
+
+        raise serializers.ValidationError(
+            {"barkod": "Benzersiz barkod üretilemedi. Lütfen tekrar deneyin."}
+        )
 
 
 class OduncKaydiSerializer(serializers.ModelSerializer):
@@ -155,7 +170,8 @@ class OduncKaydiSerializer(serializers.ModelSerializer):
 class PersonelSerializer(serializers.ModelSerializer):
     class Meta:
         model = Personel
-        fields = "__all__"
+        fields = ["id", "ad_soyad", "kullanici_adi", "rol"]
+        read_only_fields = ["id", "kullanici_adi", "rol"]
 
 
 class LoanPolicySerializer(serializers.ModelSerializer):

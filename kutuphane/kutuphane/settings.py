@@ -42,13 +42,20 @@ load_env(LOCAL_ENV_FILE)
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.environ.get(
-    "SECRET_KEY", "django-insecure-!%^83i8%pdx-a_$&^0+fb1)lh38@yf43(n5i6yac4qmp^kv2m8"
-)
-
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get("DEBUG", "False").lower() == "true"
+
+# SECURITY WARNING: keep the secret key used in production secret!
+_SECRET_KEY = os.environ.get("SECRET_KEY")
+if not _SECRET_KEY:
+    if DEBUG:
+        _SECRET_KEY = "django-insecure-!%^83i8%pdx-a_$&^0+fb1)lh38@yf43(n5i6yac4qmp^kv2m8"
+    else:
+        raise RuntimeError(
+            "SECRET_KEY ortam değişkeni ayarlanmadı. Üretim ortamında "
+            "SECRET_KEY mutlaka .env dosyasında verilmelidir."
+        )
+SECRET_KEY = _SECRET_KEY
 
 ALLOWED_HOSTS = [
     host.strip()
@@ -138,6 +145,32 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
+# --- Güvenlik sıkılaştırma ---
+# Ters proxy (nginx vb.) HTTPS sonlandırıyorsa güvenilir header'ları kabul et
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
+# HTTPS zorlaması (DEBUG dışı üretimde aktif)
+SECURE_SSL_REDIRECT = os.environ.get("SECURE_SSL_REDIRECT", "False").lower() == "true"
+
+SECURE_HSTS_SECONDS = 0
+SECURE_HSTS_INCLUDE_SUBDOMAINS = False
+SECURE_HSTS_PRELOAD = False
+
+# Çerez güvenliği (yalnızca HTTPS üzerinde anlamlı; DEBUG dışında aktif)
+SESSION_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_SECURE = not DEBUG
+
+SECURE_CONTENT_TYPE_NOSNIFF = True
+SECURE_REFERRER_POLICY = "same-origin"
+X_FRAME_OPTIONS = "DENY"
+
+# HTTPS üzerinden canlı yayında admin paneli CSRF origin'leri
+CSRF_TRUSTED_ORIGINS = [
+    origin.strip()
+    for origin in os.environ.get("CSRF_TRUSTED_ORIGINS", "").split(",")
+    if origin.strip()
+]
+
 
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/
@@ -173,4 +206,15 @@ REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": (
         "rest_framework.permissions.IsAuthenticated",
     ),
+    # Brute force / ağır kullanım koruması
+    "DEFAULT_THROTTLE_CLASSES": (
+        "rest_framework.throttling.AnonRateThrottle",
+        "rest_framework.throttling.UserRateThrottle",
+        "rest_framework.throttling.ScopedRateThrottle",
+    ),
+    "DEFAULT_THROTTLE_RATES": {
+        "anon": "20/min",
+        "user": "120/min",
+        "login": "10/min",
+    },
 }

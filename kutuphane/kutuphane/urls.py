@@ -38,10 +38,12 @@ from kutuphane_app.serializers import TokenObtainPairSerializer, TokenRefreshSer
 
 class TokenObtainPairView(BaseTokenObtainPairView):
     serializer_class = TokenObtainPairSerializer
+    throttle_scope = "login"
 
 
 class TokenRefreshView(BaseTokenRefreshView):
     serializer_class = TokenRefreshSerializer
+    throttle_scope = "login"
 
 router = routers.DefaultRouter()
 router.register(r'roller', RolViewSet)
