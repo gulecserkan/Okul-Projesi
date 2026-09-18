@@ -35,7 +35,12 @@ class _BookListScreenState extends State<BookListScreen> {
         child: GestureDetector(
           behavior: HitTestBehavior.opaque,
           onDoubleTap: () => _openDetail(k),
-          child: child,
+          child: Container(
+            constraints: const BoxConstraints(minWidth: double.infinity),
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+            alignment: Alignment.centerLeft,
+            child: child,
+          ),
         ),
       ),
     );
