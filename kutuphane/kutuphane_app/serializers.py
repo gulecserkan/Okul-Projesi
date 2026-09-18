@@ -171,7 +171,14 @@ class PersonelSerializer(serializers.ModelSerializer):
     class Meta:
         model = Personel
         fields = ["id", "ad_soyad", "kullanici_adi", "rol"]
-        read_only_fields = ["id", "kullanici_adi", "rol"]
+
+    def get_fields(self):
+        fields = super().get_fields()
+        if self.instance is not None:
+            # Güncellemede kullanici_adi/rol kilitli; oluşturmada serbest.
+            fields["kullanici_adi"].read_only = True
+            fields["rol"].read_only = True
+        return fields
 
 
 class LoanPolicySerializer(serializers.ModelSerializer):
