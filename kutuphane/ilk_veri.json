@@ -87,1700 +87,1724 @@
     "model": "kutuphane_app.rol",
     "pk": 1,
     "fields": {
-      "ad": "Öğrenci",
-      "odunc_suresi_gun": 15,
-      "maksimum_kitap": 3,
-      "gecikme_ceza_gunluk": "0.50"
+      "ad": "Öğrenci"
     }
   },
   {
     "model": "kutuphane_app.rol",
     "pk": 2,
     "fields": {
-      "ad": "Öğretmen",
-      "odunc_suresi_gun": 30,
-      "maksimum_kitap": 10,
-      "gecikme_ceza_gunluk": "0.00"
+      "ad": "Öğretmen"
+    }
+  },
+  {
+    "model": "kutuphane_app.roleloanpolicy",
+    "pk": 1,
+    "fields": {
+      "role": 1,
+      "duration": 15,
+      "max_items": 3,
+      "delay_grace_days": 0,
+      "penalty_delay_days": 0,
+      "shift_weekend": false,
+      "penalty_max_per_loan": "0.00",
+      "penalty_max_per_student": "0.00",
+      "daily_penalty_rate": "0.50"
+    }
+  },
+  {
+    "model": "kutuphane_app.roleloanpolicy",
+    "pk": 2,
+    "fields": {
+      "role": 2,
+      "duration": 30,
+      "max_items": 10,
+      "delay_grace_days": 0,
+      "penalty_delay_days": 0,
+      "shift_weekend": false,
+      "penalty_max_per_loan": "0.00",
+      "penalty_max_per_student": "0.00",
+      "daily_penalty_rate": "0.00"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 1,
     "fields": {
-      "ad": "Uluğbey",
-      "soyad": "Çetin",
+      "ad": "Arpağ",
+      "soyad": "Seven",
       "ogrenci_no": "5A01",
       "sinif": 1,
       "rol": 1,
-      "telefon": "775 2 642",
-      "eposta": "rertas@example.org",
-      "kayit_tarihi": "2020-03-26T14:50:00.645041"
+      "telefon": "+90(811)305-3948x753",
+      "eposta": "kumralfirat@example.net",
+      "kayit_tarihi": "2024-04-30T11:24:05.812254"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 2,
     "fields": {
-      "ad": "Burakhan",
-      "soyad": "Akça",
+      "ad": "Tanpınar",
+      "soyad": "Arslan",
       "ogrenci_no": "5A02",
       "sinif": 1,
       "rol": 1,
-      "telefon": "(361)076 3597",
-      "eposta": "senerkapagan@example.com",
-      "kayit_tarihi": "2021-12-22T05:57:02.748857"
+      "telefon": "+90(317)932-1703x887",
+      "eposta": "tali63@example.org",
+      "kayit_tarihi": "2024-03-29T04:55:03.315847"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 3,
     "fields": {
-      "ad": "Kutgün",
-      "soyad": "Korutürk",
+      "ad": "Ganiye",
+      "soyad": "Çamurcuoğlu",
       "ogrenci_no": "5A03",
       "sinif": 1,
       "rol": 1,
-      "telefon": "0268-031 8174",
-      "eposta": "arslancamok@example.com",
-      "kayit_tarihi": "2025-06-26T05:43:14.189895"
+      "telefon": "(109)030 6957",
+      "eposta": "gsezgin@example.org",
+      "kayit_tarihi": "2021-04-10T03:17:30.708634"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 4,
     "fields": {
-      "ad": "İlgi",
-      "soyad": "Çamurcuoğlu",
+      "ad": "Torhan",
+      "soyad": "Yıldırım",
       "ogrenci_no": "5A04",
       "sinif": 1,
       "rol": 1,
-      "telefon": "08015188349",
-      "eposta": "inanclidurdu@example.net",
-      "kayit_tarihi": "2021-08-02T07:57:14.961471"
+      "telefon": "435 5 606",
+      "eposta": "alemdaraysan@example.net",
+      "kayit_tarihi": "2021-09-29T17:50:46.193860"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 5,
     "fields": {
-      "ad": "Tercan",
-      "soyad": "Eraslan",
+      "ad": "Soyselçuk",
+      "soyad": "Ergül",
       "ogrenci_no": "5A05",
       "sinif": 1,
       "rol": 1,
-      "telefon": "0813-643 2806",
-      "eposta": "aaksu@example.org",
-      "kayit_tarihi": "2023-10-14T07:59:32.523844"
+      "telefon": "0755 882 38 58",
+      "eposta": "fatmanur19@example.net",
+      "kayit_tarihi": "2021-05-30T20:19:30.150326"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 6,
     "fields": {
-      "ad": "Tercan",
-      "soyad": "Zengin",
+      "ad": "Aru",
+      "soyad": "Akçay",
       "ogrenci_no": "5A06",
       "sinif": 1,
       "rol": 1,
-      "telefon": "0515 508 77 43",
-      "eposta": "unsever34@example.org",
-      "kayit_tarihi": "2020-11-26T04:53:07.598320"
+      "telefon": "0279-679 4918",
+      "eposta": "akgunessakarya@example.com",
+      "kayit_tarihi": "2025-04-11T12:53:26.212490"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 7,
     "fields": {
-      "ad": "Hekime",
-      "soyad": "Sezgin",
+      "ad": "Uludağ",
+      "soyad": "Yüksel",
       "ogrenci_no": "5A07",
       "sinif": 1,
       "rol": 1,
-      "telefon": "402 3 214",
-      "eposta": "tgulen@example.org",
-      "kayit_tarihi": "2024-03-06T05:25:59.235306"
+      "telefon": "04164620635",
+      "eposta": "kzengin@example.net",
+      "kayit_tarihi": "2020-10-31T00:51:15.589238"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 8,
     "fields": {
-      "ad": "Kahir",
-      "soyad": "Soylu",
+      "ad": "Berki",
+      "soyad": "Akçay",
       "ogrenci_no": "5A08",
       "sinif": 1,
       "rol": 1,
-      "telefon": "0378-322 1921",
-      "eposta": "tanyu71@example.net",
-      "kayit_tarihi": "2022-10-28T00:51:39.858355"
+      "telefon": "+90 (551) 5365275",
+      "eposta": "erkan75@example.net",
+      "kayit_tarihi": "2024-09-03T03:14:13.902075"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 9,
     "fields": {
-      "ad": "Hüsnühâl",
-      "soyad": "Kısakürek",
+      "ad": "Mucahit",
+      "soyad": "İnönü",
       "ogrenci_no": "5A09",
       "sinif": 1,
       "rol": 1,
-      "telefon": "09541695962",
-      "eposta": "rakcay@example.com",
-      "kayit_tarihi": "2025-01-23T20:42:55.824624"
+      "telefon": "625 5 084",
+      "eposta": "dumanlieroz@example.org",
+      "kayit_tarihi": "2020-08-16T00:04:24.003789"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 10,
     "fields": {
-      "ad": "Canur",
-      "soyad": "Tevetoğlu",
+      "ad": "Sarpkın",
+      "soyad": "Akgündüz",
       "ogrenci_no": "5A10",
       "sinif": 1,
       "rol": 1,
-      "telefon": "08408238569",
-      "eposta": "onukeralemdar@example.org",
-      "kayit_tarihi": "2020-10-19T02:51:54.775725"
+      "telefon": "06230951524",
+      "eposta": "dsener@example.org",
+      "kayit_tarihi": "2021-07-19T03:25:11.459894"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 11,
     "fields": {
-      "ad": "Özdil",
-      "soyad": "Sezer",
+      "ad": "Gülüs",
+      "soyad": "Akçay",
       "ogrenci_no": "5B01",
       "sinif": 2,
       "rol": 1,
-      "telefon": "+90(903)3092254",
-      "eposta": "corlutekiner@example.com",
-      "kayit_tarihi": "2023-02-15T15:27:32.986819"
+      "telefon": "+90 (273) 0939416",
+      "eposta": "shayrioglu@example.org",
+      "kayit_tarihi": "2021-01-04T21:53:26.070508"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 12,
     "fields": {
-      "ad": "Verde",
-      "soyad": "Kısakürek",
+      "ad": "Borahan",
+      "soyad": "Akar",
       "ogrenci_no": "5B02",
       "sinif": 2,
       "rol": 1,
-      "telefon": "(759)597 6235",
-      "eposta": "bzengin@example.com",
-      "kayit_tarihi": "2023-03-20T03:27:02.762146"
+      "telefon": "+90 (313) 5143968",
+      "eposta": "lcorlu@example.net",
+      "kayit_tarihi": "2020-04-08T08:13:59.815720"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 13,
     "fields": {
-      "ad": "Akver",
-      "soyad": "Duran",
+      "ad": "Sezal",
+      "soyad": "Türk",
       "ogrenci_no": "5B03",
       "sinif": 2,
       "rol": 1,
-      "telefon": "+90(287)348-0794x399",
-      "eposta": "sevensevcan@example.net",
-      "kayit_tarihi": "2024-09-10T18:46:58.415282"
+      "telefon": "0667-226 2373",
+      "eposta": "rengul04@example.net",
+      "kayit_tarihi": "2024-01-08T13:02:21.819117"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 14,
     "fields": {
-      "ad": "Göksev",
-      "soyad": "Ergül",
+      "ad": "Şekim",
+      "soyad": "Yılmaz",
       "ogrenci_no": "5B04",
       "sinif": 2,
       "rol": 1,
-      "telefon": "+90 (659) 3941050",
-      "eposta": "yaksu@example.org",
-      "kayit_tarihi": "2020-07-06T15:58:58.895235"
+      "telefon": "+90(937)515-2513x861",
+      "eposta": "turkorgun@example.net",
+      "kayit_tarihi": "2022-01-12T06:12:33.188408"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 15,
     "fields": {
-      "ad": "Ahter",
-      "soyad": "Bilgin",
+      "ad": "Ummahani",
+      "soyad": "Duran",
       "ogrenci_no": "5B05",
       "sinif": 2,
       "rol": 1,
-      "telefon": "009 8 465",
-      "eposta": "akaryurtguven@example.net",
-      "kayit_tarihi": "2023-01-23T04:15:56.236507"
+      "telefon": "(800)008 5492",
+      "eposta": "hkoruturk@example.net",
+      "kayit_tarihi": "2021-03-31T00:25:07.460385"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 16,
     "fields": {
-      "ad": "Mefarettin",
-      "soyad": "Durdu",
+      "ad": "Değmeer",
+      "soyad": "Bilir",
       "ogrenci_no": "5B06",
       "sinif": 2,
       "rol": 1,
-      "telefon": "06551909319",
-      "eposta": "nebihayilmaz@example.net",
-      "kayit_tarihi": "2024-02-12T19:28:28.202518"
+      "telefon": "03768671614",
+      "eposta": "akarilkbahar@example.com",
+      "kayit_tarihi": "2023-01-20T17:14:03.397101"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 17,
     "fields": {
-      "ad": "Feryas",
-      "soyad": "Durdu",
+      "ad": "Noman",
+      "soyad": "Akar",
       "ogrenci_no": "5B07",
       "sinif": 2,
       "rol": 1,
-      "telefon": "0464 130 39 55",
-      "eposta": "birsanakcay@example.org",
-      "kayit_tarihi": "2025-04-26T01:58:50.546771"
+      "telefon": "+90(168)792-0284x220",
+      "eposta": "arsoysokmen@example.net",
+      "kayit_tarihi": "2026-05-28T01:26:38.158519"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 18,
     "fields": {
-      "ad": "Gençay",
-      "soyad": "Akça",
+      "ad": "Oymak",
+      "soyad": "Akdeniz",
       "ogrenci_no": "5B08",
       "sinif": 2,
       "rol": 1,
-      "telefon": "0234-366 1978",
-      "eposta": "alemdarferhan@example.org",
-      "kayit_tarihi": "2023-04-01T14:28:55.720347"
+      "telefon": "860 7 802",
+      "eposta": "semsinisagulen@example.com",
+      "kayit_tarihi": "2024-02-26T20:46:19.824859"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 19,
     "fields": {
-      "ad": "Erbay",
-      "soyad": "Korutürk",
+      "ad": "Fatigül",
+      "soyad": "Yorulmaz",
       "ogrenci_no": "5B09",
       "sinif": 2,
       "rol": 1,
-      "telefon": "+90(216)774-8808x283",
-      "eposta": "aykutalpzengin@example.com",
-      "kayit_tarihi": "2025-07-16T06:07:39.914050"
+      "telefon": "+90(384)329-9469x192",
+      "eposta": "copuraslan@example.com",
+      "kayit_tarihi": "2024-12-05T03:11:59.852477"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 20,
     "fields": {
-      "ad": "Mutasım",
-      "soyad": "Demirel",
+      "ad": "Talibe",
+      "soyad": "Çamurcuoğlu",
       "ogrenci_no": "5B10",
       "sinif": 2,
       "rol": 1,
-      "telefon": "+90 (251) 1216586",
-      "eposta": "hasbekakar@example.org",
-      "kayit_tarihi": "2022-11-21T04:24:01.102762"
+      "telefon": "0984-338 3410",
+      "eposta": "avsin48@example.net",
+      "kayit_tarihi": "2022-06-10T21:35:05.139918"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 21,
     "fields": {
-      "ad": "Nafii",
-      "soyad": "Dumanlı",
+      "ad": "Lerze",
+      "soyad": "Akçay",
       "ogrenci_no": "5C01",
       "sinif": 3,
       "rol": 1,
-      "telefon": "+90(038)536-5038x483",
-      "eposta": "ihsanoglukosemen@example.net",
-      "kayit_tarihi": "2024-02-05T09:33:59.225264"
+      "telefon": "0200 466 28 80",
+      "eposta": "fsafak@example.org",
+      "kayit_tarihi": "2022-08-01T14:18:42.709836"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 22,
     "fields": {
-      "ad": "Günver",
-      "soyad": "Karadeniz",
+      "ad": "Tümer",
+      "soyad": "Hayrioğlu",
       "ogrenci_no": "5C02",
       "sinif": 3,
       "rol": 1,
-      "telefon": "+90 (102) 4117177",
-      "eposta": "jakcay@example.org",
-      "kayit_tarihi": "2021-06-06T09:21:22.523961"
+      "telefon": "04281149000",
+      "eposta": "hindal03@example.com",
+      "kayit_tarihi": "2020-11-24T03:50:55.858421"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 23,
     "fields": {
-      "ad": "İyiyürek",
-      "soyad": "Fırat",
+      "ad": "Cenan",
+      "soyad": "Korutürk",
       "ogrenci_no": "5C03",
       "sinif": 3,
       "rol": 1,
-      "telefon": "0682-577 8004",
-      "eposta": "gokce83@example.com",
-      "kayit_tarihi": "2022-03-16T00:49:26.202415"
+      "telefon": "+90(703)6751790",
+      "eposta": "cmansiz@example.net",
+      "kayit_tarihi": "2021-10-19T17:57:28.688710"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 24,
     "fields": {
-      "ad": "Sezen",
-      "soyad": "Hayrioğlu",
+      "ad": "Balatekin",
+      "soyad": "İhsanoğlu",
       "ogrenci_no": "5C04",
       "sinif": 3,
       "rol": 1,
-      "telefon": "301 6 333",
-      "eposta": "intihapdemirel@example.net",
-      "kayit_tarihi": "2022-01-03T21:46:57.817207"
+      "telefon": "566 1 934",
+      "eposta": "nursanakgunduz@example.com",
+      "kayit_tarihi": "2021-07-30T22:33:23.661444"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 25,
     "fields": {
-      "ad": "Özsözlü",
-      "soyad": "Hayrioğlu",
+      "ad": "Nurşan",
+      "soyad": "Akgündüz",
       "ogrenci_no": "5C05",
       "sinif": 3,
       "rol": 1,
-      "telefon": "+90(035)844-1600x290",
-      "eposta": "sirriyehayrioglu@example.com",
-      "kayit_tarihi": "2020-11-23T20:51:33.371441"
+      "telefon": "+90(590)098-8087x877",
+      "eposta": "zorlurumeysa@example.org",
+      "kayit_tarihi": "2022-10-24T20:13:10.811105"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 26,
     "fields": {
-      "ad": "Tuğtaş",
-      "soyad": "Durdu",
+      "ad": "Güllühan",
+      "soyad": "Şama",
       "ogrenci_no": "5C06",
       "sinif": 3,
       "rol": 1,
-      "telefon": "+90(835)1853206",
-      "eposta": "baymanseven@example.com",
-      "kayit_tarihi": "2020-10-27T04:24:43.249348"
+      "telefon": "+90(447)8171092",
+      "eposta": "afife88@example.net",
+      "kayit_tarihi": "2022-06-18T01:24:09.800104"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 27,
     "fields": {
-      "ad": "Maşide",
-      "soyad": "Akçay",
+      "ad": "Gümüştekin",
+      "soyad": "Akdeniz",
       "ogrenci_no": "5C07",
       "sinif": 3,
       "rol": 1,
-      "telefon": "00735341098",
-      "eposta": "canalsakarya@example.org",
-      "kayit_tarihi": "2022-02-28T00:45:10.822225"
+      "telefon": "+90(056)598-1028x783",
+      "eposta": "ergonul28@example.net",
+      "kayit_tarihi": "2022-08-13T02:15:30.453024"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 28,
     "fields": {
-      "ad": "Fitnat",
-      "soyad": "Eraslan",
+      "ad": "Dayar",
+      "soyad": "Bilge",
       "ogrenci_no": "5C08",
       "sinif": 3,
       "rol": 1,
-      "telefon": "07950678688",
-      "eposta": "dalanfirat@example.org",
-      "kayit_tarihi": "2025-07-22T12:00:52.013751"
+      "telefon": "0573 547 51 42",
+      "eposta": "aksumevlut@example.net",
+      "kayit_tarihi": "2023-12-08T07:25:37.658209"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 29,
     "fields": {
-      "ad": "Şeyda",
-      "soyad": "Öcalan",
+      "ad": "Süvari",
+      "soyad": "Tevetoğlu",
       "ogrenci_no": "5C09",
       "sinif": 3,
       "rol": 1,
-      "telefon": "+90(813)094-6083x363",
-      "eposta": "ycorlu@example.net",
-      "kayit_tarihi": "2023-11-23T20:06:05.328714"
+      "telefon": "0345-001 6422",
+      "eposta": "zeynotarhan@example.net",
+      "kayit_tarihi": "2022-08-27T08:41:20.376058"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 30,
     "fields": {
-      "ad": "Mestur",
-      "soyad": "Yıldırım",
+      "ad": "Nades",
+      "soyad": "Alemdar",
       "ogrenci_no": "5C10",
       "sinif": 3,
       "rol": 1,
-      "telefon": "105 5 833",
-      "eposta": "cagdanbilir@example.com",
-      "kayit_tarihi": "2023-03-25T05:31:08.702133"
+      "telefon": "(988)795 6923",
+      "eposta": "baltassafak@example.net",
+      "kayit_tarihi": "2020-03-24T12:54:48.978019"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 31,
     "fields": {
-      "ad": "Yurdanur",
-      "soyad": "Gül",
+      "ad": "Asım",
+      "soyad": "Yüksel",
       "ogrenci_no": "6A01",
       "sinif": 4,
       "rol": 1,
-      "telefon": "+90(771)957-2537x463",
-      "eposta": "miray45@example.com",
-      "kayit_tarihi": "2025-01-13T00:13:30.914923"
+      "telefon": "+90(374)939-3251x232",
+      "eposta": "samurtay08@example.net",
+      "kayit_tarihi": "2025-02-02T14:36:44.753906"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 32,
     "fields": {
-      "ad": "Teber",
-      "soyad": "Akgündüz",
+      "ad": "Ismık",
+      "soyad": "Korutürk",
       "ogrenci_no": "6A02",
       "sinif": 4,
       "rol": 1,
-      "telefon": "0614-886 0924",
-      "eposta": "gulenegenur@example.net",
-      "kayit_tarihi": "2021-07-25T21:06:39.441113"
+      "telefon": "+90(720)3385002",
+      "eposta": "fatigul46@example.org",
+      "kayit_tarihi": "2020-04-18T07:19:38.497134"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 33,
     "fields": {
-      "ad": "Behrem",
-      "soyad": "Çetin",
+      "ad": "Sittik",
+      "soyad": "Akça",
       "ogrenci_no": "6A03",
       "sinif": 4,
       "rol": 1,
-      "telefon": "0442 967 09 09",
-      "eposta": "mevludiyesezgin@example.com",
-      "kayit_tarihi": "2023-08-09T20:12:07.119878"
+      "telefon": "0312-724 3197",
+      "eposta": "cagademirel@example.com",
+      "kayit_tarihi": "2023-06-12T08:44:32.235085"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 34,
     "fields": {
-      "ad": "Mengüç",
-      "soyad": "Ergül",
+      "ad": "Elhan",
+      "soyad": "Tevetoğlu",
       "ogrenci_no": "6A04",
       "sinif": 4,
       "rol": 1,
-      "telefon": "+90(106)885-7998x472",
-      "eposta": "aykutdurdu@example.org",
-      "kayit_tarihi": "2021-02-01T20:32:32.916559"
+      "telefon": "0507 124 14 07",
+      "eposta": "senkal14@example.org",
+      "kayit_tarihi": "2025-06-09T13:23:35.920365"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 35,
     "fields": {
-      "ad": "Sağcan",
-      "soyad": "Manço",
+      "ad": "Gülüs",
+      "soyad": "Duran",
       "ogrenci_no": "6A05",
       "sinif": 4,
       "rol": 1,
-      "telefon": "655 9 504",
-      "eposta": "sevenruhide@example.net",
-      "kayit_tarihi": "2023-07-06T04:09:41.981609"
+      "telefon": "+90(982)177-2179x105",
+      "eposta": "demirizkaradeniz@example.net",
+      "kayit_tarihi": "2023-12-22T10:43:21.052747"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 36,
     "fields": {
-      "ad": "Mihrab",
-      "soyad": "Akça",
+      "ad": "Ergener",
+      "soyad": "Akar",
       "ogrenci_no": "6A06",
       "sinif": 4,
       "rol": 1,
-      "telefon": "+90(410)597-7349x372",
-      "eposta": "gokcebalancorlu@example.com",
-      "kayit_tarihi": "2021-01-25T21:12:53.904575"
+      "telefon": "375 0 318",
+      "eposta": "yilmadumanli@example.org",
+      "kayit_tarihi": "2023-09-28T07:27:30.634044"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 37,
     "fields": {
-      "ad": "Pekkan",
-      "soyad": "Bilir",
+      "ad": "Atilhan",
+      "soyad": "Dumanlı",
       "ogrenci_no": "6A07",
       "sinif": 4,
       "rol": 1,
-      "telefon": "477 3 267",
-      "eposta": "arsoyyahsi@example.org",
-      "kayit_tarihi": "2024-09-09T00:44:48.304648"
+      "telefon": "+90(572)875-3155x548",
+      "eposta": "mahigulmansiz@example.org",
+      "kayit_tarihi": "2021-01-15T23:59:03.995252"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 38,
     "fields": {
-      "ad": "Tahir",
-      "soyad": "Çamurcuoğlu",
+      "ad": "Şerafeddin",
+      "soyad": "Erdoğan",
       "ogrenci_no": "6A08",
       "sinif": 4,
       "rol": 1,
-      "telefon": "800 1 203",
-      "eposta": "sakgunduz@example.org",
-      "kayit_tarihi": "2021-06-13T07:33:15.539930"
+      "telefon": "412 8 474",
+      "eposta": "zulbiyeakdeniz@example.net",
+      "kayit_tarihi": "2026-08-18T22:22:20.456770"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 39,
     "fields": {
-      "ad": "Kocabaş",
-      "soyad": "Akdeniz",
+      "ad": "Fügen",
+      "soyad": "Yorulmaz",
       "ogrenci_no": "6A09",
       "sinif": 4,
       "rol": 1,
-      "telefon": "+90(734)3902957",
-      "eposta": "busra18@example.net",
-      "kayit_tarihi": "2022-12-15T12:08:28.408383"
+      "telefon": "+90(512)798-2006x206",
+      "eposta": "rabbiyeeraslan@example.org",
+      "kayit_tarihi": "2020-03-17T20:04:30.488938"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 40,
     "fields": {
-      "ad": "Delil",
-      "soyad": "Şensoy",
+      "ad": "Zekayi",
+      "soyad": "Sezgin",
       "ogrenci_no": "6A10",
       "sinif": 4,
       "rol": 1,
-      "telefon": "0025-442 4116",
-      "eposta": "sencarkaradeniz@example.com",
-      "kayit_tarihi": "2020-02-06T10:32:27.849594"
+      "telefon": "0163-156 9637",
+      "eposta": "atnan71@example.org",
+      "kayit_tarihi": "2022-03-19T11:40:30.231863"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 41,
     "fields": {
-      "ad": "Hamiyet",
-      "soyad": "Alemdar",
+      "ad": "Dirican",
+      "soyad": "Zengin",
       "ogrenci_no": "6B01",
       "sinif": 5,
       "rol": 1,
-      "telefon": "+90(489)344-0761x207",
-      "eposta": "zinnure51@example.com",
-      "kayit_tarihi": "2021-08-27T00:23:29.149442"
+      "telefon": "+90(717)4616766",
+      "eposta": "musure02@example.net",
+      "kayit_tarihi": "2020-01-04T15:22:36.354988"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 42,
     "fields": {
-      "ad": "Orgün",
-      "soyad": "Ülker",
+      "ad": "Karcan",
+      "soyad": "İnönü",
       "ogrenci_no": "6B02",
       "sinif": 5,
       "rol": 1,
-      "telefon": "01693737031",
-      "eposta": "walemdar@example.net",
-      "kayit_tarihi": "2021-08-18T16:43:16.578246"
+      "telefon": "+90(309)348-2938x196",
+      "eposta": "rihsanoglu@example.net",
+      "kayit_tarihi": "2020-06-18T03:08:36.597612"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 43,
     "fields": {
-      "ad": "Limon",
-      "soyad": "Aksu",
+      "ad": "İlkbahar",
+      "soyad": "Ülker",
       "ogrenci_no": "6B03",
       "sinif": 5,
       "rol": 1,
-      "telefon": "0616-180 3905",
-      "eposta": "nsoylu@example.net",
-      "kayit_tarihi": "2021-05-12T13:32:12.355675"
+      "telefon": "07238305066",
+      "eposta": "idemir@example.com",
+      "kayit_tarihi": "2022-10-30T01:31:29.641245"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 44,
     "fields": {
-      "ad": "Gülbeyan",
-      "soyad": "Kısakürek",
+      "ad": "Enginiz",
+      "soyad": "Çetin",
       "ogrenci_no": "6B04",
       "sinif": 5,
       "rol": 1,
-      "telefon": "+90(548)927-1632x225",
-      "eposta": "gcetin@example.net",
-      "kayit_tarihi": "2021-05-26T13:54:21.497253"
+      "telefon": "+90(901)855-3189x593",
+      "eposta": "corlucanberk@example.net",
+      "kayit_tarihi": "2021-09-16T19:37:52.805804"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 45,
     "fields": {
-      "ad": "Yekbun",
-      "soyad": "Akçay",
+      "ad": "Şelâle",
+      "soyad": "Çorlu",
       "ogrenci_no": "6B05",
       "sinif": 5,
       "rol": 1,
-      "telefon": "00898830233",
-      "eposta": "durmusnural@example.org",
-      "kayit_tarihi": "2024-01-20T22:04:09.637978"
+      "telefon": "0080-050 7505",
+      "eposta": "rerdogan@example.org",
+      "kayit_tarihi": "2026-01-22T06:22:34.882640"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 46,
     "fields": {
-      "ad": "Yosma",
-      "soyad": "Türk",
+      "ad": "Çavuldur",
+      "soyad": "Tarhan",
       "ogrenci_no": "6B06",
       "sinif": 5,
       "rol": 1,
-      "telefon": "+90(350)4815323",
-      "eposta": "aysunacetin@example.org",
-      "kayit_tarihi": "2024-03-31T19:48:16.542470"
+      "telefon": "+90(536)728-1948x733",
+      "eposta": "yekda79@example.net",
+      "kayit_tarihi": "2024-04-21T13:44:23.315438"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 47,
     "fields": {
-      "ad": "Ahsen",
-      "soyad": "Bilgin",
+      "ad": "Cüneyit",
+      "soyad": "Arslan",
       "ogrenci_no": "6B07",
       "sinif": 5,
       "rol": 1,
-      "telefon": "+90(062)4108317",
-      "eposta": "musaffa06@example.com",
-      "kayit_tarihi": "2024-02-13T08:14:17.046125"
+      "telefon": "+90(223)5854032",
+      "eposta": "demirunek@example.com",
+      "kayit_tarihi": "2024-04-06T14:39:12.172503"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 48,
     "fields": {
-      "ad": "Törel",
-      "soyad": "İnönü",
+      "ad": "Yahşi",
+      "soyad": "Dumanlı",
       "ogrenci_no": "6B08",
       "sinif": 5,
       "rol": 1,
-      "telefon": "+90(306)412-9145x768",
-      "eposta": "cenanaksu@example.com",
-      "kayit_tarihi": "2025-07-20T22:57:38.082674"
+      "telefon": "+90 (957) 2503984",
+      "eposta": "zorluogurata@example.com",
+      "kayit_tarihi": "2020-09-15T07:08:51.526233"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 49,
     "fields": {
-      "ad": "Münif",
-      "soyad": "Duran",
+      "ad": "Bedi",
+      "soyad": "Arsoy",
       "ogrenci_no": "6B09",
       "sinif": 5,
       "rol": 1,
-      "telefon": "442 8 957",
-      "eposta": "eraslanvarlik@example.org",
-      "kayit_tarihi": "2023-08-07T03:12:34.825756"
+      "telefon": "+90(628)473-3743x114",
+      "eposta": "demirelmilay@example.com",
+      "kayit_tarihi": "2022-11-26T22:01:46.233611"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 50,
     "fields": {
-      "ad": "Altoğan",
-      "soyad": "Mansız",
+      "ad": "Hoşkadem",
+      "soyad": "Fırat",
       "ogrenci_no": "6B10",
       "sinif": 5,
       "rol": 1,
-      "telefon": "0272-269 3026",
-      "eposta": "ulkerpermun@example.org",
-      "kayit_tarihi": "2022-06-19T01:33:14.203853"
+      "telefon": "662 0 332",
+      "eposta": "eraslanmecit@example.net",
+      "kayit_tarihi": "2024-10-19T19:13:18.752271"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 51,
     "fields": {
-      "ad": "Zinnure",
-      "soyad": "Hançer",
+      "ad": "Cevheri",
+      "soyad": "Güçlü",
       "ogrenci_no": "6C01",
       "sinif": 6,
       "rol": 1,
-      "telefon": "(515)007 4426",
-      "eposta": "nazlimarslan@example.com",
-      "kayit_tarihi": "2024-04-03T12:38:57.256743"
+      "telefon": "00139932365",
+      "eposta": "cebesoymansiz@example.org",
+      "kayit_tarihi": "2022-07-09T15:42:42.938428"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 52,
     "fields": {
-      "ad": "Tuğrulhan",
-      "soyad": "Aslan",
+      "ad": "Özbilek",
+      "soyad": "Zengin",
       "ogrenci_no": "6C02",
       "sinif": 6,
       "rol": 1,
-      "telefon": "(472)185 0067",
-      "eposta": "arslanvefia@example.net",
-      "kayit_tarihi": "2022-10-08T12:06:02.243309"
+      "telefon": "+90(317)0350777",
+      "eposta": "eminekoruturk@example.com",
+      "kayit_tarihi": "2022-08-31T19:07:58.302446"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 53,
     "fields": {
-      "ad": "Nurkan",
-      "soyad": "Hayrioğlu",
+      "ad": "Milay",
+      "soyad": "Çorlu",
       "ogrenci_no": "6C03",
       "sinif": 6,
       "rol": 1,
-      "telefon": "027 1 587",
-      "eposta": "tsakarya@example.com",
-      "kayit_tarihi": "2023-09-15T19:18:05.953835"
+      "telefon": "(816)514 6486",
+      "eposta": "izgu89@example.com",
+      "kayit_tarihi": "2026-04-12T20:09:07.596293"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 54,
     "fields": {
-      "ad": "Önsal",
-      "soyad": "Sezer",
+      "ad": "Doğannur",
+      "soyad": "Kısakürek",
       "ogrenci_no": "6C04",
       "sinif": 6,
       "rol": 1,
-      "telefon": "(811)495 4081",
-      "eposta": "sezginakcasu@example.com",
-      "kayit_tarihi": "2024-11-08T06:53:59.570460"
+      "telefon": "06297103934",
+      "eposta": "isezgin@example.net",
+      "kayit_tarihi": "2025-03-27T00:57:24.997402"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 55,
     "fields": {
-      "ad": "Dalan",
-      "soyad": "Demir",
+      "ad": "Hüda",
+      "soyad": "Akça",
       "ogrenci_no": "6C05",
       "sinif": 6,
       "rol": 1,
-      "telefon": "+90(298)281-6495x330",
-      "eposta": "turkcidal@example.net",
-      "kayit_tarihi": "2025-09-10T06:33:28.438435"
+      "telefon": "+90(873)099-0956x708",
+      "eposta": "hilaydasafak@example.com",
+      "kayit_tarihi": "2026-03-01T18:54:36.932951"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 56,
     "fields": {
-      "ad": "Mehdiye",
-      "soyad": "Zengin",
+      "ad": "Turgut",
+      "soyad": "Demirel",
       "ogrenci_no": "6C06",
       "sinif": 6,
       "rol": 1,
-      "telefon": "147 3 623",
-      "eposta": "alsoy74@example.org",
-      "kayit_tarihi": "2022-03-04T02:38:19.354572"
+      "telefon": "0548 775 88 72",
+      "eposta": "tarhanmiray@example.com",
+      "kayit_tarihi": "2025-07-24T07:57:56.218303"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 57,
     "fields": {
-      "ad": "İvecen",
-      "soyad": "Zengin",
+      "ad": "Şenkal",
+      "soyad": "Güçlü",
       "ogrenci_no": "6C07",
       "sinif": 6,
       "rol": 1,
-      "telefon": "662 6 770",
-      "eposta": "bilirkiramettin@example.net",
-      "kayit_tarihi": "2020-01-20T10:28:53.291813"
+      "telefon": "332 1 506",
+      "eposta": "mevludiye14@example.com",
+      "kayit_tarihi": "2023-02-19T22:37:50.188258"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 58,
     "fields": {
-      "ad": "Binbaşar",
-      "soyad": "Şama",
+      "ad": "Salkın",
+      "soyad": "Alemdar",
       "ogrenci_no": "6C08",
       "sinif": 6,
       "rol": 1,
-      "telefon": "+90(980)317-0662x063",
-      "eposta": "sayan98@example.org",
-      "kayit_tarihi": "2021-10-29T17:02:01.341660"
+      "telefon": "+90(617)965-5121x710",
+      "eposta": "serverocalan@example.org",
+      "kayit_tarihi": "2021-08-19T09:47:18.791536"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 59,
     "fields": {
-      "ad": "Yurtseven",
-      "soyad": "Mansız",
+      "ad": "Köktaş",
+      "soyad": "Demirel",
       "ogrenci_no": "6C09",
       "sinif": 6,
       "rol": 1,
-      "telefon": "00983393849",
-      "eposta": "zorludinckol@example.com",
-      "kayit_tarihi": "2023-07-07T00:53:36.500403"
+      "telefon": "198 3 104",
+      "eposta": "muhyettin26@example.net",
+      "kayit_tarihi": "2021-12-26T10:31:23.883229"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 60,
     "fields": {
-      "ad": "Bediriye",
-      "soyad": "Durmuş",
+      "ad": "Uğurtan",
+      "soyad": "Aslan",
       "ogrenci_no": "6C10",
       "sinif": 6,
       "rol": 1,
-      "telefon": "+90(233)718-1201x589",
-      "eposta": "ugurakcay@example.net",
-      "kayit_tarihi": "2021-12-03T19:26:25.672325"
+      "telefon": "+90(865)2661617",
+      "eposta": "ulutay85@example.net",
+      "kayit_tarihi": "2025-04-29T08:21:47.650539"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 61,
     "fields": {
-      "ad": "Nurşan",
-      "soyad": "Akçay",
+      "ad": "Soydaner",
+      "soyad": "Güçlü",
       "ogrenci_no": "7A01",
       "sinif": 7,
       "rol": 1,
-      "telefon": "0901 778 33 13",
-      "eposta": "hdemir@example.com",
-      "kayit_tarihi": "2024-11-08T07:16:08.611595"
+      "telefon": "0041 532 46 93",
+      "eposta": "vtevetoglu@example.org",
+      "kayit_tarihi": "2020-12-14T10:46:03.982296"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 62,
     "fields": {
-      "ad": "Baba",
-      "soyad": "Çamurcuoğlu",
+      "ad": "Canfeza",
+      "soyad": "Alemdar",
       "ogrenci_no": "7A02",
       "sinif": 7,
       "rol": 1,
-      "telefon": "05001286165",
-      "eposta": "udurdu@example.net",
-      "kayit_tarihi": "2021-08-18T06:35:47.463330"
+      "telefon": "0636 029 67 32",
+      "eposta": "wyuksel@example.org",
+      "kayit_tarihi": "2023-05-30T03:06:34.516635"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 63,
     "fields": {
-      "ad": "Cansin",
+      "ad": "Atatöre",
       "soyad": "Akgündüz",
       "ogrenci_no": "7A03",
       "sinif": 7,
       "rol": 1,
-      "telefon": "0208-075 6392",
-      "eposta": "gulbeyan80@example.net",
-      "kayit_tarihi": "2022-03-14T18:46:20.797123"
+      "telefon": "0193 770 67 02",
+      "eposta": "faize60@example.com",
+      "kayit_tarihi": "2021-04-29T01:55:19.476934"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 64,
     "fields": {
-      "ad": "Fersan",
-      "soyad": "Seven",
+      "ad": "Sabihe",
+      "soyad": "Mansız",
       "ogrenci_no": "7A04",
       "sinif": 7,
       "rol": 1,
-      "telefon": "+90(034)483-4719x173",
-      "eposta": "isindurdu@example.org",
-      "kayit_tarihi": "2020-10-28T19:09:42.576219"
+      "telefon": "(964)483 9955",
+      "eposta": "seniha15@example.net",
+      "kayit_tarihi": "2020-02-16T18:47:12.570612"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 65,
     "fields": {
-      "ad": "Münezzer",
-      "soyad": "Alemdar",
+      "ad": "Uçbeyi",
+      "soyad": "Bilir",
       "ogrenci_no": "7A05",
       "sinif": 7,
       "rol": 1,
-      "telefon": "819 4 636",
-      "eposta": "sefiye62@example.org",
-      "kayit_tarihi": "2023-04-10T03:15:09.756879"
+      "telefon": "670 1 349",
+      "eposta": "nurser86@example.com",
+      "kayit_tarihi": "2024-08-17T09:18:37.128905"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 66,
     "fields": {
-      "ad": "Tarancı",
-      "soyad": "Çetin",
+      "ad": "İlsu",
+      "soyad": "Gülen",
       "ogrenci_no": "7A06",
       "sinif": 7,
       "rol": 1,
-      "telefon": "316 5 138",
-      "eposta": "metinkayayorulmaz@example.org",
-      "kayit_tarihi": "2023-04-25T00:37:41.322829"
+      "telefon": "(337)529 2983",
+      "eposta": "altinisin20@example.com",
+      "kayit_tarihi": "2020-04-04T08:23:07.544033"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 67,
     "fields": {
-      "ad": "Süzer",
-      "soyad": "Fırat",
+      "ad": "Eriş",
+      "soyad": "Yorulmaz",
       "ogrenci_no": "7A07",
       "sinif": 7,
       "rol": 1,
-      "telefon": "471 5 619",
-      "eposta": "sabih19@example.com",
-      "kayit_tarihi": "2023-12-25T04:55:57.713936"
+      "telefon": "0783-558 9547",
+      "eposta": "mahsunarsoy@example.org",
+      "kayit_tarihi": "2021-01-25T10:36:21.402654"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 68,
     "fields": {
-      "ad": "Urhan",
-      "soyad": "Şener",
+      "ad": "Över",
+      "soyad": "Türk",
       "ogrenci_no": "7A08",
       "sinif": 7,
       "rol": 1,
-      "telefon": "02933710275",
-      "eposta": "mazlumkaradeniz@example.net",
-      "kayit_tarihi": "2020-12-01T20:35:44.467225"
+      "telefon": "+90 (854) 9403457",
+      "eposta": "degerihsanoglu@example.com",
+      "kayit_tarihi": "2022-04-26T13:32:35.143362"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 69,
     "fields": {
-      "ad": "Atagün",
-      "soyad": "Yüksel",
+      "ad": "Sıylıhan",
+      "soyad": "Seven",
       "ogrenci_no": "7A09",
       "sinif": 7,
       "rol": 1,
-      "telefon": "+90(105)685-2349x180",
-      "eposta": "yesilakgunduz@example.com",
-      "kayit_tarihi": "2020-09-11T23:33:42.984057"
+      "telefon": "0873 130 30 03",
+      "eposta": "pbilge@example.com",
+      "kayit_tarihi": "2023-10-09T17:43:37.116259"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 70,
     "fields": {
-      "ad": "Mahigül",
-      "soyad": "Aksu",
+      "ad": "Enginiz",
+      "soyad": "Demir",
       "ogrenci_no": "7A10",
       "sinif": 7,
       "rol": 1,
-      "telefon": "+90(573)599-3902x118",
-      "eposta": "zhancer@example.com",
-      "kayit_tarihi": "2025-07-20T20:23:45.123853"
+      "telefon": "(634)661 1910",
+      "eposta": "yucelenyorulmaz@example.org",
+      "kayit_tarihi": "2024-05-25T13:02:51.865879"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 71,
     "fields": {
-      "ad": "Müzekker",
-      "soyad": "Hayrioğlu",
+      "ad": "Rayla",
+      "soyad": "Öcalan",
       "ogrenci_no": "7B01",
       "sinif": 8,
       "rol": 1,
-      "telefon": "+90 (090) 8181022",
-      "eposta": "tumkurt78@example.com",
-      "kayit_tarihi": "2020-09-24T19:27:27.846280"
+      "telefon": "+90(431)991-9020x815",
+      "eposta": "aclanakgunduz@example.com",
+      "kayit_tarihi": "2021-07-26T05:42:51.421735"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 72,
     "fields": {
-      "ad": "Şirivan",
-      "soyad": "Çetin",
+      "ad": "Ümmet",
+      "soyad": "Şama",
       "ogrenci_no": "7B02",
       "sinif": 8,
       "rol": 1,
-      "telefon": "+90(683)912-7688x107",
-      "eposta": "urpersensoy@example.net",
-      "kayit_tarihi": "2023-08-18T11:49:29.944767"
+      "telefon": "+90(752)3145325",
+      "eposta": "akcaenfes@example.net",
+      "kayit_tarihi": "2026-08-15T18:56:07.818415"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 73,
     "fields": {
-      "ad": "Zaliha",
-      "soyad": "Karadeniz",
+      "ad": "Eral",
+      "soyad": "Zengin",
       "ogrenci_no": "7B03",
       "sinif": 8,
       "rol": 1,
-      "telefon": "0122-425 6156",
-      "eposta": "akcailmafer@example.net",
-      "kayit_tarihi": "2020-11-28T14:37:05.487410"
+      "telefon": "+90(178)756-6293x098",
+      "eposta": "leraslan@example.net",
+      "kayit_tarihi": "2022-07-24T05:02:38.552233"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 74,
     "fields": {
-      "ad": "Sevdi",
-      "soyad": "Aslan",
+      "ad": "Noman",
+      "soyad": "Çorlu",
       "ogrenci_no": "7B04",
       "sinif": 8,
       "rol": 1,
-      "telefon": "0677-103 1928",
-      "eposta": "sabettinyilmaz@example.com",
-      "kayit_tarihi": "2023-06-04T05:01:27.577869"
+      "telefon": "+90 (212) 0205895",
+      "eposta": "muhyettindumanli@example.org",
+      "kayit_tarihi": "2020-09-13T03:23:02.598108"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 75,
     "fields": {
-      "ad": "Timurtaş",
-      "soyad": "Dumanlı",
+      "ad": "Behiza",
+      "soyad": "Aksu",
       "ogrenci_no": "7B05",
       "sinif": 8,
       "rol": 1,
-      "telefon": "0628-379 6479",
-      "eposta": "aslansavak@example.com",
-      "kayit_tarihi": "2023-04-10T08:31:20.321652"
+      "telefon": "0821-324 4307",
+      "eposta": "sunayaksu@example.net",
+      "kayit_tarihi": "2021-11-12T23:12:40.064049"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 76,
     "fields": {
-      "ad": "Cansin",
-      "soyad": "Eraslan",
+      "ad": "Boynak",
+      "soyad": "Akgündüz",
       "ogrenci_no": "7B06",
       "sinif": 8,
       "rol": 1,
-      "telefon": "199 3 175",
-      "eposta": "ummanocalan@example.com",
-      "kayit_tarihi": "2025-04-02T03:05:57.370860"
+      "telefon": "+90(174)664-8795x926",
+      "eposta": "dehaseven@example.net",
+      "kayit_tarihi": "2024-10-09T00:20:37.122812"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 77,
     "fields": {
-      "ad": "Nasuf",
-      "soyad": "Bilgin",
+      "ad": "Paksu",
+      "soyad": "Duran",
       "ogrenci_no": "7B07",
       "sinif": 8,
       "rol": 1,
-      "telefon": "+90(461)696-3341x542",
-      "eposta": "erkinel27@example.net",
-      "kayit_tarihi": "2020-10-24T23:03:16.191579"
+      "telefon": "771 6 541",
+      "eposta": "nakcay@example.net",
+      "kayit_tarihi": "2024-01-10T23:45:11.045283"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 78,
     "fields": {
-      "ad": "İklim",
-      "soyad": "Sakarya",
+      "ad": "Oymak",
+      "soyad": "Duran",
       "ogrenci_no": "7B08",
       "sinif": 8,
       "rol": 1,
-      "telefon": "+90 (351) 8596576",
-      "eposta": "kzengin@example.com",
-      "kayit_tarihi": "2020-07-23T02:31:44.268693"
+      "telefon": "064 9 928",
+      "eposta": "ferinazseven@example.org",
+      "kayit_tarihi": "2021-01-31T22:24:59.358901"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 79,
     "fields": {
-      "ad": "Sefer",
-      "soyad": "Aksu",
+      "ad": "Saba",
+      "soyad": "Tevetoğlu",
       "ogrenci_no": "7B09",
       "sinif": 8,
       "rol": 1,
-      "telefon": "+90(415)0566822",
-      "eposta": "ebilge@example.net",
-      "kayit_tarihi": "2023-09-24T19:52:30.882215"
+      "telefon": "+90(242)343-0359x250",
+      "eposta": "beniceakcay@example.org",
+      "kayit_tarihi": "2023-03-24T23:36:18.424637"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 80,
     "fields": {
-      "ad": "Çevregül",
-      "soyad": "İhsanoğlu",
+      "ad": "Tagangül",
+      "soyad": "Çamurcuoğlu",
       "ogrenci_no": "7B10",
       "sinif": 8,
       "rol": 1,
-      "telefon": "+90(015)525-4249x991",
-      "eposta": "duranokyalaz@example.com",
-      "kayit_tarihi": "2023-04-23T19:16:34.825948"
+      "telefon": "412 1 351",
+      "eposta": "jsakarya@example.org",
+      "kayit_tarihi": "2022-08-28T08:48:25.045981"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 81,
     "fields": {
-      "ad": "Acar",
-      "soyad": "Arsoy",
+      "ad": "Müjde",
+      "soyad": "Şafak",
       "ogrenci_no": "7C01",
       "sinif": 9,
       "rol": 1,
-      "telefon": "0974-858 6479",
-      "eposta": "nurullah55@example.net",
-      "kayit_tarihi": "2024-01-20T17:39:09.121352"
+      "telefon": "0229-943 9715",
+      "eposta": "sensoyvezrife@example.net",
+      "kayit_tarihi": "2025-01-28T01:34:51.478133"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 82,
     "fields": {
-      "ad": "Altoğan",
-      "soyad": "Sakarya",
+      "ad": "Serda",
+      "soyad": "Tarhan",
       "ogrenci_no": "7C02",
       "sinif": 9,
       "rol": 1,
-      "telefon": "+90(091)6708671",
-      "eposta": "fergul@example.org",
-      "kayit_tarihi": "2023-06-18T18:48:04.850961"
+      "telefon": "957 1 753",
+      "eposta": "olcaakgunduz@example.net",
+      "kayit_tarihi": "2025-03-28T17:34:02.396667"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 83,
     "fields": {
-      "ad": "Taylak",
-      "soyad": "Yılmaz",
+      "ad": "Basım",
+      "soyad": "Şama",
       "ogrenci_no": "7C03",
       "sinif": 9,
       "rol": 1,
-      "telefon": "(943)046 5816",
-      "eposta": "bsensoy@example.net",
-      "kayit_tarihi": "2020-05-25T20:55:25.686300"
+      "telefon": "0807 290 01 64",
+      "eposta": "ozgerkoruturk@example.com",
+      "kayit_tarihi": "2022-06-03T12:01:05.358686"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 84,
     "fields": {
-      "ad": "Melûl",
-      "soyad": "Duran",
+      "ad": "Bahaddin",
+      "soyad": "Akçay",
       "ogrenci_no": "7C04",
       "sinif": 9,
       "rol": 1,
-      "telefon": "+90(890)7668468",
-      "eposta": "gulbani65@example.org",
-      "kayit_tarihi": "2022-04-29T20:09:36.108565"
+      "telefon": "+90(376)166-7579x161",
+      "eposta": "baykanyuksel@example.org",
+      "kayit_tarihi": "2022-05-17T01:40:07.572519"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 85,
     "fields": {
-      "ad": "Salkın",
-      "soyad": "Tevetoğlu",
+      "ad": "Derkay",
+      "soyad": "Yorulmaz",
       "ogrenci_no": "7C05",
       "sinif": 9,
       "rol": 1,
-      "telefon": "+90(834)969-1179x678",
-      "eposta": "aslanhavali@example.com",
-      "kayit_tarihi": "2025-03-12T02:00:59.201062"
+      "telefon": "+90 (108) 1467112",
+      "eposta": "siylihan97@example.com",
+      "kayit_tarihi": "2022-09-27T01:30:32.996591"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 86,
     "fields": {
-      "ad": "Paksu",
-      "soyad": "Sezer",
+      "ad": "Gökçe",
+      "soyad": "Çetin",
       "ogrenci_no": "7C06",
       "sinif": 9,
       "rol": 1,
-      "telefon": "00369404336",
-      "eposta": "cilgaguclu@example.com",
-      "kayit_tarihi": "2022-01-17T14:28:11.532503"
+      "telefon": "+90 (167) 5474989",
+      "eposta": "qgul@example.net",
+      "kayit_tarihi": "2021-08-18T13:36:22.743924"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 87,
     "fields": {
-      "ad": "Ermutlu",
-      "soyad": "Şama",
+      "ad": "Yılma",
+      "soyad": "Türk",
       "ogrenci_no": "7C07",
       "sinif": 9,
       "rol": 1,
-      "telefon": "821 1 042",
-      "eposta": "edurdu@example.org",
-      "kayit_tarihi": "2020-04-04T10:15:42.616178"
+      "telefon": "09021399845",
+      "eposta": "mancoongay@example.org",
+      "kayit_tarihi": "2024-11-14T05:47:58.045214"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 88,
     "fields": {
-      "ad": "Ümmet",
-      "soyad": "Erdoğan",
+      "ad": "Burç",
+      "soyad": "Tarhan",
       "ogrenci_no": "7C08",
       "sinif": 9,
       "rol": 1,
-      "telefon": "+90 (000) 5016411",
-      "eposta": "corlusaba@example.org",
-      "kayit_tarihi": "2022-03-22T04:32:01.076550"
+      "telefon": "(874)152 1608",
+      "eposta": "qzengin@example.com",
+      "kayit_tarihi": "2023-08-30T10:19:51.779655"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 89,
     "fields": {
-      "ad": "Çağdan",
-      "soyad": "Şama",
+      "ad": "Noman",
+      "soyad": "Ergül",
       "ogrenci_no": "7C09",
       "sinif": 9,
       "rol": 1,
-      "telefon": "+90(738)163-7470x126",
-      "eposta": "yepelekguclu@example.org",
-      "kayit_tarihi": "2024-11-27T00:05:54.124054"
+      "telefon": "0514 179 25 33",
+      "eposta": "fildandurmus@example.net",
+      "kayit_tarihi": "2023-07-25T00:18:51.463529"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 90,
     "fields": {
-      "ad": "Nurkan",
-      "soyad": "Dumanlı",
+      "ad": "Nurbanu",
+      "soyad": "Çamurcuoğlu",
       "ogrenci_no": "7C10",
       "sinif": 9,
       "rol": 1,
-      "telefon": "+90(339)874-1851x767",
-      "eposta": "gunaydinihsanoglu@example.com",
-      "kayit_tarihi": "2022-05-11T17:56:04.820753"
+      "telefon": "(115)064 0061",
+      "eposta": "zorlumelul@example.com",
+      "kayit_tarihi": "2021-04-08T08:29:00.463268"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 91,
     "fields": {
-      "ad": "Tutkucan",
-      "soyad": "Çetin",
+      "ad": "Yargı",
+      "soyad": "Aslan",
       "ogrenci_no": "8A01",
       "sinif": 10,
       "rol": 1,
-      "telefon": "439 1 115",
-      "eposta": "azettinyildirim@example.net",
-      "kayit_tarihi": "2023-07-24T20:00:24.372396"
+      "telefon": "0368 210 18 75",
+      "eposta": "corluaksoy@example.com",
+      "kayit_tarihi": "2026-07-19T00:32:14.816965"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 92,
     "fields": {
-      "ad": "Cebesoy",
-      "soyad": "Akçay",
+      "ad": "Sevla",
+      "soyad": "Sakarya",
       "ogrenci_no": "8A02",
       "sinif": 10,
       "rol": 1,
-      "telefon": "+90(834)339-6469x584",
-      "eposta": "yumun75@example.com",
-      "kayit_tarihi": "2024-04-28T04:12:32.162899"
+      "telefon": "+90(957)085-8124x454",
+      "eposta": "sadiman17@example.com",
+      "kayit_tarihi": "2021-09-29T21:15:52.627138"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 93,
     "fields": {
-      "ad": "Yigit",
-      "soyad": "Ertaş",
+      "ad": "Yavuz",
+      "soyad": "Akdeniz",
       "ogrenci_no": "8A03",
       "sinif": 10,
       "rol": 1,
-      "telefon": "0315 356 50 90",
-      "eposta": "akdenizarifcan@example.org",
-      "kayit_tarihi": "2025-04-19T02:38:00.873984"
+      "telefon": "09821798491",
+      "eposta": "piranbilge@example.net",
+      "kayit_tarihi": "2022-12-22T14:29:26.561499"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 94,
     "fields": {
-      "ad": "Tuğrulhan",
-      "soyad": "Sezer",
+      "ad": "Çıdal",
+      "soyad": "Arsoy",
       "ogrenci_no": "8A04",
       "sinif": 10,
       "rol": 1,
-      "telefon": "0375 357 36 79",
-      "eposta": "psama@example.net",
-      "kayit_tarihi": "2024-04-16T13:27:09.618033"
+      "telefon": "+90(072)983-3889x022",
+      "eposta": "dumanlimeveddet@example.org",
+      "kayit_tarihi": "2026-08-09T20:21:56.798987"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 95,
     "fields": {
-      "ad": "Tonguç",
-      "soyad": "Akçay",
+      "ad": "Öncel",
+      "soyad": "Demirel",
       "ogrenci_no": "8A05",
       "sinif": 10,
       "rol": 1,
-      "telefon": "+90 (599) 7036135",
-      "eposta": "aslanhaluk@example.com",
-      "kayit_tarihi": "2020-02-26T19:28:06.398872"
+      "telefon": "+90(021)636-0338x151",
+      "eposta": "hocalan@example.org",
+      "kayit_tarihi": "2021-05-14T00:32:29.615843"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 96,
     "fields": {
-      "ad": "Emirşan",
-      "soyad": "Eraslan",
+      "ad": "Özakan",
+      "soyad": "Fırat",
       "ogrenci_no": "8A06",
       "sinif": 10,
       "rol": 1,
-      "telefon": "01524333448",
-      "eposta": "durgadin77@example.org",
-      "kayit_tarihi": "2022-03-21T20:50:43.312638"
+      "telefon": "0055-407 9153",
+      "eposta": "cebesoy53@example.com",
+      "kayit_tarihi": "2020-07-01T09:58:29.958612"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 97,
     "fields": {
-      "ad": "Açılay",
-      "soyad": "Durmuş",
+      "ad": "Tümer",
+      "soyad": "Yüksel",
       "ogrenci_no": "8A07",
       "sinif": 10,
       "rol": 1,
-      "telefon": "311 9 219",
-      "eposta": "hatinergul@example.org",
-      "kayit_tarihi": "2020-11-07T16:18:03.484584"
+      "telefon": "0060-951 4448",
+      "eposta": "turknazlihan@example.com",
+      "kayit_tarihi": "2023-06-07T02:31:09.977368"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 98,
     "fields": {
-      "ad": "Öge",
-      "soyad": "Şener",
+      "ad": "Evrim",
+      "soyad": "Akdeniz",
       "ogrenci_no": "8A08",
       "sinif": 10,
       "rol": 1,
-      "telefon": "+90(659)604-2911x669",
-      "eposta": "suheydagulen@example.com",
-      "kayit_tarihi": "2022-11-04T21:41:30.580617"
+      "telefon": "0772 818 55 25",
+      "eposta": "yamankenter@example.net",
+      "kayit_tarihi": "2024-11-23T23:17:31.744515"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 99,
     "fields": {
-      "ad": "Ruhugül",
-      "soyad": "Çorlu",
+      "ad": "Ensari",
+      "soyad": "Öcalan",
       "ogrenci_no": "8A09",
       "sinif": 10,
       "rol": 1,
-      "telefon": "0667 604 74 14",
-      "eposta": "bahtinur53@example.net",
-      "kayit_tarihi": "2025-05-13T21:59:05.950835"
+      "telefon": "+90(884)893-6247x114",
+      "eposta": "baytalsezgin@example.net",
+      "kayit_tarihi": "2022-02-05T13:35:27.543171"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 100,
     "fields": {
-      "ad": "Çelikkan",
-      "soyad": "Erdoğan",
+      "ad": "İrfan",
+      "soyad": "Durmuş",
       "ogrenci_no": "8A10",
       "sinif": 10,
       "rol": 1,
-      "telefon": "(177)620 3508",
-      "eposta": "nazimet04@example.org",
-      "kayit_tarihi": "2022-06-29T10:23:28.233081"
+      "telefon": "+90(101)680-2810x544",
+      "eposta": "sendoganergul@example.net",
+      "kayit_tarihi": "2023-10-19T00:58:40.277394"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 101,
     "fields": {
-      "ad": "Dirican",
-      "soyad": "Ertaş",
+      "ad": "Gülfari",
+      "soyad": "Şener",
       "ogrenci_no": "8B01",
       "sinif": 11,
       "rol": 1,
-      "telefon": "+90(701)047-4238x032",
-      "eposta": "sirriye41@example.com",
-      "kayit_tarihi": "2024-08-18T09:56:34.401837"
+      "telefon": "0327 658 58 85",
+      "eposta": "fyildirim@example.net",
+      "kayit_tarihi": "2025-04-30T21:38:46.533119"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 102,
     "fields": {
-      "ad": "Şanlı",
-      "soyad": "Şama",
+      "ad": "Dağistan",
+      "soyad": "Ergül",
       "ogrenci_no": "8B02",
       "sinif": 11,
       "rol": 1,
-      "telefon": "04864862116",
-      "eposta": "isikayarsoy@example.net",
-      "kayit_tarihi": "2020-11-21T07:10:01.362295"
+      "telefon": "0117 798 11 51",
+      "eposta": "wbilge@example.net",
+      "kayit_tarihi": "2025-04-13T08:22:51.452244"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 103,
     "fields": {
-      "ad": "Kuddusi",
-      "soyad": "Sezer",
+      "ad": "Taylak",
+      "soyad": "Alemdar",
       "ogrenci_no": "8B03",
       "sinif": 11,
       "rol": 1,
-      "telefon": "+90(958)2235217",
-      "eposta": "ortakyaman@example.com",
-      "kayit_tarihi": "2025-08-01T18:45:16.733765"
+      "telefon": "(426)594 1985",
+      "eposta": "duransimten@example.org",
+      "kayit_tarihi": "2021-06-01T17:40:52.121474"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 104,
     "fields": {
-      "ad": "Döner",
-      "soyad": "Akar",
+      "ad": "Rana",
+      "soyad": "İnönü",
       "ogrenci_no": "8B04",
       "sinif": 11,
       "rol": 1,
-      "telefon": "00508369098",
-      "eposta": "gunkurt69@example.net",
-      "kayit_tarihi": "2020-07-13T03:43:51.443269"
+      "telefon": "0620-848 3402",
+      "eposta": "ersec66@example.net",
+      "kayit_tarihi": "2020-11-20T15:57:01.937087"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 105,
     "fields": {
-      "ad": "Çelem",
-      "soyad": "Ülker",
+      "ad": "İlalmış",
+      "soyad": "Alemdar",
       "ogrenci_no": "8B05",
       "sinif": 11,
       "rol": 1,
-      "telefon": "(827)008 4188",
-      "eposta": "tinonu@example.org",
-      "kayit_tarihi": "2025-05-03T09:20:14.890265"
+      "telefon": "+90(931)820-1491x356",
+      "eposta": "akgunduzzeyno@example.com",
+      "kayit_tarihi": "2025-11-29T20:47:27.237449"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 106,
     "fields": {
-      "ad": "Uzsoy",
-      "soyad": "Seven",
+      "ad": "Akif",
+      "soyad": "Yıldırım",
       "ogrenci_no": "8B06",
       "sinif": 11,
       "rol": 1,
-      "telefon": "560 3 558",
-      "eposta": "veisdurmus@example.org",
-      "kayit_tarihi": "2020-09-30T09:54:51.867839"
+      "telefon": "+90 (177) 1979765",
+      "eposta": "diricanakcay@example.com",
+      "kayit_tarihi": "2026-01-26T07:39:12.723337"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 107,
     "fields": {
-      "ad": "Zahid",
-      "soyad": "Akça",
+      "ad": "Mükrüme",
+      "soyad": "Yaman",
       "ogrenci_no": "8B07",
       "sinif": 11,
       "rol": 1,
-      "telefon": "524 0 185",
-      "eposta": "mihintevetoglu@example.net",
-      "kayit_tarihi": "2020-10-13T19:01:57.865847"
+      "telefon": "0937-611 4603",
+      "eposta": "yorulmazyertan@example.com",
+      "kayit_tarihi": "2021-12-29T05:12:33.609844"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 108,
     "fields": {
-      "ad": "Nurhayet",
-      "soyad": "Manço",
+      "ad": "Tunguç",
+      "soyad": "Sezgin",
       "ogrenci_no": "8B08",
       "sinif": 11,
       "rol": 1,
-      "telefon": "07596444420",
-      "eposta": "hamiyildirim@example.com",
-      "kayit_tarihi": "2022-08-13T16:30:16.852575"
+      "telefon": "+90 (405) 8825030",
+      "eposta": "huzuri94@example.org",
+      "kayit_tarihi": "2020-10-04T03:02:29.092274"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 109,
     "fields": {
-      "ad": "Egenur",
-      "soyad": "Çamurcuoğlu",
+      "ad": "Fadile",
+      "soyad": "Hançer",
       "ogrenci_no": "8B09",
       "sinif": 11,
       "rol": 1,
-      "telefon": "0370-548 1843",
-      "eposta": "gsakarya@example.org",
-      "kayit_tarihi": "2021-06-01T09:27:21.644384"
+      "telefon": "+90(799)643-7734x999",
+      "eposta": "idedumanli@example.com",
+      "kayit_tarihi": "2023-03-09T17:01:06.763549"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 110,
     "fields": {
-      "ad": "Erten",
-      "soyad": "Akar",
+      "ad": "Bilender",
+      "soyad": "Aslan",
       "ogrenci_no": "8B10",
       "sinif": 11,
       "rol": 1,
-      "telefon": "+90(006)997-0266x684",
-      "eposta": "demiryasemen@example.com",
-      "kayit_tarihi": "2021-01-08T19:31:15.378939"
+      "telefon": "+90(511)4511460",
+      "eposta": "huricancetin@example.org",
+      "kayit_tarihi": "2021-01-11T13:18:49.872051"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 111,
     "fields": {
-      "ad": "Okyalaz",
-      "soyad": "Akgündüz",
+      "ad": "Nas",
+      "soyad": "Arsoy",
       "ogrenci_no": "8C01",
       "sinif": 12,
       "rol": 1,
-      "telefon": "(282)766 1176",
-      "eposta": "ermutluertas@example.net",
-      "kayit_tarihi": "2020-12-05T18:13:33.029262"
+      "telefon": "04380536718",
+      "eposta": "gulneriban@example.net",
+      "kayit_tarihi": "2022-06-30T00:55:35.993418"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 112,
     "fields": {
-      "ad": "Çoğay",
-      "soyad": "Yaman",
+      "ad": "Cevheri",
+      "soyad": "Dumanlı",
       "ogrenci_no": "8C02",
       "sinif": 12,
       "rol": 1,
-      "telefon": "+90 (198) 1001795",
-      "eposta": "ayboraihsanoglu@example.com",
-      "kayit_tarihi": "2023-11-18T20:07:38.183385"
+      "telefon": "0349-288 3246",
+      "eposta": "zkoruturk@example.com",
+      "kayit_tarihi": "2026-07-22T18:10:54.954044"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 113,
     "fields": {
-      "ad": "Balatekin",
-      "soyad": "Bilge",
+      "ad": "İlsu",
+      "soyad": "Şama",
       "ogrenci_no": "8C03",
       "sinif": 12,
       "rol": 1,
-      "telefon": "+90(270)7748409",
-      "eposta": "bsezer@example.com",
-      "kayit_tarihi": "2023-04-01T07:46:16.893173"
+      "telefon": "(485)877 8532",
+      "eposta": "bayruhanakcay@example.com",
+      "kayit_tarihi": "2024-03-08T06:48:01.171327"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 114,
     "fields": {
-      "ad": "Gençay",
+      "ad": "Adlan",
       "soyad": "Akçay",
       "ogrenci_no": "8C04",
       "sinif": 12,
       "rol": 1,
-      "telefon": "0447 446 13 33",
-      "eposta": "sinasimansiz@example.com",
-      "kayit_tarihi": "2024-05-26T14:27:38.818863"
+      "telefon": "07716849012",
+      "eposta": "omansiz@example.org",
+      "kayit_tarihi": "2020-05-28T07:43:28.429165"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 115,
     "fields": {
-      "ad": "Gülüs",
-      "soyad": "Tevetoğlu",
+      "ad": "Hüryaşar",
+      "soyad": "Aslan",
       "ogrenci_no": "8C05",
       "sinif": 12,
       "rol": 1,
-      "telefon": "842 5 998",
-      "eposta": "ocalaneris@example.com",
-      "kayit_tarihi": "2021-07-11T00:50:00.523385"
+      "telefon": "+90(657)970-4877x491",
+      "eposta": "fatihdurdu@example.net",
+      "kayit_tarihi": "2024-02-11T07:57:09.176898"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 116,
     "fields": {
-      "ad": "Nezengül",
-      "soyad": "Ertaş",
+      "ad": "Karcan",
+      "soyad": "Aksu",
       "ogrenci_no": "8C06",
       "sinif": 12,
       "rol": 1,
-      "telefon": "+90 (498) 7909828",
-      "eposta": "vildanecetin@example.net",
-      "kayit_tarihi": "2022-11-30T19:30:33.730861"
+      "telefon": "(774)019 0187",
+      "eposta": "aksumuzekker@example.com",
+      "kayit_tarihi": "2020-02-05T17:28:44.181015"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 117,
     "fields": {
-      "ad": "Ervaniye",
-      "soyad": "Akar",
+      "ad": "Hacile",
+      "soyad": "Demirel",
       "ogrenci_no": "8C07",
       "sinif": 12,
       "rol": 1,
-      "telefon": "01175913898",
-      "eposta": "akbogaguclu@example.net",
-      "kayit_tarihi": "2023-06-19T06:48:25.878910"
+      "telefon": "0420-726 9794",
+      "eposta": "tcamurcuoglu@example.com",
+      "kayit_tarihi": "2020-02-26T21:27:36.847027"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 118,
     "fields": {
-      "ad": "Ruhide",
-      "soyad": "Şafak",
+      "ad": "Erkinel",
+      "soyad": "Yıldırım",
       "ogrenci_no": "8C08",
       "sinif": 12,
       "rol": 1,
-      "telefon": "+90(737)533-8918x999",
-      "eposta": "tokoz72@example.org",
-      "kayit_tarihi": "2020-03-16T23:32:42.958676"
+      "telefon": "+90(711)9139756",
+      "eposta": "vacibe01@example.net",
+      "kayit_tarihi": "2022-05-31T12:46:42.117656"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 119,
     "fields": {
-      "ad": "Muvaffak",
-      "soyad": "Durdu",
+      "ad": "Tarancı",
+      "soyad": "Şener",
       "ogrenci_no": "8C09",
       "sinif": 12,
       "rol": 1,
-      "telefon": "129 4 185",
-      "eposta": "memili29@example.com",
-      "kayit_tarihi": "2024-04-22T10:24:49.828426"
+      "telefon": "+90 (352) 9703033",
+      "eposta": "abdulbekirdemir@example.com",
+      "kayit_tarihi": "2022-10-11T20:27:54.502535"
     }
   },
   {
     "model": "kutuphane_app.ogrenci",
     "pk": 120,
     "fields": {
-      "ad": "Zoral",
-      "soyad": "Hançer",
+      "ad": "İsmet",
+      "soyad": "Tarhan",
       "ogrenci_no": "8C10",
       "sinif": 12,
       "rol": 1,
-      "telefon": "476 5 547",
-      "eposta": "arslanmahir@example.org",
-      "kayit_tarihi": "2024-04-20T23:38:35.727695"
+      "telefon": "+90 (709) 7141870",
+      "eposta": "cebesoygulen@example.org",
+      "kayit_tarihi": "2022-04-29T23:19:05.418493"
     }
   },
   {
@@ -1956,10 +1980,16 @@
     "pk": 1,
     "fields": {
       "baslik": "Kürk Mantolu Madonna",
-      "yazar": 14,
+      "yazar": 20,
       "kategori": 1,
-      "yayin_yili": 2018,
-      "isbn": "978-1-08-352970-1"
+      "yayin_yili": 1966,
+      "isbn": "978-1-954466-30-2",
+      "aciklama": "",
+      "resim1": null,
+      "resim2": null,
+      "resim3": null,
+      "resim4": null,
+      "resim5": null
     }
   },
   {
@@ -1967,10 +1997,16 @@
     "pk": 2,
     "fields": {
       "baslik": "Masumiyet Müzesi",
-      "yazar": 17,
+      "yazar": 12,
       "kategori": 1,
-      "yayin_yili": 1976,
-      "isbn": "978-1-59504-692-5"
+      "yayin_yili": 1991,
+      "isbn": "978-1-5061-5009-3",
+      "aciklama": "",
+      "resim1": null,
+      "resim2": null,
+      "resim3": null,
+      "resim4": null,
+      "resim5": null
     }
   },
   {
@@ -1978,10 +2014,16 @@
     "pk": 3,
     "fields": {
       "baslik": "Tutunamayanlar",
-      "yazar": 13,
+      "yazar": 11,
       "kategori": 1,
-      "yayin_yili": 1944,
-      "isbn": "978-0-580-74424-2"
+      "yayin_yili": 2013,
+      "isbn": "978-0-348-65063-1",
+      "aciklama": "",
+      "resim1": null,
+      "resim2": null,
+      "resim3": null,
+      "resim4": null,
+      "resim5": null
     }
   },
   {
@@ -1989,10 +2031,16 @@
     "pk": 4,
     "fields": {
       "baslik": "Saatleri Ayarlama Enstitüsü",
-      "yazar": 12,
+      "yazar": 5,
       "kategori": 1,
       "yayin_yili": 2000,
-      "isbn": "978-0-532-49986-2"
+      "isbn": "978-0-632-05441-1",
+      "aciklama": "",
+      "resim1": null,
+      "resim2": null,
+      "resim3": null,
+      "resim4": null,
+      "resim5": null
     }
   },
   {
@@ -2000,10 +2048,16 @@
     "pk": 5,
     "fields": {
       "baslik": "Tehlikeli Oyunlar",
-      "yazar": 1,
+      "yazar": 3,
       "kategori": 1,
-      "yayin_yili": 1939,
-      "isbn": "978-1-888134-70-4"
+      "yayin_yili": 1938,
+      "isbn": "978-1-352-54001-7",
+      "aciklama": "",
+      "resim1": null,
+      "resim2": null,
+      "resim3": null,
+      "resim4": null,
+      "resim5": null
     }
   },
   {
@@ -2011,10 +2065,16 @@
     "pk": 6,
     "fields": {
       "baslik": "Serenad",
-      "yazar": 5,
+      "yazar": 7,
       "kategori": 1,
-      "yayin_yili": 2001,
-      "isbn": "978-0-462-94801-0"
+      "yayin_yili": 1959,
+      "isbn": "978-1-129-13409-8",
+      "aciklama": "",
+      "resim1": null,
+      "resim2": null,
+      "resim3": null,
+      "resim4": null,
+      "resim5": null
     }
   },
   {
@@ -2022,10 +2082,16 @@
     "pk": 7,
     "fields": {
       "baslik": "İnce Memed",
-      "yazar": 18,
+      "yazar": 10,
       "kategori": 1,
-      "yayin_yili": 2014,
-      "isbn": "978-0-237-47521-5"
+      "yayin_yili": 1975,
+      "isbn": "978-1-277-20219-9",
+      "aciklama": "",
+      "resim1": null,
+      "resim2": null,
+      "resim3": null,
+      "resim4": null,
+      "resim5": null
     }
   },
   {
@@ -2033,10 +2099,16 @@
     "pk": 8,
     "fields": {
       "baslik": "İstanbul Hatırası",
-      "yazar": 10,
+      "yazar": 20,
       "kategori": 1,
-      "yayin_yili": 1993,
-      "isbn": "978-1-880674-35-2"
+      "yayin_yili": 1980,
+      "isbn": "978-0-906732-83-0",
+      "aciklama": "",
+      "resim1": null,
+      "resim2": null,
+      "resim3": null,
+      "resim4": null,
+      "resim5": null
     }
   },
   {
@@ -2044,10 +2116,16 @@
     "pk": 9,
     "fields": {
       "baslik": "Aşk",
-      "yazar": 5,
+      "yazar": 16,
       "kategori": 1,
-      "yayin_yili": 1967,
-      "isbn": "978-1-231-29557-1"
+      "yayin_yili": 2013,
+      "isbn": "978-0-8045-0547-5",
+      "aciklama": "",
+      "resim1": null,
+      "resim2": null,
+      "resim3": null,
+      "resim4": null,
+      "resim5": null
     }
   },
   {
@@ -2055,10 +2133,16 @@
     "pk": 10,
     "fields": {
       "baslik": "Benim Adım Kırmızı",
-      "yazar": 9,
+      "yazar": 17,
       "kategori": 1,
-      "yayin_yili": 1947,
-      "isbn": "978-0-12-060546-0"
+      "yayin_yili": 1999,
+      "isbn": "978-1-908429-26-1",
+      "aciklama": "",
+      "resim1": null,
+      "resim2": null,
+      "resim3": null,
+      "resim4": null,
+      "resim5": null
     }
   },
   {
@@ -2066,10 +2150,16 @@
     "pk": 11,
     "fields": {
       "baslik": "Eylül",
-      "yazar": 15,
+      "yazar": 5,
       "kategori": 1,
-      "yayin_yili": 1948,
-      "isbn": "978-0-85820-981-7"
+      "yayin_yili": 1968,
+      "isbn": "978-0-391-14536-8",
+      "aciklama": "",
+      "resim1": null,
+      "resim2": null,
+      "resim3": null,
+      "resim4": null,
+      "resim5": null
     }
   },
   {
@@ -2077,10 +2167,16 @@
     "pk": 12,
     "fields": {
       "baslik": "Çalıkuşu",
-      "yazar": 18,
+      "yazar": 2,
       "kategori": 1,
-      "yayin_yili": 2007,
-      "isbn": "978-1-181-05179-1"
+      "yayin_yili": 1958,
+      "isbn": "978-0-383-74596-5",
+      "aciklama": "",
+      "resim1": null,
+      "resim2": null,
+      "resim3": null,
+      "resim4": null,
+      "resim5": null
     }
   },
   {
@@ -2088,10 +2184,16 @@
     "pk": 13,
     "fields": {
       "baslik": "Fatih Harbiye",
-      "yazar": 15,
+      "yazar": 9,
       "kategori": 1,
-      "yayin_yili": 1998,
-      "isbn": "978-0-85090-966-1"
+      "yayin_yili": 1970,
+      "isbn": "978-1-959972-28-0",
+      "aciklama": "",
+      "resim1": null,
+      "resim2": null,
+      "resim3": null,
+      "resim4": null,
+      "resim5": null
     }
   },
   {
@@ -2099,10 +2201,16 @@
     "pk": 14,
     "fields": {
       "baslik": "Sinekli Bakkal",
-      "yazar": 1,
+      "yazar": 7,
       "kategori": 1,
-      "yayin_yili": 2014,
-      "isbn": "978-0-17-614858-4"
+      "yayin_yili": 1934,
+      "isbn": "978-1-56765-643-5",
+      "aciklama": "",
+      "resim1": null,
+      "resim2": null,
+      "resim3": null,
+      "resim4": null,
+      "resim5": null
     }
   },
   {
@@ -2110,10 +2218,16 @@
     "pk": 15,
     "fields": {
       "baslik": "Sefiller",
-      "yazar": 4,
+      "yazar": 2,
       "kategori": 1,
-      "yayin_yili": 1976,
-      "isbn": "978-1-08-922878-3"
+      "yayin_yili": 1935,
+      "isbn": "978-1-62328-234-9",
+      "aciklama": "",
+      "resim1": null,
+      "resim2": null,
+      "resim3": null,
+      "resim4": null,
+      "resim5": null
     }
   },
   {
@@ -2121,10 +2235,16 @@
     "pk": 16,
     "fields": {
       "baslik": "Suç ve Ceza",
-      "yazar": 12,
+      "yazar": 8,
       "kategori": 1,
-      "yayin_yili": 1951,
-      "isbn": "978-1-86730-511-8"
+      "yayin_yili": 2020,
+      "isbn": "978-1-5334-3197-4",
+      "aciklama": "",
+      "resim1": null,
+      "resim2": null,
+      "resim3": null,
+      "resim4": null,
+      "resim5": null
     }
   },
   {
@@ -2132,10 +2252,16 @@
     "pk": 17,
     "fields": {
       "baslik": "Anna Karenina",
-      "yazar": 14,
+      "yazar": 2,
       "kategori": 1,
-      "yayin_yili": 1953,
-      "isbn": "978-0-344-07745-6"
+      "yayin_yili": 1944,
+      "isbn": "978-0-321-35983-4",
+      "aciklama": "",
+      "resim1": null,
+      "resim2": null,
+      "resim3": null,
+      "resim4": null,
+      "resim5": null
     }
   },
   {
@@ -2145,8 +2271,14 @@
       "baslik": "Yeraltından Notlar",
       "yazar": 10,
       "kategori": 1,
-      "yayin_yili": 1965,
-      "isbn": "978-1-239-56952-0"
+      "yayin_yili": 1968,
+      "isbn": "978-1-57173-084-8",
+      "aciklama": "",
+      "resim1": null,
+      "resim2": null,
+      "resim3": null,
+      "resim4": null,
+      "resim5": null
     }
   },
   {
@@ -2154,10 +2286,16 @@
     "pk": 19,
     "fields": {
       "baslik": "Kırmızı Pazartesi",
-      "yazar": 3,
+      "yazar": 20,
       "kategori": 1,
-      "yayin_yili": 2004,
-      "isbn": "978-0-633-58331-6"
+      "yayin_yili": 1970,
+      "isbn": "978-0-291-17745-2",
+      "aciklama": "",
+      "resim1": null,
+      "resim2": null,
+      "resim3": null,
+      "resim4": null,
+      "resim5": null
     }
   },
   {
@@ -2167,8 +2305,14 @@
       "baslik": "Dönüşüm",
       "yazar": 14,
       "kategori": 1,
-      "yayin_yili": 1991,
-      "isbn": "978-1-83902-503-7"
+      "yayin_yili": 2013,
+      "isbn": "978-0-539-58457-8",
+      "aciklama": "",
+      "resim1": null,
+      "resim2": null,
+      "resim3": null,
+      "resim4": null,
+      "resim5": null
     }
   },
   {
@@ -2176,10 +2320,16 @@
     "pk": 21,
     "fields": {
       "baslik": "Osmanlı Tarihi",
-      "yazar": 12,
+      "yazar": 10,
       "kategori": 2,
-      "yayin_yili": 1969,
-      "isbn": "978-1-4767-1307-6"
+      "yayin_yili": 1939,
+      "isbn": "978-0-335-70033-2",
+      "aciklama": "",
+      "resim1": null,
+      "resim2": null,
+      "resim3": null,
+      "resim4": null,
+      "resim5": null
     }
   },
   {
@@ -2187,10 +2337,16 @@
     "pk": 22,
     "fields": {
       "baslik": "Devlet-i Aliyye",
-      "yazar": 4,
+      "yazar": 16,
       "kategori": 2,
-      "yayin_yili": 1977,
-      "isbn": "978-0-01-516425-6"
+      "yayin_yili": 1989,
+      "isbn": "978-0-509-07853-3",
+      "aciklama": "",
+      "resim1": null,
+      "resim2": null,
+      "resim3": null,
+      "resim4": null,
+      "resim5": null
     }
   },
   {
@@ -2198,10 +2354,16 @@
     "pk": 23,
     "fields": {
       "baslik": "Atatürk ve Cumhuriyet",
-      "yazar": 17,
+      "yazar": 1,
       "kategori": 2,
-      "yayin_yili": 1973,
-      "isbn": "978-0-406-40646-0"
+      "yayin_yili": 1958,
+      "isbn": "978-1-4873-0201-6",
+      "aciklama": "",
+      "resim1": null,
+      "resim2": null,
+      "resim3": null,
+      "resim4": null,
+      "resim5": null
     }
   },
   {
@@ -2209,10 +2371,16 @@
     "pk": 24,
     "fields": {
       "baslik": "Türklerin Tarihi",
-      "yazar": 1,
+      "yazar": 10,
       "kategori": 2,
-      "yayin_yili": 2019,
-      "isbn": "978-0-902199-19-4"
+      "yayin_yili": 1951,
+      "isbn": "978-0-7321-3805-9",
+      "aciklama": "",
+      "resim1": null,
+      "resim2": null,
+      "resim3": null,
+      "resim4": null,
+      "resim5": null
     }
   },
   {
@@ -2220,10 +2388,16 @@
     "pk": 25,
     "fields": {
       "baslik": "Osmanlı Padişahları",
-      "yazar": 18,
+      "yazar": 10,
       "kategori": 2,
-      "yayin_yili": 1993,
-      "isbn": "978-1-05-532645-1"
+      "yayin_yili": 1955,
+      "isbn": "978-0-7913-5452-0",
+      "aciklama": "",
+      "resim1": null,
+      "resim2": null,
+      "resim3": null,
+      "resim4": null,
+      "resim5": null
     }
   },
   {
@@ -2231,10 +2405,16 @@
     "pk": 26,
     "fields": {
       "baslik": "Selçuklular Tarihi",
-      "yazar": 7,
+      "yazar": 18,
       "kategori": 2,
-      "yayin_yili": 2004,
-      "isbn": "978-1-78612-249-0"
+      "yayin_yili": 1948,
+      "isbn": "978-0-906957-90-5",
+      "aciklama": "",
+      "resim1": null,
+      "resim2": null,
+      "resim3": null,
+      "resim4": null,
+      "resim5": null
     }
   },
   {
@@ -2242,10 +2422,16 @@
     "pk": 27,
     "fields": {
       "baslik": "İslam Medeniyeti",
-      "yazar": 2,
+      "yazar": 20,
       "kategori": 2,
-      "yayin_yili": 1966,
-      "isbn": "978-0-591-57366-4"
+      "yayin_yili": 1945,
+      "isbn": "978-1-65838-819-1",
+      "aciklama": "",
+      "resim1": null,
+      "resim2": null,
+      "resim3": null,
+      "resim4": null,
+      "resim5": null
     }
   },
   {
@@ -2253,10 +2439,16 @@
     "pk": 28,
     "fields": {
       "baslik": "Tarih ve Toplum",
-      "yazar": 19,
+      "yazar": 1,
       "kategori": 2,
-      "yayin_yili": 1940,
-      "isbn": "978-0-928434-17-0"
+      "yayin_yili": 1963,
+      "isbn": "978-0-7644-6045-6",
+      "aciklama": "",
+      "resim1": null,
+      "resim2": null,
+      "resim3": null,
+      "resim4": null,
+      "resim5": null
     }
   },
   {
@@ -2264,10 +2456,16 @@
     "pk": 29,
     "fields": {
       "baslik": "Tarih Boyunca Türkler",
-      "yazar": 18,
+      "yazar": 4,
       "kategori": 2,
-      "yayin_yili": 2013,
-      "isbn": "978-1-4091-1138-2"
+      "yayin_yili": 1979,
+      "isbn": "978-1-70916-389-0",
+      "aciklama": "",
+      "resim1": null,
+      "resim2": null,
+      "resim3": null,
+      "resim4": null,
+      "resim5": null
     }
   },
   {
@@ -2275,10 +2473,16 @@
     "pk": 30,
     "fields": {
       "baslik": "Türkiye Cumhuriyeti Tarihi",
-      "yazar": 1,
+      "yazar": 19,
       "kategori": 2,
-      "yayin_yili": 1988,
-      "isbn": "978-1-80302-972-6"
+      "yayin_yili": 1959,
+      "isbn": "978-1-02-241923-0",
+      "aciklama": "",
+      "resim1": null,
+      "resim2": null,
+      "resim3": null,
+      "resim4": null,
+      "resim5": null
     }
   },
   {
@@ -2286,10 +2490,16 @@
     "pk": 31,
     "fields": {
       "baslik": "Roma Tarihi",
-      "yazar": 3,
+      "yazar": 2,
       "kategori": 2,
-      "yayin_yili": 1985,
-      "isbn": "978-1-4419-6854-8"
+      "yayin_yili": 1969,
+      "isbn": "978-1-61961-568-7",
+      "aciklama": "",
+      "resim1": null,
+      "resim2": null,
+      "resim3": null,
+      "resim4": null,
+      "resim5": null
     }
   },
   {
@@ -2297,10 +2507,16 @@
     "pk": 32,
     "fields": {
       "baslik": "Ortaçağ Avrupası",
-      "yazar": 17,
+      "yazar": 19,
       "kategori": 2,
-      "yayin_yili": 2020,
-      "isbn": "978-0-474-65087-1"
+      "yayin_yili": 2015,
+      "isbn": "978-0-9533389-3-1",
+      "aciklama": "",
+      "resim1": null,
+      "resim2": null,
+      "resim3": null,
+      "resim4": null,
+      "resim5": null
     }
   },
   {
@@ -2308,10 +2524,16 @@
     "pk": 33,
     "fields": {
       "baslik": "Fransız Devrimi",
-      "yazar": 3,
+      "yazar": 12,
       "kategori": 2,
-      "yayin_yili": 1937,
-      "isbn": "978-1-4715-8914-0"
+      "yayin_yili": 2001,
+      "isbn": "978-0-366-78887-3",
+      "aciklama": "",
+      "resim1": null,
+      "resim2": null,
+      "resim3": null,
+      "resim4": null,
+      "resim5": null
     }
   },
   {
@@ -2319,10 +2541,16 @@
     "pk": 34,
     "fields": {
       "baslik": "Modern Avrupa Tarihi",
-      "yazar": 7,
+      "yazar": 6,
       "kategori": 2,
-      "yayin_yili": 1996,
-      "isbn": "978-0-538-53855-8"
+      "yayin_yili": 1954,
+      "isbn": "978-1-84356-466-9",
+      "aciklama": "",
+      "resim1": null,
+      "resim2": null,
+      "resim3": null,
+      "resim4": null,
+      "resim5": null
     }
   },
   {
@@ -2330,10 +2558,16 @@
     "pk": 35,
     "fields": {
       "baslik": "Soğuk Savaş",
-      "yazar": 9,
+      "yazar": 15,
       "kategori": 2,
-      "yayin_yili": 1938,
-      "isbn": "978-1-85277-349-6"
+      "yayin_yili": 1984,
+      "isbn": "978-0-933733-23-7",
+      "aciklama": "",
+      "resim1": null,
+      "resim2": null,
+      "resim3": null,
+      "resim4": null,
+      "resim5": null
     }
   },
   {
@@ -2341,10 +2575,16 @@
     "pk": 36,
     "fields": {
       "baslik": "İslam Tarihi",
-      "yazar": 14,
+      "yazar": 5,
       "kategori": 2,
-      "yayin_yili": 1940,
-      "isbn": "978-0-86656-921-7"
+      "yayin_yili": 1938,
+      "isbn": "978-1-69593-884-7",
+      "aciklama": "",
+      "resim1": null,
+      "resim2": null,
+      "resim3": null,
+      "resim4": null,
+      "resim5": null
     }
   },
   {
@@ -2352,10 +2592,16 @@
     "pk": 37,
     "fields": {
       "baslik": "Ortadoğu Tarihi",
-      "yazar": 8,
+      "yazar": 14,
       "kategori": 2,
-      "yayin_yili": 1966,
-      "isbn": "978-0-18-435825-8"
+      "yayin_yili": 2020,
+      "isbn": "978-1-4043-7566-6",
+      "aciklama": "",
+      "resim1": null,
+      "resim2": null,
+      "resim3": null,
+      "resim4": null,
+      "resim5": null
     }
   },
   {
@@ -2363,10 +2609,16 @@
     "pk": 38,
     "fields": {
       "baslik": "İpek Yolu",
-      "yazar": 3,
+      "yazar": 11,
       "kategori": 2,
-      "yayin_yili": 1986,
-      "isbn": "978-1-4274-8785-8"
+      "yayin_yili": 1934,
+      "isbn": "978-1-82701-953-6",
+      "aciklama": "",
+      "resim1": null,
+      "resim2": null,
+      "resim3": null,
+      "resim4": null,
+      "resim5": null
     }
   },
   {
@@ -2374,10 +2626,16 @@
     "pk": 39,
     "fields": {
       "baslik": "Osmanlı’da Günlük Hayat",
-      "yazar": 20,
+      "yazar": 17,
       "kategori": 2,
-      "yayin_yili": 1973,
-      "isbn": "978-0-02-015922-3"
+      "yayin_yili": 1937,
+      "isbn": "978-1-882243-63-1",
+      "aciklama": "",
+      "resim1": null,
+      "resim2": null,
+      "resim3": null,
+      "resim4": null,
+      "resim5": null
     }
   },
   {
@@ -2385,10 +2643,16 @@
     "pk": 40,
     "fields": {
       "baslik": "Büyük Selçuklu",
-      "yazar": 15,
+      "yazar": 8,
       "kategori": 2,
-      "yayin_yili": 1979,
-      "isbn": "978-1-63585-558-6"
+      "yayin_yili": 1945,
+      "isbn": "978-0-00-135866-9",
+      "aciklama": "",
+      "resim1": null,
+      "resim2": null,
+      "resim3": null,
+      "resim4": null,
+      "resim5": null
     }
   },
   {
@@ -2396,10 +2660,16 @@
     "pk": 41,
     "fields": {
       "baslik": "Kozmos",
-      "yazar": 13,
+      "yazar": 5,
       "kategori": 3,
-      "yayin_yili": 1937,
-      "isbn": "978-1-58390-013-0"
+      "yayin_yili": 1976,
+      "isbn": "978-0-8401-1985-8",
+      "aciklama": "",
+      "resim1": null,
+      "resim2": null,
+      "resim3": null,
+      "resim4": null,
+      "resim5": null
     }
   },
   {
@@ -2409,8 +2679,14 @@
       "baslik": "Zamanın Kısa Tarihi",
       "yazar": 18,
       "kategori": 3,
-      "yayin_yili": 1972,
-      "isbn": "978-0-399-06854-6"
+      "yayin_yili": 1966,
+      "isbn": "978-0-14-391009-1",
+      "aciklama": "",
+      "resim1": null,
+      "resim2": null,
+      "resim3": null,
+      "resim4": null,
+      "resim5": null
     }
   },
   {
@@ -2418,10 +2694,16 @@
     "pk": 43,
     "fields": {
       "baslik": "Atomun Yapısı",
-      "yazar": 5,
+      "yazar": 4,
       "kategori": 3,
-      "yayin_yili": 1975,
-      "isbn": "978-0-7748-6960-7"
+      "yayin_yili": 1962,
+      "isbn": "978-1-909251-46-5",
+      "aciklama": "",
+      "resim1": null,
+      "resim2": null,
+      "resim3": null,
+      "resim4": null,
+      "resim5": null
     }
   },
   {
@@ -2429,10 +2711,16 @@
     "pk": 44,
     "fields": {
       "baslik": "Büyük Tasarım",
-      "yazar": 1,
+      "yazar": 9,
       "kategori": 3,
-      "yayin_yili": 1981,
-      "isbn": "978-1-74152-235-8"
+      "yayin_yili": 2005,
+      "isbn": "978-1-894994-51-4",
+      "aciklama": "",
+      "resim1": null,
+      "resim2": null,
+      "resim3": null,
+      "resim4": null,
+      "resim5": null
     }
   },
   {
@@ -2440,10 +2728,16 @@
     "pk": 45,
     "fields": {
       "baslik": "Evrim",
-      "yazar": 5,
+      "yazar": 3,
       "kategori": 3,
-      "yayin_yili": 1956,
-      "isbn": "978-1-172-85343-4"
+      "yayin_yili": 1979,
+      "isbn": "978-1-55720-374-8",
+      "aciklama": "",
+      "resim1": null,
+      "resim2": null,
+      "resim3": null,
+      "resim4": null,
+      "resim5": null
     }
   },
   {
@@ -2451,10 +2745,16 @@
     "pk": 46,
     "fields": {
       "baslik": "Kuantum Fiziği",
-      "yazar": 20,
+      "yazar": 19,
       "kategori": 3,
-      "yayin_yili": 1958,
-      "isbn": "978-0-04-425833-9"
+      "yayin_yili": 2018,
+      "isbn": "978-0-00-038676-2",
+      "aciklama": "",
+      "resim1": null,
+      "resim2": null,
+      "resim3": null,
+      "resim4": null,
+      "resim5": null
     }
   },
   {
@@ -2462,10 +2762,16 @@
     "pk": 47,
     "fields": {
       "baslik": "Genetik Bilim",
-      "yazar": 9,
+      "yazar": 19,
       "kategori": 3,
-      "yayin_yili": 1935,
-      "isbn": "978-1-5123-0834-1"
+      "yayin_yili": 1966,
+      "isbn": "978-1-996759-86-8",
+      "aciklama": "",
+      "resim1": null,
+      "resim2": null,
+      "resim3": null,
+      "resim4": null,
+      "resim5": null
     }
   },
   {
@@ -2473,10 +2779,16 @@
     "pk": 48,
     "fields": {
       "baslik": "Kara Delikler",
-      "yazar": 12,
+      "yazar": 19,
       "kategori": 3,
-      "yayin_yili": 1953,
-      "isbn": "978-0-487-83312-4"
+      "yayin_yili": 1999,
+      "isbn": "978-0-612-00882-3",
+      "aciklama": "",
+      "resim1": null,
+      "resim2": null,
+      "resim3": null,
+      "resim4": null,
+      "resim5": null
     }
   },
   {
@@ -2484,10 +2796,16 @@
     "pk": 49,
     "fields": {
       "baslik": "Bilim Tarihi",
-      "yazar": 2,
+      "yazar": 4,
       "kategori": 3,
-      "yayin_yili": 1986,
-      "isbn": "978-0-10-777391-5"
+      "yayin_yili": 1987,
+      "isbn": "978-1-876852-53-5",
+      "aciklama": "",
+      "resim1": null,
+      "resim2": null,
+      "resim3": null,
+      "resim4": null,
+      "resim5": null
     }
   },
   {
@@ -2495,10 +2813,16 @@
     "pk": 50,
     "fields": {
       "baslik": "Felsefe ve Bilim",
-      "yazar": 4,
+      "yazar": 20,
       "kategori": 3,
-      "yayin_yili": 1975,
-      "isbn": "978-1-65258-754-5"
+      "yayin_yili": 1998,
+      "isbn": "978-0-04-883173-6",
+      "aciklama": "",
+      "resim1": null,
+      "resim2": null,
+      "resim3": null,
+      "resim4": null,
+      "resim5": null
     }
   },
   {
@@ -2506,10 +2830,16 @@
     "pk": 51,
     "fields": {
       "baslik": "Matematiğin Tarihi",
-      "yazar": 8,
+      "yazar": 9,
       "kategori": 3,
-      "yayin_yili": 1953,
-      "isbn": "978-0-05-767939-8"
+      "yayin_yili": 1939,
+      "isbn": "978-0-300-01893-6",
+      "aciklama": "",
+      "resim1": null,
+      "resim2": null,
+      "resim3": null,
+      "resim4": null,
+      "resim5": null
     }
   },
   {
@@ -2517,10 +2847,16 @@
     "pk": 52,
     "fields": {
       "baslik": "Kimya Deneyleri",
-      "yazar": 17,
+      "yazar": 4,
       "kategori": 3,
-      "yayin_yili": 1938,
-      "isbn": "978-1-68536-165-5"
+      "yayin_yili": 2010,
+      "isbn": "978-0-7396-0821-0",
+      "aciklama": "",
+      "resim1": null,
+      "resim2": null,
+      "resim3": null,
+      "resim4": null,
+      "resim5": null
     }
   },
   {
@@ -2528,10 +2864,16 @@
     "pk": 53,
     "fields": {
       "baslik": "Astronomi Atlası",
-      "yazar": 11,
+      "yazar": 8,
       "kategori": 3,
-      "yayin_yili": 1951,
-      "isbn": "978-0-19-107547-6"
+      "yayin_yili": 1995,
+      "isbn": "978-0-8070-8060-3",
+      "aciklama": "",
+      "resim1": null,
+      "resim2": null,
+      "resim3": null,
+      "resim4": null,
+      "resim5": null
     }
   },
   {
@@ -2539,10 +2881,16 @@
     "pk": 54,
     "fields": {
       "baslik": "Bilgisayar Bilimleri",
-      "yazar": 20,
+      "yazar": 6,
       "kategori": 3,
-      "yayin_yili": 1996,
-      "isbn": "978-1-892606-46-4"
+      "yayin_yili": 1939,
+      "isbn": "978-0-7804-0410-6",
+      "aciklama": "",
+      "resim1": null,
+      "resim2": null,
+      "resim3": null,
+      "resim4": null,
+      "resim5": null
     }
   },
   {
@@ -2550,10 +2898,16 @@
     "pk": 55,
     "fields": {
       "baslik": "Yapay Zeka",
-      "yazar": 19,
+      "yazar": 17,
       "kategori": 3,
-      "yayin_yili": 1980,
-      "isbn": "978-0-9584104-8-9"
+      "yayin_yili": 1952,
+      "isbn": "978-0-440-58508-4",
+      "aciklama": "",
+      "resim1": null,
+      "resim2": null,
+      "resim3": null,
+      "resim4": null,
+      "resim5": null
     }
   },
   {
@@ -2561,10 +2915,16 @@
     "pk": 56,
     "fields": {
       "baslik": "Nörobilim",
-      "yazar": 10,
+      "yazar": 4,
       "kategori": 3,
-      "yayin_yili": 2004,
-      "isbn": "978-0-9663501-2-8"
+      "yayin_yili": 2003,
+      "isbn": "978-0-347-08967-8",
+      "aciklama": "",
+      "resim1": null,
+      "resim2": null,
+      "resim3": null,
+      "resim4": null,
+      "resim5": null
     }
   },
   {
@@ -2572,10 +2932,16 @@
     "pk": 57,
     "fields": {
       "baslik": "Beyin ve Zihin",
-      "yazar": 15,
+      "yazar": 4,
       "kategori": 3,
-      "yayin_yili": 2017,
-      "isbn": "978-1-209-91639-2"
+      "yayin_yili": 1938,
+      "isbn": "978-0-600-36992-9",
+      "aciklama": "",
+      "resim1": null,
+      "resim2": null,
+      "resim3": null,
+      "resim4": null,
+      "resim5": null
     }
   },
   {
@@ -2583,10 +2949,16 @@
     "pk": 58,
     "fields": {
       "baslik": "Doğa Bilimleri",
-      "yazar": 14,
+      "yazar": 10,
       "kategori": 3,
-      "yayin_yili": 1937,
-      "isbn": "978-0-488-71742-3"
+      "yayin_yili": 1978,
+      "isbn": "978-0-557-57693-7",
+      "aciklama": "",
+      "resim1": null,
+      "resim2": null,
+      "resim3": null,
+      "resim4": null,
+      "resim5": null
     }
   },
   {
@@ -2594,10 +2966,16 @@
     "pk": 59,
     "fields": {
       "baslik": "Enerji Kaynakları",
-      "yazar": 2,
+      "yazar": 1,
       "kategori": 3,
-      "yayin_yili": 1965,
-      "isbn": "978-1-4491-3680-2"
+      "yayin_yili": 1981,
+      "isbn": "978-0-213-34079-7",
+      "aciklama": "",
+      "resim1": null,
+      "resim2": null,
+      "resim3": null,
+      "resim4": null,
+      "resim5": null
     }
   },
   {
@@ -2605,10 +2983,16 @@
     "pk": 60,
     "fields": {
       "baslik": "Fizik İlkeleri",
-      "yazar": 6,
+      "yazar": 18,
       "kategori": 3,
-      "yayin_yili": 1931,
-      "isbn": "978-0-489-64806-1"
+      "yayin_yili": 1956,
+      "isbn": "978-1-4059-1429-1",
+      "aciklama": "",
+      "resim1": null,
+      "resim2": null,
+      "resim3": null,
+      "resim4": null,
+      "resim5": null
     }
   },
   {
@@ -2616,10 +3000,16 @@
     "pk": 61,
     "fields": {
       "baslik": "Keloğlan Masalları",
-      "yazar": 19,
+      "yazar": 12,
       "kategori": 4,
-      "yayin_yili": 1952,
-      "isbn": "978-0-8195-6330-9"
+      "yayin_yili": 2013,
+      "isbn": "978-1-79776-593-8",
+      "aciklama": "",
+      "resim1": null,
+      "resim2": null,
+      "resim3": null,
+      "resim4": null,
+      "resim5": null
     }
   },
   {
@@ -2627,10 +3017,16 @@
     "pk": 62,
     "fields": {
       "baslik": "Nasreddin Hoca Fıkraları",
-      "yazar": 18,
+      "yazar": 7,
       "kategori": 4,
-      "yayin_yili": 1934,
-      "isbn": "978-1-904265-19-1"
+      "yayin_yili": 1936,
+      "isbn": "978-1-5464-8687-9",
+      "aciklama": "",
+      "resim1": null,
+      "resim2": null,
+      "resim3": null,
+      "resim4": null,
+      "resim5": null
     }
   },
   {
@@ -2638,10 +3034,16 @@
     "pk": 63,
     "fields": {
       "baslik": "La Fontaine Masalları",
-      "yazar": 1,
+      "yazar": 3,
       "kategori": 4,
-      "yayin_yili": 1969,
-      "isbn": "978-0-611-92278-6"
+      "yayin_yili": 1947,
+      "isbn": "978-0-538-28699-2",
+      "aciklama": "",
+      "resim1": null,
+      "resim2": null,
+      "resim3": null,
+      "resim4": null,
+      "resim5": null
     }
   },
   {
@@ -2651,8 +3053,14 @@
       "baslik": "Andersen Masalları",
       "yazar": 11,
       "kategori": 4,
-      "yayin_yili": 2005,
-      "isbn": "978-0-248-63695-7"
+      "yayin_yili": 2003,
+      "isbn": "978-1-64541-844-3",
+      "aciklama": "",
+      "resim1": null,
+      "resim2": null,
+      "resim3": null,
+      "resim4": null,
+      "resim5": null
     }
   },
   {
@@ -2660,10 +3068,16 @@
     "pk": 65,
     "fields": {
       "baslik": "Pinokyo",
-      "yazar": 12,
+      "yazar": 7,
       "kategori": 4,
-      "yayin_yili": 1961,
-      "isbn": "978-1-5182-6479-5"
+      "yayin_yili": 2010,
+      "isbn": "978-0-638-72270-3",
+      "aciklama": "",
+      "resim1": null,
+      "resim2": null,
+      "resim3": null,
+      "resim4": null,
+      "resim5": null
     }
   },
   {
@@ -2671,10 +3085,16 @@
     "pk": 66,
     "fields": {
       "baslik": "Harry Potter",
-      "yazar": 6,
+      "yazar": 10,
       "kategori": 4,
-      "yayin_yili": 1940,
-      "isbn": "978-1-262-79852-2"
+      "yayin_yili": 1975,
+      "isbn": "978-1-68659-060-3",
+      "aciklama": "",
+      "resim1": null,
+      "resim2": null,
+      "resim3": null,
+      "resim4": null,
+      "resim5": null
     }
   },
   {
@@ -2682,10 +3102,16 @@
     "pk": 67,
     "fields": {
       "baslik": "Alice Harikalar Diyarında",
-      "yazar": 7,
+      "yazar": 14,
       "kategori": 4,
-      "yayin_yili": 2000,
-      "isbn": "978-0-218-72640-4"
+      "yayin_yili": 1982,
+      "isbn": "978-1-73000-215-1",
+      "aciklama": "",
+      "resim1": null,
+      "resim2": null,
+      "resim3": null,
+      "resim4": null,
+      "resim5": null
     }
   },
   {
@@ -2693,10 +3119,16 @@
     "pk": 68,
     "fields": {
       "baslik": "Küçük Prens",
-      "yazar": 3,
+      "yazar": 17,
       "kategori": 4,
-      "yayin_yili": 1976,
-      "isbn": "978-1-222-99204-5"
+      "yayin_yili": 1993,
+      "isbn": "978-0-688-47391-4",
+      "aciklama": "",
+      "resim1": null,
+      "resim2": null,
+      "resim3": null,
+      "resim4": null,
+      "resim5": null
     }
   },
   {
@@ -2704,10 +3136,16 @@
     "pk": 69,
     "fields": {
       "baslik": "Peter Pan",
-      "yazar": 17,
+      "yazar": 14,
       "kategori": 4,
-      "yayin_yili": 2017,
-      "isbn": "978-0-643-06064-7"
+      "yayin_yili": 1997,
+      "isbn": "978-0-15-973316-5",
+      "aciklama": "",
+      "resim1": null,
+      "resim2": null,
+      "resim3": null,
+      "resim4": null,
+      "resim5": null
     }
   },
   {
@@ -2715,10 +3153,16 @@
     "pk": 70,
     "fields": {
       "baslik": "Heidi",
-      "yazar": 20,
+      "yazar": 5,
       "kategori": 4,
-      "yayin_yili": 1974,
-      "isbn": "978-0-304-63487-3"
+      "yayin_yili": 1970,
+      "isbn": "978-0-399-06075-5",
+      "aciklama": "",
+      "resim1": null,
+      "resim2": null,
+      "resim3": null,
+      "resim4": null,
+      "resim5": null
     }
   },
   {
@@ -2726,10 +3170,16 @@
     "pk": 71,
     "fields": {
       "baslik": "Robin Hood",
-      "yazar": 6,
+      "yazar": 14,
       "kategori": 4,
-      "yayin_yili": 1983,
-      "isbn": "978-0-03-192278-6"
+      "yayin_yili": 1935,
+      "isbn": "978-0-7775-9360-8",
+      "aciklama": "",
+      "resim1": null,
+      "resim2": null,
+      "resim3": null,
+      "resim4": null,
+      "resim5": null
     }
   },
   {
@@ -2737,10 +3187,16 @@
     "pk": 72,
     "fields": {
       "baslik": "Pamuk Prenses",
-      "yazar": 3,
+      "yazar": 7,
       "kategori": 4,
-      "yayin_yili": 1976,
-      "isbn": "978-0-13-317299-7"
+      "yayin_yili": 2020,
+      "isbn": "978-1-950042-79-1",
+      "aciklama": "",
+      "resim1": null,
+      "resim2": null,
+      "resim3": null,
+      "resim4": null,
+      "resim5": null
     }
   },
   {
@@ -2748,10 +3204,16 @@
     "pk": 73,
     "fields": {
       "baslik": "Çizmeli Kedi",
-      "yazar": 3,
+      "yazar": 5,
       "kategori": 4,
-      "yayin_yili": 1988,
-      "isbn": "978-0-327-95912-0"
+      "yayin_yili": 1976,
+      "isbn": "978-1-899483-74-7",
+      "aciklama": "",
+      "resim1": null,
+      "resim2": null,
+      "resim3": null,
+      "resim4": null,
+      "resim5": null
     }
   },
   {
@@ -2759,10 +3221,16 @@
     "pk": 74,
     "fields": {
       "baslik": "Uyuyan Güzel",
-      "yazar": 17,
+      "yazar": 12,
       "kategori": 4,
-      "yayin_yili": 1941,
-      "isbn": "978-0-88772-071-0"
+      "yayin_yili": 1944,
+      "isbn": "978-0-11-900932-3",
+      "aciklama": "",
+      "resim1": null,
+      "resim2": null,
+      "resim3": null,
+      "resim4": null,
+      "resim5": null
     }
   },
   {
@@ -2770,10 +3238,16 @@
     "pk": 75,
     "fields": {
       "baslik": "Rapunzel",
-      "yazar": 12,
+      "yazar": 8,
       "kategori": 4,
-      "yayin_yili": 2011,
-      "isbn": "978-0-14-297626-5"
+      "yayin_yili": 1980,
+      "isbn": "978-0-204-90336-9",
+      "aciklama": "",
+      "resim1": null,
+      "resim2": null,
+      "resim3": null,
+      "resim4": null,
+      "resim5": null
     }
   },
   {
@@ -2781,10 +3255,16 @@
     "pk": 76,
     "fields": {
       "baslik": "Kırmızı Başlıklı Kız",
-      "yazar": 14,
+      "yazar": 16,
       "kategori": 4,
-      "yayin_yili": 1958,
-      "isbn": "978-0-17-186507-3"
+      "yayin_yili": 1952,
+      "isbn": "978-0-299-25159-8",
+      "aciklama": "",
+      "resim1": null,
+      "resim2": null,
+      "resim3": null,
+      "resim4": null,
+      "resim5": null
     }
   },
   {
@@ -2792,10 +3272,16 @@
     "pk": 77,
     "fields": {
       "baslik": "Hansel ve Gratel",
-      "yazar": 7,
+      "yazar": 9,
       "kategori": 4,
-      "yayin_yili": 1972,
-      "isbn": "978-0-375-58844-0"
+      "yayin_yili": 1969,
+      "isbn": "978-0-9987067-0-2",
+      "aciklama": "",
+      "resim1": null,
+      "resim2": null,
+      "resim3": null,
+      "resim4": null,
+      "resim5": null
     }
   },
   {
@@ -2803,10 +3289,16 @@
     "pk": 78,
     "fields": {
       "baslik": "Çocuk Kalbi",
-      "yazar": 18,
+      "yazar": 5,
       "kategori": 4,
-      "yayin_yili": 1977,
-      "isbn": "978-0-270-45810-7"
+      "yayin_yili": 1993,
+      "isbn": "978-0-304-27777-3",
+      "aciklama": "",
+      "resim1": null,
+      "resim2": null,
+      "resim3": null,
+      "resim4": null,
+      "resim5": null
     }
   },
   {
@@ -2814,10 +3306,16 @@
     "pk": 79,
     "fields": {
       "baslik": "Karlar Kraliçesi",
-      "yazar": 6,
+      "yazar": 4,
       "kategori": 4,
-      "yayin_yili": 1961,
-      "isbn": "978-0-278-33408-3"
+      "yayin_yili": 1935,
+      "isbn": "978-0-07-927822-7",
+      "aciklama": "",
+      "resim1": null,
+      "resim2": null,
+      "resim3": null,
+      "resim4": null,
+      "resim5": null
     }
   },
   {
@@ -2825,10 +3323,16 @@
     "pk": 80,
     "fields": {
       "baslik": "Define Adası",
-      "yazar": 2,
+      "yazar": 3,
       "kategori": 4,
-      "yayin_yili": 1970,
-      "isbn": "978-1-4681-3268-7"
+      "yayin_yili": 1997,
+      "isbn": "978-1-77382-476-5",
+      "aciklama": "",
+      "resim1": null,
+      "resim2": null,
+      "resim3": null,
+      "resim4": null,
+      "resim5": null
     }
   },
   {
@@ -2838,7 +3342,7 @@
       "kitap": 1,
       "barkod": "KIT00001",
       "durum": "mevcut",
-      "raf_kodu": "R30"
+      "raf_kodu": "R22"
     }
   },
   {
@@ -2848,7 +3352,7 @@
       "kitap": 1,
       "barkod": "KIT00002",
       "durum": "mevcut",
-      "raf_kodu": "R49"
+      "raf_kodu": "R40"
     }
   },
   {
@@ -2858,17 +3362,17 @@
       "kitap": 1,
       "barkod": "KIT00003",
       "durum": "mevcut",
-      "raf_kodu": "R43"
+      "raf_kodu": "R46"
     }
   },
   {
     "model": "kutuphane_app.kitapnusha",
     "pk": 4,
     "fields": {
-      "kitap": 2,
+      "kitap": 1,
       "barkod": "KIT00004",
       "durum": "mevcut",
-      "raf_kodu": "R33"
+      "raf_kodu": "R10"
     }
   },
   {
@@ -2878,54 +3382,54 @@
       "kitap": 2,
       "barkod": "KIT00005",
       "durum": "mevcut",
-      "raf_kodu": "R10"
+      "raf_kodu": "R27"
     }
   },
   {
     "model": "kutuphane_app.kitapnusha",
     "pk": 6,
     "fields": {
-      "kitap": 3,
+      "kitap": 2,
       "barkod": "KIT00006",
       "durum": "mevcut",
-      "raf_kodu": "R39"
+      "raf_kodu": "R7"
     }
   },
   {
     "model": "kutuphane_app.kitapnusha",
     "pk": 7,
     "fields": {
-      "kitap": 4,
+      "kitap": 2,
       "barkod": "KIT00007",
       "durum": "mevcut",
-      "raf_kodu": "R6"
+      "raf_kodu": "R5"
     }
   },
   {
     "model": "kutuphane_app.kitapnusha",
     "pk": 8,
     "fields": {
-      "kitap": 4,
+      "kitap": 2,
       "barkod": "KIT00008",
       "durum": "mevcut",
-      "raf_kodu": "R21"
+      "raf_kodu": "R40"
     }
   },
   {
     "model": "kutuphane_app.kitapnusha",
     "pk": 9,
     "fields": {
-      "kitap": 4,
+      "kitap": 3,
       "barkod": "KIT00009",
       "durum": "mevcut",
-      "raf_kodu": "R9"
+      "raf_kodu": "R45"
     }
   },
   {
     "model": "kutuphane_app.kitapnusha",
     "pk": 10,
     "fields": {
-      "kitap": 4,
+      "kitap": 3,
       "barkod": "KIT00010",
       "durum": "mevcut",
       "raf_kodu": "R35"
@@ -2935,350 +3439,350 @@
     "model": "kutuphane_app.kitapnusha",
     "pk": 11,
     "fields": {
-      "kitap": 5,
+      "kitap": 3,
       "barkod": "KIT00011",
       "durum": "mevcut",
-      "raf_kodu": "R17"
+      "raf_kodu": "R29"
     }
   },
   {
     "model": "kutuphane_app.kitapnusha",
     "pk": 12,
     "fields": {
-      "kitap": 6,
+      "kitap": 4,
       "barkod": "KIT00012",
-      "durum": "mevcut",
-      "raf_kodu": "R43"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 13,
-    "fields": {
-      "kitap": 6,
-      "barkod": "KIT00013",
-      "durum": "mevcut",
-      "raf_kodu": "R2"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 14,
-    "fields": {
-      "kitap": 6,
-      "barkod": "KIT00014",
-      "durum": "mevcut",
-      "raf_kodu": "R4"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 15,
-    "fields": {
-      "kitap": 6,
-      "barkod": "KIT00015",
-      "durum": "mevcut",
-      "raf_kodu": "R22"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 16,
-    "fields": {
-      "kitap": 7,
-      "barkod": "KIT00016",
-      "durum": "mevcut",
-      "raf_kodu": "R32"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 17,
-    "fields": {
-      "kitap": 8,
-      "barkod": "KIT00017",
-      "durum": "mevcut",
-      "raf_kodu": "R23"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 18,
-    "fields": {
-      "kitap": 8,
-      "barkod": "KIT00018",
-      "durum": "mevcut",
-      "raf_kodu": "R6"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 19,
-    "fields": {
-      "kitap": 8,
-      "barkod": "KIT00019",
-      "durum": "mevcut",
-      "raf_kodu": "R28"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 20,
-    "fields": {
-      "kitap": 8,
-      "barkod": "KIT00020",
-      "durum": "mevcut",
-      "raf_kodu": "R39"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 21,
-    "fields": {
-      "kitap": 9,
-      "barkod": "KIT00021",
-      "durum": "mevcut",
-      "raf_kodu": "R8"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 22,
-    "fields": {
-      "kitap": 10,
-      "barkod": "KIT00022",
-      "durum": "mevcut",
-      "raf_kodu": "R9"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 23,
-    "fields": {
-      "kitap": 10,
-      "barkod": "KIT00023",
-      "durum": "mevcut",
-      "raf_kodu": "R2"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 24,
-    "fields": {
-      "kitap": 11,
-      "barkod": "KIT00024",
-      "durum": "mevcut",
-      "raf_kodu": "R20"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 25,
-    "fields": {
-      "kitap": 11,
-      "barkod": "KIT00025",
-      "durum": "mevcut",
-      "raf_kodu": "R5"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 26,
-    "fields": {
-      "kitap": 11,
-      "barkod": "KIT00026",
-      "durum": "mevcut",
-      "raf_kodu": "R46"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 27,
-    "fields": {
-      "kitap": 12,
-      "barkod": "KIT00027",
-      "durum": "mevcut",
-      "raf_kodu": "R24"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 28,
-    "fields": {
-      "kitap": 12,
-      "barkod": "KIT00028",
-      "durum": "mevcut",
-      "raf_kodu": "R30"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 29,
-    "fields": {
-      "kitap": 12,
-      "barkod": "KIT00029",
-      "durum": "mevcut",
-      "raf_kodu": "R13"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 30,
-    "fields": {
-      "kitap": 13,
-      "barkod": "KIT00030",
-      "durum": "mevcut",
-      "raf_kodu": "R14"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 31,
-    "fields": {
-      "kitap": 14,
-      "barkod": "KIT00031",
-      "durum": "mevcut",
-      "raf_kodu": "R17"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 32,
-    "fields": {
-      "kitap": 14,
-      "barkod": "KIT00032",
-      "durum": "mevcut",
-      "raf_kodu": "R42"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 33,
-    "fields": {
-      "kitap": 14,
-      "barkod": "KIT00033",
-      "durum": "mevcut",
-      "raf_kodu": "R3"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 34,
-    "fields": {
-      "kitap": 14,
-      "barkod": "KIT00034",
-      "durum": "mevcut",
-      "raf_kodu": "R49"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 35,
-    "fields": {
-      "kitap": 15,
-      "barkod": "KIT00035",
-      "durum": "mevcut",
-      "raf_kodu": "R24"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 36,
-    "fields": {
-      "kitap": 15,
-      "barkod": "KIT00036",
-      "durum": "mevcut",
-      "raf_kodu": "R31"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 37,
-    "fields": {
-      "kitap": 15,
-      "barkod": "KIT00037",
-      "durum": "mevcut",
-      "raf_kodu": "R31"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 38,
-    "fields": {
-      "kitap": 16,
-      "barkod": "KIT00038",
       "durum": "mevcut",
       "raf_kodu": "R21"
     }
   },
   {
     "model": "kutuphane_app.kitapnusha",
-    "pk": 39,
+    "pk": 13,
     "fields": {
-      "kitap": 16,
-      "barkod": "KIT00039",
+      "kitap": 4,
+      "barkod": "KIT00013",
       "durum": "mevcut",
-      "raf_kodu": "R9"
+      "raf_kodu": "R30"
     }
   },
   {
     "model": "kutuphane_app.kitapnusha",
-    "pk": 40,
+    "pk": 14,
     "fields": {
-      "kitap": 17,
-      "barkod": "KIT00040",
+      "kitap": 4,
+      "barkod": "KIT00014",
       "durum": "mevcut",
-      "raf_kodu": "R46"
+      "raf_kodu": "R43"
     }
   },
   {
     "model": "kutuphane_app.kitapnusha",
-    "pk": 41,
+    "pk": 15,
     "fields": {
-      "kitap": 17,
-      "barkod": "KIT00041",
+      "kitap": 5,
+      "barkod": "KIT00015",
       "durum": "mevcut",
-      "raf_kodu": "R32"
+      "raf_kodu": "R27"
     }
   },
   {
     "model": "kutuphane_app.kitapnusha",
-    "pk": 42,
+    "pk": 16,
     "fields": {
-      "kitap": 17,
-      "barkod": "KIT00042",
+      "kitap": 6,
+      "barkod": "KIT00016",
+      "durum": "mevcut",
+      "raf_kodu": "R38"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 17,
+    "fields": {
+      "kitap": 6,
+      "barkod": "KIT00017",
+      "durum": "mevcut",
+      "raf_kodu": "R35"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 18,
+    "fields": {
+      "kitap": 6,
+      "barkod": "KIT00018",
+      "durum": "mevcut",
+      "raf_kodu": "R37"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 19,
+    "fields": {
+      "kitap": 6,
+      "barkod": "KIT00019",
+      "durum": "mevcut",
+      "raf_kodu": "R10"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 20,
+    "fields": {
+      "kitap": 7,
+      "barkod": "KIT00020",
+      "durum": "mevcut",
+      "raf_kodu": "R10"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 21,
+    "fields": {
+      "kitap": 7,
+      "barkod": "KIT00021",
+      "durum": "mevcut",
+      "raf_kodu": "R37"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 22,
+    "fields": {
+      "kitap": 7,
+      "barkod": "KIT00022",
+      "durum": "mevcut",
+      "raf_kodu": "R19"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 23,
+    "fields": {
+      "kitap": 8,
+      "barkod": "KIT00023",
+      "durum": "mevcut",
+      "raf_kodu": "R5"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 24,
+    "fields": {
+      "kitap": 8,
+      "barkod": "KIT00024",
       "durum": "mevcut",
       "raf_kodu": "R49"
     }
   },
   {
     "model": "kutuphane_app.kitapnusha",
-    "pk": 43,
+    "pk": 25,
     "fields": {
-      "kitap": 18,
-      "barkod": "KIT00043",
+      "kitap": 8,
+      "barkod": "KIT00025",
+      "durum": "mevcut",
+      "raf_kodu": "R7"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 26,
+    "fields": {
+      "kitap": 8,
+      "barkod": "KIT00026",
+      "durum": "mevcut",
+      "raf_kodu": "R5"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 27,
+    "fields": {
+      "kitap": 9,
+      "barkod": "KIT00027",
+      "durum": "mevcut",
+      "raf_kodu": "R40"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 28,
+    "fields": {
+      "kitap": 10,
+      "barkod": "KIT00028",
+      "durum": "mevcut",
+      "raf_kodu": "R18"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 29,
+    "fields": {
+      "kitap": 10,
+      "barkod": "KIT00029",
+      "durum": "mevcut",
+      "raf_kodu": "R48"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 30,
+    "fields": {
+      "kitap": 11,
+      "barkod": "KIT00030",
+      "durum": "mevcut",
+      "raf_kodu": "R37"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 31,
+    "fields": {
+      "kitap": 11,
+      "barkod": "KIT00031",
+      "durum": "mevcut",
+      "raf_kodu": "R35"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 32,
+    "fields": {
+      "kitap": 11,
+      "barkod": "KIT00032",
       "durum": "mevcut",
       "raf_kodu": "R50"
     }
   },
   {
     "model": "kutuphane_app.kitapnusha",
+    "pk": 33,
+    "fields": {
+      "kitap": 12,
+      "barkod": "KIT00033",
+      "durum": "mevcut",
+      "raf_kodu": "R20"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 34,
+    "fields": {
+      "kitap": 12,
+      "barkod": "KIT00034",
+      "durum": "mevcut",
+      "raf_kodu": "R44"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 35,
+    "fields": {
+      "kitap": 12,
+      "barkod": "KIT00035",
+      "durum": "mevcut",
+      "raf_kodu": "R39"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 36,
+    "fields": {
+      "kitap": 12,
+      "barkod": "KIT00036",
+      "durum": "mevcut",
+      "raf_kodu": "R44"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 37,
+    "fields": {
+      "kitap": 13,
+      "barkod": "KIT00037",
+      "durum": "mevcut",
+      "raf_kodu": "R10"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 38,
+    "fields": {
+      "kitap": 14,
+      "barkod": "KIT00038",
+      "durum": "mevcut",
+      "raf_kodu": "R16"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 39,
+    "fields": {
+      "kitap": 15,
+      "barkod": "KIT00039",
+      "durum": "mevcut",
+      "raf_kodu": "R34"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 40,
+    "fields": {
+      "kitap": 16,
+      "barkod": "KIT00040",
+      "durum": "mevcut",
+      "raf_kodu": "R1"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 41,
+    "fields": {
+      "kitap": 16,
+      "barkod": "KIT00041",
+      "durum": "mevcut",
+      "raf_kodu": "R24"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 42,
+    "fields": {
+      "kitap": 16,
+      "barkod": "KIT00042",
+      "durum": "mevcut",
+      "raf_kodu": "R36"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 43,
+    "fields": {
+      "kitap": 16,
+      "barkod": "KIT00043",
+      "durum": "mevcut",
+      "raf_kodu": "R41"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
     "pk": 44,
     "fields": {
-      "kitap": 19,
+      "kitap": 17,
       "barkod": "KIT00044",
       "durum": "mevcut",
-      "raf_kodu": "R46"
+      "raf_kodu": "R31"
     }
   },
   {
     "model": "kutuphane_app.kitapnusha",
     "pk": 45,
     "fields": {
-      "kitap": 19,
+      "kitap": 18,
       "barkod": "KIT00045",
       "durum": "mevcut",
-      "raf_kodu": "R39"
+      "raf_kodu": "R34"
     }
   },
   {
@@ -3288,237 +3792,237 @@
       "kitap": 19,
       "barkod": "KIT00046",
       "durum": "mevcut",
-      "raf_kodu": "R19"
+      "raf_kodu": "R18"
     }
   },
   {
     "model": "kutuphane_app.kitapnusha",
     "pk": 47,
     "fields": {
-      "kitap": 20,
+      "kitap": 19,
       "barkod": "KIT00047",
       "durum": "mevcut",
-      "raf_kodu": "R11"
+      "raf_kodu": "R9"
     }
   },
   {
     "model": "kutuphane_app.kitapnusha",
     "pk": 48,
     "fields": {
-      "kitap": 21,
+      "kitap": 19,
       "barkod": "KIT00048",
       "durum": "mevcut",
-      "raf_kodu": "R13"
+      "raf_kodu": "R10"
     }
   },
   {
     "model": "kutuphane_app.kitapnusha",
     "pk": 49,
     "fields": {
-      "kitap": 21,
+      "kitap": 20,
       "barkod": "KIT00049",
       "durum": "mevcut",
-      "raf_kodu": "R8"
+      "raf_kodu": "R38"
     }
   },
   {
     "model": "kutuphane_app.kitapnusha",
     "pk": 50,
     "fields": {
-      "kitap": 21,
+      "kitap": 20,
       "barkod": "KIT00050",
       "durum": "mevcut",
-      "raf_kodu": "R37"
+      "raf_kodu": "R42"
     }
   },
   {
     "model": "kutuphane_app.kitapnusha",
     "pk": 51,
     "fields": {
-      "kitap": 22,
+      "kitap": 20,
       "barkod": "KIT00051",
       "durum": "mevcut",
-      "raf_kodu": "R23"
+      "raf_kodu": "R3"
     }
   },
   {
     "model": "kutuphane_app.kitapnusha",
     "pk": 52,
     "fields": {
-      "kitap": 23,
+      "kitap": 20,
       "barkod": "KIT00052",
       "durum": "mevcut",
-      "raf_kodu": "R12"
+      "raf_kodu": "R49"
     }
   },
   {
     "model": "kutuphane_app.kitapnusha",
     "pk": 53,
     "fields": {
-      "kitap": 23,
+      "kitap": 21,
       "barkod": "KIT00053",
-      "durum": "mevcut",
-      "raf_kodu": "R28"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 54,
-    "fields": {
-      "kitap": 23,
-      "barkod": "KIT00054",
-      "durum": "mevcut",
-      "raf_kodu": "R30"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 55,
-    "fields": {
-      "kitap": 24,
-      "barkod": "KIT00055",
-      "durum": "mevcut",
-      "raf_kodu": "R16"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 56,
-    "fields": {
-      "kitap": 24,
-      "barkod": "KIT00056",
-      "durum": "mevcut",
-      "raf_kodu": "R19"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 57,
-    "fields": {
-      "kitap": 25,
-      "barkod": "KIT00057",
       "durum": "mevcut",
       "raf_kodu": "R44"
     }
   },
   {
     "model": "kutuphane_app.kitapnusha",
+    "pk": 54,
+    "fields": {
+      "kitap": 21,
+      "barkod": "KIT00054",
+      "durum": "mevcut",
+      "raf_kodu": "R6"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 55,
+    "fields": {
+      "kitap": 22,
+      "barkod": "KIT00055",
+      "durum": "mevcut",
+      "raf_kodu": "R34"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 56,
+    "fields": {
+      "kitap": 22,
+      "barkod": "KIT00056",
+      "durum": "mevcut",
+      "raf_kodu": "R39"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 57,
+    "fields": {
+      "kitap": 22,
+      "barkod": "KIT00057",
+      "durum": "mevcut",
+      "raf_kodu": "R46"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
     "pk": 58,
     "fields": {
-      "kitap": 25,
+      "kitap": 23,
       "barkod": "KIT00058",
       "durum": "mevcut",
-      "raf_kodu": "R4"
+      "raf_kodu": "R42"
     }
   },
   {
     "model": "kutuphane_app.kitapnusha",
     "pk": 59,
     "fields": {
-      "kitap": 25,
+      "kitap": 23,
       "barkod": "KIT00059",
       "durum": "mevcut",
-      "raf_kodu": "R17"
+      "raf_kodu": "R48"
     }
   },
   {
     "model": "kutuphane_app.kitapnusha",
     "pk": 60,
     "fields": {
-      "kitap": 26,
+      "kitap": 24,
       "barkod": "KIT00060",
       "durum": "mevcut",
-      "raf_kodu": "R21"
+      "raf_kodu": "R26"
     }
   },
   {
     "model": "kutuphane_app.kitapnusha",
     "pk": 61,
     "fields": {
-      "kitap": 26,
+      "kitap": 25,
       "barkod": "KIT00061",
-      "durum": "mevcut",
-      "raf_kodu": "R49"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 62,
-    "fields": {
-      "kitap": 26,
-      "barkod": "KIT00062",
-      "durum": "mevcut",
-      "raf_kodu": "R22"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 63,
-    "fields": {
-      "kitap": 27,
-      "barkod": "KIT00063",
       "durum": "mevcut",
       "raf_kodu": "R4"
     }
   },
   {
     "model": "kutuphane_app.kitapnusha",
+    "pk": 62,
+    "fields": {
+      "kitap": 25,
+      "barkod": "KIT00062",
+      "durum": "mevcut",
+      "raf_kodu": "R25"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 63,
+    "fields": {
+      "kitap": 25,
+      "barkod": "KIT00063",
+      "durum": "mevcut",
+      "raf_kodu": "R9"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
     "pk": 64,
     "fields": {
-      "kitap": 27,
+      "kitap": 26,
       "barkod": "KIT00064",
       "durum": "mevcut",
-      "raf_kodu": "R49"
+      "raf_kodu": "R28"
     }
   },
   {
     "model": "kutuphane_app.kitapnusha",
     "pk": 65,
     "fields": {
-      "kitap": 28,
+      "kitap": 26,
       "barkod": "KIT00065",
       "durum": "mevcut",
-      "raf_kodu": "R29"
+      "raf_kodu": "R8"
     }
   },
   {
     "model": "kutuphane_app.kitapnusha",
     "pk": 66,
     "fields": {
-      "kitap": 28,
+      "kitap": 26,
       "barkod": "KIT00066",
       "durum": "mevcut",
-      "raf_kodu": "R14"
+      "raf_kodu": "R5"
     }
   },
   {
     "model": "kutuphane_app.kitapnusha",
     "pk": 67,
     "fields": {
-      "kitap": 29,
+      "kitap": 27,
       "barkod": "KIT00067",
       "durum": "mevcut",
-      "raf_kodu": "R29"
+      "raf_kodu": "R30"
     }
   },
   {
     "model": "kutuphane_app.kitapnusha",
     "pk": 68,
     "fields": {
-      "kitap": 29,
+      "kitap": 27,
       "barkod": "KIT00068",
       "durum": "mevcut",
-      "raf_kodu": "R50"
+      "raf_kodu": "R46"
     }
   },
   {
     "model": "kutuphane_app.kitapnusha",
     "pk": 69,
     "fields": {
-      "kitap": 29,
+      "kitap": 28,
       "barkod": "KIT00069",
       "durum": "mevcut",
-      "raf_kodu": "R14"
+      "raf_kodu": "R12"
     }
   },
   {
@@ -3528,37 +4032,37 @@
       "kitap": 29,
       "barkod": "KIT00070",
       "durum": "mevcut",
-      "raf_kodu": "R48"
+      "raf_kodu": "R7"
     }
   },
   {
     "model": "kutuphane_app.kitapnusha",
     "pk": 71,
     "fields": {
-      "kitap": 30,
+      "kitap": 29,
       "barkod": "KIT00071",
       "durum": "mevcut",
-      "raf_kodu": "R21"
+      "raf_kodu": "R17"
     }
   },
   {
     "model": "kutuphane_app.kitapnusha",
     "pk": 72,
     "fields": {
-      "kitap": 30,
+      "kitap": 29,
       "barkod": "KIT00072",
       "durum": "mevcut",
-      "raf_kodu": "R45"
+      "raf_kodu": "R28"
     }
   },
   {
     "model": "kutuphane_app.kitapnusha",
     "pk": 73,
     "fields": {
-      "kitap": 31,
+      "kitap": 30,
       "barkod": "KIT00073",
       "durum": "mevcut",
-      "raf_kodu": "R3"
+      "raf_kodu": "R17"
     }
   },
   {
@@ -3568,7 +4072,7 @@
       "kitap": 31,
       "barkod": "KIT00074",
       "durum": "mevcut",
-      "raf_kodu": "R25"
+      "raf_kodu": "R10"
     }
   },
   {
@@ -3578,504 +4082,504 @@
       "kitap": 31,
       "barkod": "KIT00075",
       "durum": "mevcut",
-      "raf_kodu": "R47"
+      "raf_kodu": "R32"
     }
   },
   {
     "model": "kutuphane_app.kitapnusha",
     "pk": 76,
     "fields": {
-      "kitap": 32,
+      "kitap": 31,
       "barkod": "KIT00076",
-      "durum": "mevcut",
-      "raf_kodu": "R1"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 77,
-    "fields": {
-      "kitap": 33,
-      "barkod": "KIT00077",
-      "durum": "mevcut",
-      "raf_kodu": "R36"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 78,
-    "fields": {
-      "kitap": 33,
-      "barkod": "KIT00078",
-      "durum": "mevcut",
-      "raf_kodu": "R35"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 79,
-    "fields": {
-      "kitap": 33,
-      "barkod": "KIT00079",
-      "durum": "mevcut",
-      "raf_kodu": "R36"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 80,
-    "fields": {
-      "kitap": 33,
-      "barkod": "KIT00080",
-      "durum": "mevcut",
-      "raf_kodu": "R28"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 81,
-    "fields": {
-      "kitap": 34,
-      "barkod": "KIT00081",
-      "durum": "mevcut",
-      "raf_kodu": "R36"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 82,
-    "fields": {
-      "kitap": 34,
-      "barkod": "KIT00082",
-      "durum": "mevcut",
-      "raf_kodu": "R14"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 83,
-    "fields": {
-      "kitap": 34,
-      "barkod": "KIT00083",
-      "durum": "mevcut",
-      "raf_kodu": "R12"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 84,
-    "fields": {
-      "kitap": 35,
-      "barkod": "KIT00084",
-      "durum": "mevcut",
-      "raf_kodu": "R1"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 85,
-    "fields": {
-      "kitap": 36,
-      "barkod": "KIT00085",
-      "durum": "mevcut",
-      "raf_kodu": "R41"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 86,
-    "fields": {
-      "kitap": 37,
-      "barkod": "KIT00086",
-      "durum": "mevcut",
-      "raf_kodu": "R6"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 87,
-    "fields": {
-      "kitap": 37,
-      "barkod": "KIT00087",
-      "durum": "mevcut",
-      "raf_kodu": "R48"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 88,
-    "fields": {
-      "kitap": 37,
-      "barkod": "KIT00088",
-      "durum": "mevcut",
-      "raf_kodu": "R28"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 89,
-    "fields": {
-      "kitap": 37,
-      "barkod": "KIT00089",
-      "durum": "mevcut",
-      "raf_kodu": "R29"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 90,
-    "fields": {
-      "kitap": 38,
-      "barkod": "KIT00090",
-      "durum": "mevcut",
-      "raf_kodu": "R22"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 91,
-    "fields": {
-      "kitap": 38,
-      "barkod": "KIT00091",
-      "durum": "mevcut",
-      "raf_kodu": "R11"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 92,
-    "fields": {
-      "kitap": 38,
-      "barkod": "KIT00092",
-      "durum": "mevcut",
-      "raf_kodu": "R49"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 93,
-    "fields": {
-      "kitap": 39,
-      "barkod": "KIT00093",
-      "durum": "mevcut",
-      "raf_kodu": "R48"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 94,
-    "fields": {
-      "kitap": 39,
-      "barkod": "KIT00094",
-      "durum": "mevcut",
-      "raf_kodu": "R25"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 95,
-    "fields": {
-      "kitap": 39,
-      "barkod": "KIT00095",
-      "durum": "mevcut",
-      "raf_kodu": "R21"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 96,
-    "fields": {
-      "kitap": 40,
-      "barkod": "KIT00096",
-      "durum": "mevcut",
-      "raf_kodu": "R47"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 97,
-    "fields": {
-      "kitap": 41,
-      "barkod": "KIT00097",
-      "durum": "mevcut",
-      "raf_kodu": "R34"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 98,
-    "fields": {
-      "kitap": 41,
-      "barkod": "KIT00098",
-      "durum": "mevcut",
-      "raf_kodu": "R39"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 99,
-    "fields": {
-      "kitap": 41,
-      "barkod": "KIT00099",
-      "durum": "mevcut",
-      "raf_kodu": "R43"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 100,
-    "fields": {
-      "kitap": 42,
-      "barkod": "KIT00100",
-      "durum": "mevcut",
-      "raf_kodu": "R28"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 101,
-    "fields": {
-      "kitap": 42,
-      "barkod": "KIT00101",
-      "durum": "mevcut",
-      "raf_kodu": "R48"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 102,
-    "fields": {
-      "kitap": 42,
-      "barkod": "KIT00102",
-      "durum": "mevcut",
-      "raf_kodu": "R14"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 103,
-    "fields": {
-      "kitap": 43,
-      "barkod": "KIT00103",
-      "durum": "mevcut",
-      "raf_kodu": "R10"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 104,
-    "fields": {
-      "kitap": 44,
-      "barkod": "KIT00104",
-      "durum": "mevcut",
-      "raf_kodu": "R19"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 105,
-    "fields": {
-      "kitap": 44,
-      "barkod": "KIT00105",
-      "durum": "mevcut",
-      "raf_kodu": "R37"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 106,
-    "fields": {
-      "kitap": 44,
-      "barkod": "KIT00106",
-      "durum": "mevcut",
-      "raf_kodu": "R19"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 107,
-    "fields": {
-      "kitap": 44,
-      "barkod": "KIT00107",
-      "durum": "mevcut",
-      "raf_kodu": "R20"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 108,
-    "fields": {
-      "kitap": 45,
-      "barkod": "KIT00108",
-      "durum": "mevcut",
-      "raf_kodu": "R7"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 109,
-    "fields": {
-      "kitap": 46,
-      "barkod": "KIT00109",
       "durum": "mevcut",
       "raf_kodu": "R15"
     }
   },
   {
     "model": "kutuphane_app.kitapnusha",
-    "pk": 110,
+    "pk": 77,
     "fields": {
-      "kitap": 46,
-      "barkod": "KIT00110",
+      "kitap": 32,
+      "barkod": "KIT00077",
       "durum": "mevcut",
-      "raf_kodu": "R32"
+      "raf_kodu": "R11"
     }
   },
   {
     "model": "kutuphane_app.kitapnusha",
-    "pk": 111,
+    "pk": 78,
     "fields": {
-      "kitap": 46,
-      "barkod": "KIT00111",
+      "kitap": 32,
+      "barkod": "KIT00078",
       "durum": "mevcut",
-      "raf_kodu": "R19"
+      "raf_kodu": "R4"
     }
   },
   {
     "model": "kutuphane_app.kitapnusha",
-    "pk": 112,
+    "pk": 79,
     "fields": {
-      "kitap": 47,
-      "barkod": "KIT00112",
+      "kitap": 32,
+      "barkod": "KIT00079",
       "durum": "mevcut",
-      "raf_kodu": "R29"
+      "raf_kodu": "R37"
     }
   },
   {
     "model": "kutuphane_app.kitapnusha",
-    "pk": 113,
+    "pk": 80,
     "fields": {
-      "kitap": 48,
-      "barkod": "KIT00113",
+      "kitap": 32,
+      "barkod": "KIT00080",
       "durum": "mevcut",
-      "raf_kodu": "R6"
+      "raf_kodu": "R36"
     }
   },
   {
     "model": "kutuphane_app.kitapnusha",
-    "pk": 114,
+    "pk": 81,
     "fields": {
-      "kitap": 48,
-      "barkod": "KIT00114",
-      "durum": "mevcut",
-      "raf_kodu": "R18"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 115,
-    "fields": {
-      "kitap": 49,
-      "barkod": "KIT00115",
-      "durum": "mevcut",
-      "raf_kodu": "R21"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 116,
-    "fields": {
-      "kitap": 49,
-      "barkod": "KIT00116",
-      "durum": "mevcut",
-      "raf_kodu": "R45"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 117,
-    "fields": {
-      "kitap": 50,
-      "barkod": "KIT00117",
-      "durum": "mevcut",
-      "raf_kodu": "R19"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 118,
-    "fields": {
-      "kitap": 51,
-      "barkod": "KIT00118",
+      "kitap": 33,
+      "barkod": "KIT00081",
       "durum": "mevcut",
       "raf_kodu": "R39"
     }
   },
   {
     "model": "kutuphane_app.kitapnusha",
-    "pk": 119,
+    "pk": 82,
     "fields": {
-      "kitap": 51,
-      "barkod": "KIT00119",
+      "kitap": 33,
+      "barkod": "KIT00082",
       "durum": "mevcut",
-      "raf_kodu": "R22"
+      "raf_kodu": "R35"
     }
   },
   {
     "model": "kutuphane_app.kitapnusha",
-    "pk": 120,
+    "pk": 83,
     "fields": {
-      "kitap": 51,
-      "barkod": "KIT00120",
-      "durum": "mevcut",
-      "raf_kodu": "R45"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 121,
-    "fields": {
-      "kitap": 51,
-      "barkod": "KIT00121",
+      "kitap": 33,
+      "barkod": "KIT00083",
       "durum": "mevcut",
       "raf_kodu": "R34"
     }
   },
   {
     "model": "kutuphane_app.kitapnusha",
-    "pk": 122,
+    "pk": 84,
     "fields": {
-      "kitap": 52,
-      "barkod": "KIT00122",
+      "kitap": 33,
+      "barkod": "KIT00084",
       "durum": "mevcut",
-      "raf_kodu": "R13"
+      "raf_kodu": "R31"
     }
   },
   {
     "model": "kutuphane_app.kitapnusha",
-    "pk": 123,
+    "pk": 85,
     "fields": {
-      "kitap": 53,
-      "barkod": "KIT00123",
-      "durum": "mevcut",
-      "raf_kodu": "R12"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 124,
-    "fields": {
-      "kitap": 54,
-      "barkod": "KIT00124",
+      "kitap": 34,
+      "barkod": "KIT00085",
       "durum": "mevcut",
       "raf_kodu": "R8"
     }
   },
   {
     "model": "kutuphane_app.kitapnusha",
+    "pk": 86,
+    "fields": {
+      "kitap": 35,
+      "barkod": "KIT00086",
+      "durum": "mevcut",
+      "raf_kodu": "R3"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 87,
+    "fields": {
+      "kitap": 35,
+      "barkod": "KIT00087",
+      "durum": "mevcut",
+      "raf_kodu": "R34"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 88,
+    "fields": {
+      "kitap": 35,
+      "barkod": "KIT00088",
+      "durum": "mevcut",
+      "raf_kodu": "R21"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 89,
+    "fields": {
+      "kitap": 35,
+      "barkod": "KIT00089",
+      "durum": "mevcut",
+      "raf_kodu": "R31"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 90,
+    "fields": {
+      "kitap": 36,
+      "barkod": "KIT00090",
+      "durum": "mevcut",
+      "raf_kodu": "R5"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 91,
+    "fields": {
+      "kitap": 36,
+      "barkod": "KIT00091",
+      "durum": "mevcut",
+      "raf_kodu": "R16"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 92,
+    "fields": {
+      "kitap": 36,
+      "barkod": "KIT00092",
+      "durum": "mevcut",
+      "raf_kodu": "R27"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 93,
+    "fields": {
+      "kitap": 36,
+      "barkod": "KIT00093",
+      "durum": "mevcut",
+      "raf_kodu": "R27"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 94,
+    "fields": {
+      "kitap": 37,
+      "barkod": "KIT00094",
+      "durum": "mevcut",
+      "raf_kodu": "R11"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 95,
+    "fields": {
+      "kitap": 37,
+      "barkod": "KIT00095",
+      "durum": "mevcut",
+      "raf_kodu": "R18"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 96,
+    "fields": {
+      "kitap": 37,
+      "barkod": "KIT00096",
+      "durum": "mevcut",
+      "raf_kodu": "R18"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 97,
+    "fields": {
+      "kitap": 37,
+      "barkod": "KIT00097",
+      "durum": "mevcut",
+      "raf_kodu": "R30"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 98,
+    "fields": {
+      "kitap": 38,
+      "barkod": "KIT00098",
+      "durum": "mevcut",
+      "raf_kodu": "R10"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 99,
+    "fields": {
+      "kitap": 38,
+      "barkod": "KIT00099",
+      "durum": "mevcut",
+      "raf_kodu": "R46"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 100,
+    "fields": {
+      "kitap": 38,
+      "barkod": "KIT00100",
+      "durum": "mevcut",
+      "raf_kodu": "R35"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 101,
+    "fields": {
+      "kitap": 39,
+      "barkod": "KIT00101",
+      "durum": "mevcut",
+      "raf_kodu": "R21"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 102,
+    "fields": {
+      "kitap": 40,
+      "barkod": "KIT00102",
+      "durum": "mevcut",
+      "raf_kodu": "R13"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 103,
+    "fields": {
+      "kitap": 40,
+      "barkod": "KIT00103",
+      "durum": "mevcut",
+      "raf_kodu": "R47"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 104,
+    "fields": {
+      "kitap": 40,
+      "barkod": "KIT00104",
+      "durum": "mevcut",
+      "raf_kodu": "R22"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 105,
+    "fields": {
+      "kitap": 40,
+      "barkod": "KIT00105",
+      "durum": "mevcut",
+      "raf_kodu": "R17"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 106,
+    "fields": {
+      "kitap": 41,
+      "barkod": "KIT00106",
+      "durum": "mevcut",
+      "raf_kodu": "R11"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 107,
+    "fields": {
+      "kitap": 42,
+      "barkod": "KIT00107",
+      "durum": "mevcut",
+      "raf_kodu": "R36"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 108,
+    "fields": {
+      "kitap": 42,
+      "barkod": "KIT00108",
+      "durum": "mevcut",
+      "raf_kodu": "R1"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 109,
+    "fields": {
+      "kitap": 43,
+      "barkod": "KIT00109",
+      "durum": "mevcut",
+      "raf_kodu": "R30"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 110,
+    "fields": {
+      "kitap": 43,
+      "barkod": "KIT00110",
+      "durum": "mevcut",
+      "raf_kodu": "R33"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 111,
+    "fields": {
+      "kitap": 43,
+      "barkod": "KIT00111",
+      "durum": "mevcut",
+      "raf_kodu": "R26"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 112,
+    "fields": {
+      "kitap": 43,
+      "barkod": "KIT00112",
+      "durum": "mevcut",
+      "raf_kodu": "R27"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 113,
+    "fields": {
+      "kitap": 44,
+      "barkod": "KIT00113",
+      "durum": "mevcut",
+      "raf_kodu": "R25"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 114,
+    "fields": {
+      "kitap": 44,
+      "barkod": "KIT00114",
+      "durum": "mevcut",
+      "raf_kodu": "R47"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 115,
+    "fields": {
+      "kitap": 44,
+      "barkod": "KIT00115",
+      "durum": "mevcut",
+      "raf_kodu": "R5"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 116,
+    "fields": {
+      "kitap": 45,
+      "barkod": "KIT00116",
+      "durum": "mevcut",
+      "raf_kodu": "R14"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 117,
+    "fields": {
+      "kitap": 45,
+      "barkod": "KIT00117",
+      "durum": "mevcut",
+      "raf_kodu": "R46"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 118,
+    "fields": {
+      "kitap": 46,
+      "barkod": "KIT00118",
+      "durum": "mevcut",
+      "raf_kodu": "R34"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 119,
+    "fields": {
+      "kitap": 46,
+      "barkod": "KIT00119",
+      "durum": "mevcut",
+      "raf_kodu": "R29"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 120,
+    "fields": {
+      "kitap": 46,
+      "barkod": "KIT00120",
+      "durum": "mevcut",
+      "raf_kodu": "R1"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 121,
+    "fields": {
+      "kitap": 46,
+      "barkod": "KIT00121",
+      "durum": "mevcut",
+      "raf_kodu": "R32"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 122,
+    "fields": {
+      "kitap": 47,
+      "barkod": "KIT00122",
+      "durum": "mevcut",
+      "raf_kodu": "R38"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 123,
+    "fields": {
+      "kitap": 47,
+      "barkod": "KIT00123",
+      "durum": "mevcut",
+      "raf_kodu": "R13"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 124,
+    "fields": {
+      "kitap": 48,
+      "barkod": "KIT00124",
+      "durum": "mevcut",
+      "raf_kodu": "R7"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
     "pk": 125,
     "fields": {
-      "kitap": 54,
+      "kitap": 48,
       "barkod": "KIT00125",
       "durum": "mevcut",
       "raf_kodu": "R20"
@@ -4085,197 +4589,197 @@
     "model": "kutuphane_app.kitapnusha",
     "pk": 126,
     "fields": {
-      "kitap": 54,
+      "kitap": 48,
       "barkod": "KIT00126",
       "durum": "mevcut",
-      "raf_kodu": "R39"
+      "raf_kodu": "R18"
     }
   },
   {
     "model": "kutuphane_app.kitapnusha",
     "pk": 127,
     "fields": {
-      "kitap": 55,
+      "kitap": 49,
       "barkod": "KIT00127",
       "durum": "mevcut",
-      "raf_kodu": "R18"
+      "raf_kodu": "R3"
     }
   },
   {
     "model": "kutuphane_app.kitapnusha",
     "pk": 128,
     "fields": {
-      "kitap": 55,
+      "kitap": 49,
       "barkod": "KIT00128",
-      "durum": "mevcut",
-      "raf_kodu": "R28"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 129,
-    "fields": {
-      "kitap": 56,
-      "barkod": "KIT00129",
       "durum": "mevcut",
       "raf_kodu": "R30"
     }
   },
   {
     "model": "kutuphane_app.kitapnusha",
+    "pk": 129,
+    "fields": {
+      "kitap": 50,
+      "barkod": "KIT00129",
+      "durum": "mevcut",
+      "raf_kodu": "R3"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
     "pk": 130,
     "fields": {
-      "kitap": 57,
+      "kitap": 51,
       "barkod": "KIT00130",
-      "durum": "mevcut",
-      "raf_kodu": "R9"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 131,
-    "fields": {
-      "kitap": 57,
-      "barkod": "KIT00131",
-      "durum": "mevcut",
-      "raf_kodu": "R33"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 132,
-    "fields": {
-      "kitap": 57,
-      "barkod": "KIT00132",
-      "durum": "mevcut",
-      "raf_kodu": "R11"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 133,
-    "fields": {
-      "kitap": 57,
-      "barkod": "KIT00133",
-      "durum": "mevcut",
-      "raf_kodu": "R5"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 134,
-    "fields": {
-      "kitap": 58,
-      "barkod": "KIT00134",
-      "durum": "mevcut",
-      "raf_kodu": "R43"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 135,
-    "fields": {
-      "kitap": 58,
-      "barkod": "KIT00135",
-      "durum": "mevcut",
-      "raf_kodu": "R18"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 136,
-    "fields": {
-      "kitap": 59,
-      "barkod": "KIT00136",
-      "durum": "mevcut",
-      "raf_kodu": "R11"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 137,
-    "fields": {
-      "kitap": 59,
-      "barkod": "KIT00137",
-      "durum": "mevcut",
-      "raf_kodu": "R18"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 138,
-    "fields": {
-      "kitap": 59,
-      "barkod": "KIT00138",
-      "durum": "mevcut",
-      "raf_kodu": "R37"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 139,
-    "fields": {
-      "kitap": 59,
-      "barkod": "KIT00139",
-      "durum": "mevcut",
-      "raf_kodu": "R42"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 140,
-    "fields": {
-      "kitap": 60,
-      "barkod": "KIT00140",
-      "durum": "mevcut",
-      "raf_kodu": "R18"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 141,
-    "fields": {
-      "kitap": 61,
-      "barkod": "KIT00141",
-      "durum": "mevcut",
-      "raf_kodu": "R17"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 142,
-    "fields": {
-      "kitap": 61,
-      "barkod": "KIT00142",
-      "durum": "mevcut",
-      "raf_kodu": "R46"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 143,
-    "fields": {
-      "kitap": 61,
-      "barkod": "KIT00143",
-      "durum": "mevcut",
-      "raf_kodu": "R17"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 144,
-    "fields": {
-      "kitap": 62,
-      "barkod": "KIT00144",
       "durum": "mevcut",
       "raf_kodu": "R19"
     }
   },
   {
     "model": "kutuphane_app.kitapnusha",
+    "pk": 131,
+    "fields": {
+      "kitap": 51,
+      "barkod": "KIT00131",
+      "durum": "mevcut",
+      "raf_kodu": "R12"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 132,
+    "fields": {
+      "kitap": 52,
+      "barkod": "KIT00132",
+      "durum": "mevcut",
+      "raf_kodu": "R40"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 133,
+    "fields": {
+      "kitap": 52,
+      "barkod": "KIT00133",
+      "durum": "mevcut",
+      "raf_kodu": "R26"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 134,
+    "fields": {
+      "kitap": 52,
+      "barkod": "KIT00134",
+      "durum": "mevcut",
+      "raf_kodu": "R32"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 135,
+    "fields": {
+      "kitap": 53,
+      "barkod": "KIT00135",
+      "durum": "mevcut",
+      "raf_kodu": "R27"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 136,
+    "fields": {
+      "kitap": 54,
+      "barkod": "KIT00136",
+      "durum": "mevcut",
+      "raf_kodu": "R5"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 137,
+    "fields": {
+      "kitap": 54,
+      "barkod": "KIT00137",
+      "durum": "mevcut",
+      "raf_kodu": "R6"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 138,
+    "fields": {
+      "kitap": 54,
+      "barkod": "KIT00138",
+      "durum": "mevcut",
+      "raf_kodu": "R13"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 139,
+    "fields": {
+      "kitap": 54,
+      "barkod": "KIT00139",
+      "durum": "mevcut",
+      "raf_kodu": "R26"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 140,
+    "fields": {
+      "kitap": 55,
+      "barkod": "KIT00140",
+      "durum": "mevcut",
+      "raf_kodu": "R46"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 141,
+    "fields": {
+      "kitap": 55,
+      "barkod": "KIT00141",
+      "durum": "mevcut",
+      "raf_kodu": "R22"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 142,
+    "fields": {
+      "kitap": 55,
+      "barkod": "KIT00142",
+      "durum": "mevcut",
+      "raf_kodu": "R31"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 143,
+    "fields": {
+      "kitap": 55,
+      "barkod": "KIT00143",
+      "durum": "mevcut",
+      "raf_kodu": "R15"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 144,
+    "fields": {
+      "kitap": 56,
+      "barkod": "KIT00144",
+      "durum": "mevcut",
+      "raf_kodu": "R8"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
     "pk": 145,
     "fields": {
-      "kitap": 62,
+      "kitap": 56,
       "barkod": "KIT00145",
       "durum": "mevcut",
       "raf_kodu": "R2"
@@ -4285,440 +4789,600 @@
     "model": "kutuphane_app.kitapnusha",
     "pk": 146,
     "fields": {
-      "kitap": 63,
+      "kitap": 56,
       "barkod": "KIT00146",
       "durum": "mevcut",
-      "raf_kodu": "R27"
+      "raf_kodu": "R12"
     }
   },
   {
     "model": "kutuphane_app.kitapnusha",
     "pk": 147,
     "fields": {
-      "kitap": 64,
+      "kitap": 57,
       "barkod": "KIT00147",
       "durum": "mevcut",
-      "raf_kodu": "R34"
+      "raf_kodu": "R26"
     }
   },
   {
     "model": "kutuphane_app.kitapnusha",
     "pk": 148,
     "fields": {
-      "kitap": 64,
+      "kitap": 57,
       "barkod": "KIT00148",
       "durum": "mevcut",
-      "raf_kodu": "R5"
+      "raf_kodu": "R10"
     }
   },
   {
     "model": "kutuphane_app.kitapnusha",
     "pk": 149,
     "fields": {
-      "kitap": 64,
+      "kitap": 58,
       "barkod": "KIT00149",
       "durum": "mevcut",
-      "raf_kodu": "R5"
+      "raf_kodu": "R50"
     }
   },
   {
     "model": "kutuphane_app.kitapnusha",
     "pk": 150,
     "fields": {
-      "kitap": 64,
+      "kitap": 58,
       "barkod": "KIT00150",
       "durum": "mevcut",
-      "raf_kodu": "R44"
+      "raf_kodu": "R47"
     }
   },
   {
     "model": "kutuphane_app.kitapnusha",
     "pk": 151,
     "fields": {
-      "kitap": 65,
+      "kitap": 59,
       "barkod": "KIT00151",
-      "durum": "mevcut",
-      "raf_kodu": "R16"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 152,
-    "fields": {
-      "kitap": 66,
-      "barkod": "KIT00152",
-      "durum": "mevcut",
-      "raf_kodu": "R49"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 153,
-    "fields": {
-      "kitap": 66,
-      "barkod": "KIT00153",
-      "durum": "mevcut",
-      "raf_kodu": "R12"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 154,
-    "fields": {
-      "kitap": 67,
-      "barkod": "KIT00154",
-      "durum": "mevcut",
-      "raf_kodu": "R5"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 155,
-    "fields": {
-      "kitap": 67,
-      "barkod": "KIT00155",
-      "durum": "mevcut",
-      "raf_kodu": "R43"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 156,
-    "fields": {
-      "kitap": 68,
-      "barkod": "KIT00156",
-      "durum": "mevcut",
-      "raf_kodu": "R12"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 157,
-    "fields": {
-      "kitap": 69,
-      "barkod": "KIT00157",
-      "durum": "mevcut",
-      "raf_kodu": "R4"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 158,
-    "fields": {
-      "kitap": 69,
-      "barkod": "KIT00158",
-      "durum": "mevcut",
-      "raf_kodu": "R5"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 159,
-    "fields": {
-      "kitap": 69,
-      "barkod": "KIT00159",
-      "durum": "mevcut",
-      "raf_kodu": "R37"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 160,
-    "fields": {
-      "kitap": 69,
-      "barkod": "KIT00160",
-      "durum": "mevcut",
-      "raf_kodu": "R32"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 161,
-    "fields": {
-      "kitap": 70,
-      "barkod": "KIT00161",
-      "durum": "mevcut",
-      "raf_kodu": "R40"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 162,
-    "fields": {
-      "kitap": 71,
-      "barkod": "KIT00162",
-      "durum": "mevcut",
-      "raf_kodu": "R41"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 163,
-    "fields": {
-      "kitap": 71,
-      "barkod": "KIT00163",
-      "durum": "mevcut",
-      "raf_kodu": "R41"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 164,
-    "fields": {
-      "kitap": 71,
-      "barkod": "KIT00164",
-      "durum": "mevcut",
-      "raf_kodu": "R41"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 165,
-    "fields": {
-      "kitap": 72,
-      "barkod": "KIT00165",
-      "durum": "mevcut",
-      "raf_kodu": "R43"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 166,
-    "fields": {
-      "kitap": 72,
-      "barkod": "KIT00166",
-      "durum": "mevcut",
-      "raf_kodu": "R41"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 167,
-    "fields": {
-      "kitap": 72,
-      "barkod": "KIT00167",
-      "durum": "mevcut",
-      "raf_kodu": "R12"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 168,
-    "fields": {
-      "kitap": 72,
-      "barkod": "KIT00168",
-      "durum": "mevcut",
-      "raf_kodu": "R35"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 169,
-    "fields": {
-      "kitap": 73,
-      "barkod": "KIT00169",
-      "durum": "mevcut",
-      "raf_kodu": "R25"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 170,
-    "fields": {
-      "kitap": 73,
-      "barkod": "KIT00170",
-      "durum": "mevcut",
-      "raf_kodu": "R30"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 171,
-    "fields": {
-      "kitap": 73,
-      "barkod": "KIT00171",
-      "durum": "mevcut",
-      "raf_kodu": "R37"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 172,
-    "fields": {
-      "kitap": 73,
-      "barkod": "KIT00172",
-      "durum": "mevcut",
-      "raf_kodu": "R24"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 173,
-    "fields": {
-      "kitap": 74,
-      "barkod": "KIT00173",
-      "durum": "mevcut",
-      "raf_kodu": "R8"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 174,
-    "fields": {
-      "kitap": 74,
-      "barkod": "KIT00174",
-      "durum": "mevcut",
-      "raf_kodu": "R4"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 175,
-    "fields": {
-      "kitap": 74,
-      "barkod": "KIT00175",
-      "durum": "mevcut",
-      "raf_kodu": "R2"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 176,
-    "fields": {
-      "kitap": 75,
-      "barkod": "KIT00176",
-      "durum": "mevcut",
-      "raf_kodu": "R15"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 177,
-    "fields": {
-      "kitap": 76,
-      "barkod": "KIT00177",
-      "durum": "mevcut",
-      "raf_kodu": "R20"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 178,
-    "fields": {
-      "kitap": 76,
-      "barkod": "KIT00178",
-      "durum": "mevcut",
-      "raf_kodu": "R45"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 179,
-    "fields": {
-      "kitap": 76,
-      "barkod": "KIT00179",
-      "durum": "mevcut",
-      "raf_kodu": "R48"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 180,
-    "fields": {
-      "kitap": 76,
-      "barkod": "KIT00180",
-      "durum": "mevcut",
-      "raf_kodu": "R23"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 181,
-    "fields": {
-      "kitap": 77,
-      "barkod": "KIT00181",
-      "durum": "mevcut",
-      "raf_kodu": "R42"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 182,
-    "fields": {
-      "kitap": 77,
-      "barkod": "KIT00182",
-      "durum": "mevcut",
-      "raf_kodu": "R38"
-    }
-  },
-  {
-    "model": "kutuphane_app.kitapnusha",
-    "pk": 183,
-    "fields": {
-      "kitap": 77,
-      "barkod": "KIT00183",
       "durum": "mevcut",
       "raf_kodu": "R39"
     }
   },
   {
     "model": "kutuphane_app.kitapnusha",
-    "pk": 184,
+    "pk": 152,
     "fields": {
-      "kitap": 78,
-      "barkod": "KIT00184",
+      "kitap": 59,
+      "barkod": "KIT00152",
       "durum": "mevcut",
-      "raf_kodu": "R31"
+      "raf_kodu": "R12"
     }
   },
   {
     "model": "kutuphane_app.kitapnusha",
-    "pk": 185,
+    "pk": 153,
     "fields": {
-      "kitap": 78,
-      "barkod": "KIT00185",
+      "kitap": 60,
+      "barkod": "KIT00153",
+      "durum": "mevcut",
+      "raf_kodu": "R30"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 154,
+    "fields": {
+      "kitap": 60,
+      "barkod": "KIT00154",
+      "durum": "mevcut",
+      "raf_kodu": "R47"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 155,
+    "fields": {
+      "kitap": 60,
+      "barkod": "KIT00155",
       "durum": "mevcut",
       "raf_kodu": "R23"
     }
   },
   {
     "model": "kutuphane_app.kitapnusha",
-    "pk": 186,
+    "pk": 156,
     "fields": {
-      "kitap": 78,
-      "barkod": "KIT00186",
+      "kitap": 60,
+      "barkod": "KIT00156",
+      "durum": "mevcut",
+      "raf_kodu": "R41"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 157,
+    "fields": {
+      "kitap": 61,
+      "barkod": "KIT00157",
+      "durum": "mevcut",
+      "raf_kodu": "R30"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 158,
+    "fields": {
+      "kitap": 62,
+      "barkod": "KIT00158",
+      "durum": "mevcut",
+      "raf_kodu": "R34"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 159,
+    "fields": {
+      "kitap": 63,
+      "barkod": "KIT00159",
+      "durum": "mevcut",
+      "raf_kodu": "R9"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 160,
+    "fields": {
+      "kitap": 64,
+      "barkod": "KIT00160",
+      "durum": "mevcut",
+      "raf_kodu": "R23"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 161,
+    "fields": {
+      "kitap": 65,
+      "barkod": "KIT00161",
+      "durum": "mevcut",
+      "raf_kodu": "R25"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 162,
+    "fields": {
+      "kitap": 66,
+      "barkod": "KIT00162",
       "durum": "mevcut",
       "raf_kodu": "R46"
     }
   },
   {
     "model": "kutuphane_app.kitapnusha",
-    "pk": 187,
+    "pk": 163,
     "fields": {
-      "kitap": 79,
-      "barkod": "KIT00187",
+      "kitap": 66,
+      "barkod": "KIT00163",
+      "durum": "mevcut",
+      "raf_kodu": "R26"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 164,
+    "fields": {
+      "kitap": 66,
+      "barkod": "KIT00164",
+      "durum": "mevcut",
+      "raf_kodu": "R15"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 165,
+    "fields": {
+      "kitap": 67,
+      "barkod": "KIT00165",
+      "durum": "mevcut",
+      "raf_kodu": "R39"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 166,
+    "fields": {
+      "kitap": 67,
+      "barkod": "KIT00166",
+      "durum": "mevcut",
+      "raf_kodu": "R13"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 167,
+    "fields": {
+      "kitap": 68,
+      "barkod": "KIT00167",
+      "durum": "mevcut",
+      "raf_kodu": "R46"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 168,
+    "fields": {
+      "kitap": 68,
+      "barkod": "KIT00168",
+      "durum": "mevcut",
+      "raf_kodu": "R33"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 169,
+    "fields": {
+      "kitap": 69,
+      "barkod": "KIT00169",
       "durum": "mevcut",
       "raf_kodu": "R35"
     }
   },
   {
     "model": "kutuphane_app.kitapnusha",
+    "pk": 170,
+    "fields": {
+      "kitap": 69,
+      "barkod": "KIT00170",
+      "durum": "mevcut",
+      "raf_kodu": "R6"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 171,
+    "fields": {
+      "kitap": 69,
+      "barkod": "KIT00171",
+      "durum": "mevcut",
+      "raf_kodu": "R48"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 172,
+    "fields": {
+      "kitap": 70,
+      "barkod": "KIT00172",
+      "durum": "mevcut",
+      "raf_kodu": "R27"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 173,
+    "fields": {
+      "kitap": 70,
+      "barkod": "KIT00173",
+      "durum": "mevcut",
+      "raf_kodu": "R43"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 174,
+    "fields": {
+      "kitap": 70,
+      "barkod": "KIT00174",
+      "durum": "mevcut",
+      "raf_kodu": "R35"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 175,
+    "fields": {
+      "kitap": 71,
+      "barkod": "KIT00175",
+      "durum": "mevcut",
+      "raf_kodu": "R38"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 176,
+    "fields": {
+      "kitap": 71,
+      "barkod": "KIT00176",
+      "durum": "mevcut",
+      "raf_kodu": "R9"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 177,
+    "fields": {
+      "kitap": 71,
+      "barkod": "KIT00177",
+      "durum": "mevcut",
+      "raf_kodu": "R16"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 178,
+    "fields": {
+      "kitap": 72,
+      "barkod": "KIT00178",
+      "durum": "mevcut",
+      "raf_kodu": "R34"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 179,
+    "fields": {
+      "kitap": 72,
+      "barkod": "KIT00179",
+      "durum": "mevcut",
+      "raf_kodu": "R33"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 180,
+    "fields": {
+      "kitap": 73,
+      "barkod": "KIT00180",
+      "durum": "mevcut",
+      "raf_kodu": "R29"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 181,
+    "fields": {
+      "kitap": 73,
+      "barkod": "KIT00181",
+      "durum": "mevcut",
+      "raf_kodu": "R47"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 182,
+    "fields": {
+      "kitap": 73,
+      "barkod": "KIT00182",
+      "durum": "mevcut",
+      "raf_kodu": "R20"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 183,
+    "fields": {
+      "kitap": 73,
+      "barkod": "KIT00183",
+      "durum": "mevcut",
+      "raf_kodu": "R15"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 184,
+    "fields": {
+      "kitap": 74,
+      "barkod": "KIT00184",
+      "durum": "mevcut",
+      "raf_kodu": "R30"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 185,
+    "fields": {
+      "kitap": 74,
+      "barkod": "KIT00185",
+      "durum": "mevcut",
+      "raf_kodu": "R26"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 186,
+    "fields": {
+      "kitap": 75,
+      "barkod": "KIT00186",
+      "durum": "mevcut",
+      "raf_kodu": "R50"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 187,
+    "fields": {
+      "kitap": 75,
+      "barkod": "KIT00187",
+      "durum": "mevcut",
+      "raf_kodu": "R33"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
     "pk": 188,
     "fields": {
-      "kitap": 79,
+      "kitap": 75,
       "barkod": "KIT00188",
       "durum": "mevcut",
-      "raf_kodu": "R3"
+      "raf_kodu": "R13"
     }
   },
   {
     "model": "kutuphane_app.kitapnusha",
     "pk": 189,
     "fields": {
-      "kitap": 80,
+      "kitap": 75,
       "barkod": "KIT00189",
       "durum": "mevcut",
-      "raf_kodu": "R36"
+      "raf_kodu": "R33"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 190,
+    "fields": {
+      "kitap": 76,
+      "barkod": "KIT00190",
+      "durum": "mevcut",
+      "raf_kodu": "R39"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 191,
+    "fields": {
+      "kitap": 76,
+      "barkod": "KIT00191",
+      "durum": "mevcut",
+      "raf_kodu": "R19"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 192,
+    "fields": {
+      "kitap": 77,
+      "barkod": "KIT00192",
+      "durum": "mevcut",
+      "raf_kodu": "R30"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 193,
+    "fields": {
+      "kitap": 77,
+      "barkod": "KIT00193",
+      "durum": "mevcut",
+      "raf_kodu": "R29"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 194,
+    "fields": {
+      "kitap": 77,
+      "barkod": "KIT00194",
+      "durum": "mevcut",
+      "raf_kodu": "R22"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 195,
+    "fields": {
+      "kitap": 77,
+      "barkod": "KIT00195",
+      "durum": "mevcut",
+      "raf_kodu": "R45"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 196,
+    "fields": {
+      "kitap": 78,
+      "barkod": "KIT00196",
+      "durum": "mevcut",
+      "raf_kodu": "R38"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 197,
+    "fields": {
+      "kitap": 78,
+      "barkod": "KIT00197",
+      "durum": "mevcut",
+      "raf_kodu": "R3"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 198,
+    "fields": {
+      "kitap": 78,
+      "barkod": "KIT00198",
+      "durum": "mevcut",
+      "raf_kodu": "R49"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 199,
+    "fields": {
+      "kitap": 78,
+      "barkod": "KIT00199",
+      "durum": "mevcut",
+      "raf_kodu": "R12"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 200,
+    "fields": {
+      "kitap": 79,
+      "barkod": "KIT00200",
+      "durum": "mevcut",
+      "raf_kodu": "R44"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 201,
+    "fields": {
+      "kitap": 79,
+      "barkod": "KIT00201",
+      "durum": "mevcut",
+      "raf_kodu": "R12"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 202,
+    "fields": {
+      "kitap": 80,
+      "barkod": "KIT00202",
+      "durum": "mevcut",
+      "raf_kodu": "R10"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 203,
+    "fields": {
+      "kitap": 80,
+      "barkod": "KIT00203",
+      "durum": "mevcut",
+      "raf_kodu": "R46"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 204,
+    "fields": {
+      "kitap": 80,
+      "barkod": "KIT00204",
+      "durum": "mevcut",
+      "raf_kodu": "R25"
+    }
+  },
+  {
+    "model": "kutuphane_app.kitapnusha",
+    "pk": 205,
+    "fields": {
+      "kitap": 80,
+      "barkod": "KIT00205",
+      "durum": "mevcut",
+      "raf_kodu": "R32"
     }
   }
 ]
