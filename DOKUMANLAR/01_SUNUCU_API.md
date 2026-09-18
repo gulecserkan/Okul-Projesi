@@ -4,7 +4,8 @@ Django REST Framework. Tüm uçlar varsayılan olarak **JWT + IsAuthenticated** 
 
 - Temel URL: `http://<sunucu>:8000/`
 - Kimlik: `Authorization: Bearer <access_token>`
-- Sayfalama: `page`/`page_size` parametresi verilirse `{count, next, previous, results}`; verilmezse düz liste döner (sayfa boyutu 50, max 200).
+- Sayfalama: `page`/`page_size` parametresi verilirse `{count, next, previous, results}`; verilmezse düz liste döner (sayfa boyutu 50, max 200). Öğrenci/nüsha/ödünç listelerinde büyük veri → otomatik sayfalama.
+- Oran sınırları (throttle): `anon` 20/dk, kullanıcı 120/dk; token alma/refreshta `login` 10/dk (brute-force koruması).
 - Tarih/saat: UTC, ISO 8601.
 
 ## 1. Kimlik Doğrulama
@@ -28,7 +29,7 @@ Django REST Framework. Tüm uçlar varsayılan olarak **JWT + IsAuthenticated** 
 | `/api/kitaplar/` | Kitap CRUD (zengin filtrelerle) |
 | `/api/nushalar/` | Kitap nüshası CRUD (otomatik barkod: `KIT000123`) |
 | `/api/oduncler/` | Ödünç kaydı CRUD (`?durum=`) |
-| `/api/personel/` | Personel CRUD |
+| `/api/personel/` | Personel CRUD — **yazma (POST/PUT/PATCH/DELETE) yalnızca admin** (süper/staff veya `rol=admin`); yanıt `{id, ad_soyad, kullanici_adi, rol}` (sifre_hash dışarı verilmez); `kullanici_adi`/`rol` güncellemede değiştirilemez |
 
 ### Kitaplar — Filtreler
 `?yazar=` `?kategori=` `?q=` (başlık içinde geçen) `?isbn=` `?barkod=` / `?barcode=`

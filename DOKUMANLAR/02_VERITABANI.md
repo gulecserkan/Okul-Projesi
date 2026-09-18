@@ -93,11 +93,13 @@ Tek uygulama: `kutuphane_app`. Tüm tablolar tek PostgreSQL veritabanında. Trig
 | `ogrenci_no` | CharField(20, unique) | |
 | `sinif` | FK → Sinif(SET_NULL, null=True) | |
 | `rol` | FK → Rol(SET_NULL, null=True) | |
-| `telefon` | CharField(20, blank) | |
-| `eposta` | EmailField(blank) | |
+| `telefon` | EncryptedCharField(512, blank) | **Şifreli** (FerNet/aes) — DB'de `gAAAA...` token |
+| `eposta` | EncryptedCharField(512, blank) | **Şifreli** — aranamaz (admin arama listesinden çıkarıldı) |
 | `kayit_tarihi` | DateTimeField(auto_now_add) | |
 | `aktif` | BooleanField(default=True) | Aktif/pasif durumu |
 | `pasif_tarihi` | DateTimeField(null=True, blank) | Pasife çekildiği tarih |
+
+> Şifreleme `EncryptedCharField` (`kutuphane_app/encryption.py`): anahtar `FIELD_ENCRYPTION_KEY` (yoksa `SECRET_KEY`). Eski düz metin değerler otomatik okunur; kısmi arama (icontains) çalışmaz. Migration `0025`/`0026`.
 
 ---
 
@@ -232,8 +234,8 @@ Tek uygulama: `kutuphane_app`. Tüm tablolar tek PostgreSQL veritabanında. Trig
 ### NotificationSettings (Singleton)
 - Kanal açma/kapama: `printer_warning`, `due_reminder`, `overdue_alert` × (`email`, `sms`, `mobile`)
 - Per kanal zamanlama: `*_hour`, `*_minute`, `*_timezone`
-- E-posta ayarları: SMTP host, port, user, password, from_address
-- SMS ayarları: API URL, key, provider, from_number
+- E-posta ayarları: SMTP host, port, user, password, from_address — `email_username`, `email_password` **şifreli**
+- SMS ayarları: API URL, key, provider, from_number — `sms_api_key` **şifreli**
 - Mesaj şablonları: `reminder_subject/body`, `overdue_subject/body`
 
 ---
@@ -253,10 +255,10 @@ Tek uygulama: `kutuphane_app`. Tüm tablolar tek PostgreSQL veritabanında. Trig
 | Alan | Tip | Açıklama |
 |---|---|---|
 | `ad_soyad` | CharField(100) | |
-| `kullanici_adi` | CharField(50, unique) | |
-| `sifre_hash` | CharField | Django `make_password` / `check_password` |
+| `kullanici_adi` | CharField(50, unique) | API'de okunur; update'de kilitli |
+| `sifre_hash` | CharField | Django `make_password` / `check_password`; API ile **dışarı verilmez** |
 | `user` | OneToOne → AUTH_USER_MODEL(null=True) | Otomatik oluşturulur: `is_staff=True` |
-| `rol` | `admin` / `personel` | |
+| `rol` | `admin` / `personel` | API'de okunur; update'de kilitli |
 
 ---
 

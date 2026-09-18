@@ -8,12 +8,12 @@
 | Rota | Fonksiyon |
 |---|---|
 | `/admin/system/ayarlar/` | Hub sayfası: Yedekle / Geri Yükle butonları (`admin/system_settings.html`) |
-| `/admin/system/backup/` | `dumpdata` (contenttypes, auth.permission, admin.logentry, sessions hariç) → `backups/backup_YYYYMMDD_HHMMSS.json` → dosya indirilir |
-| `/admin/system/restore/` | Geri yükleme akışı: kullanıcı `EVET` yazar + 6 haneli güvenlik kodu girer; JSON dosyası yükler veya `backups/`'tan seçer → `flush` + `loaddata` (**tüm veri silinir**) |
+| `/admin/system/backup/` | `dumpdata` (contenttypes, auth.permission, admin.logentry, sessions hariç) → şifreli `backups/backup_YYYYMMDD_HHMMSS.json.enc` (FerNet; kişisel veriler düz metin içerdiği için) → aynı şifreli dosya indirilir |
+| `/admin/system/restore/` | Geri yükleme akışı: `EVET` + 6 haneli güvenlik kodu; `.json.enc` (şifresi çözülür) veya eski düz metin `.json` yüklenir/seçilir → `flush` + `loaddata` (**tüm veri silinir**). Seçilen dosya `backups/` diziniyle sınırlıdır (path traversal koruması) |
 
 ### Kayıtlı Modeller ve Özel Alanlar
 - **Rol** listesi: bağlı `loan_policy` değerlerini gösterir (süre, max kitap, günlük ceza).
-- **Öğrenci** (`ImportExportModelAdmin`): CSV/JSON içe-dışa aktarma (`ogrenci_no,ad,soyad,sinif,rol`; UTF-8; başlık satırı zorunlu; virgül ayraçlı, tırnaksız). CSV'de olmayan aktif öğrenciler `after_import`'ta **pasife çekilir**.
+- **Öğrenci** (`ImportExportModelAdmin`): CSV/JSON içe-dışa aktarma (`ogrenci_no,ad,soyad,sinif,rol`; UTF-8; başlık satırı zorunlu; virgül ayraçlı, tırnaksız). CSV'de olmayan öğrencileri pasife çekmek **varsayılan olarak kapalıdır**; yalnızca "tam yoklama senkronu" bilinçli yapılırken `OgrenciResource.pasiflestir=True` ile açılır (kısmi CSV yüklerken sınıf listesi dışındakiler silinmesin diye).
 - **Arşivleme** (Öğrenci değişiklik listesinden): kriter = `aktif=False` VE (pasif_tarihi 3+ yıl önce VEYA pasif_tarihi boşsa kayıt_tarihi 3+ yıl önce). Onayda transaction içinde `ArsivBatch` + `ArsivOgrenci` + `ArsivOdunc` oluşturulur, JSON paket kaydedilir, **canlı öğrenci ve ödünç kayıtları silinir**.
 - **Personel**: şifre belirleme/sıfırlama; `save_model` otomatik eşleşen Django `User` oluşturur (`is_staff=True`).
 - **Sayım Oturumu**: kalemleri salt-okunur inline.
@@ -26,7 +26,7 @@
 - `ogrenci_arsiv_onizleme.html` — arşiv ön izleme + onay.
 - `import_export/export.html` — Türkçe etiketli dışa aktarma sayfası.
 
-> Not: `system_restore_start/confirm/code.html` şablonları **eski** ve kullanılmıyor; güncel akış tek form (`system_restore_form.html`).
+> Not: Eski `system_restore_start/confirm/code.html` şablonları kaldırıldı; güncel akış tek form (`system_restore_form.html`).
 
 ## 2. Deployment
 
@@ -40,7 +40,7 @@ Detaylı rehber: `kutuphane/django_deployment_checklist.md` ve `kutuphane/SERVER
 ### Ortam Değişkenleri (`settings.py` `load_env`)
 | Değişken | Varsayılan | Açıklama |
 |---|---|---|
-| `SECRET_KEY` | (güvensiz yedek) | Üretimde `.env`'den verilmeli |
+| `SECRET_KEY` | (güvensiz yedek) | Üretimde `.env`'den verilmeli; DEBUG=False iken boş bırakılırsa sunucu **başlamaz** (fail-fast) |
 | `DEBUG` | false | `"true"` yalnızca geliştirmede |
 | `ALLOWED_HOSTS` | `127.0.0.1,localhost` | Virgülle ayrık |
 | `DB_NAME` | `kutuphane` | |
@@ -48,6 +48,7 @@ Detaylı rehber: `kutuphane/django_deployment_checklist.md` ve `kutuphane/SERVER
 | `DB_PASSWORD` | — | |
 | `DB_HOST` | `localhost` | |
 | `DB_PORT` | `5432` | |
+| `FIELD_ENCRYPTION_KEY` | (yoksa `SECRET_KEY`) | Kişisel veri alan şifrelemesi anahtarı; ayrı tutulması önerilir (rotasyonda veriyi bozmaz) |
 
 ### Bazı Önemli Ayarlar
 - `LANGUAGE_CODE = 'tr'`, `TIME_ZONE = 'Europe/Istanbul'`, `USE_TZ = True`.
@@ -58,10 +59,11 @@ Detaylı rehber: `kutuphane/django_deployment_checklist.md` ve `kutuphane/SERVER
 
 - **API**: Tüm uçlar JWT korumalı; yalnızca `health` açık. Öğrenci bilgileri yetkisiz erişime kapalı (masaüstü/mobil istemciler token ile konuşur).
 - **Admin**: Django session kimliği; Personel↔User eşleşmesi otomatik.
-- **Restore**: `EVET` + dinamik 6 haneli kod — yanlışlıkla veri kaybını önler. Yine de **yıkıcıdır** (flush sonrası load).
+- **Restore**: `EVET` + dinamik 6 haneli kod — yanlışlıkla veri kaybını önler; kullanılmış/geçersiz kodlar reddedilir; dosya seçimi `backups/` ile sınırlıdır. Yine de **yıkıcıdır** (flush sonrası load).
 - **Header temizliği**: `SafeHeaderMiddleware` ASCII olmayan/çok satırlı header değerlerini temizler (masaüstü `requests` istemcisinin RecursionError vermemesi için).
 - **Şifreler**: Django `make_password`/`check_password`; Personel'de de ayrıca `sifre_hash` tutulur, değişiklikte eşzamanlanır.
-- **Yedekleme**: JSON dosyası kişisel veri (öğrenci) içerir; indirilen dosya kurum içinde muhafaza edilmelidir.
+- **Yedekleme**: Disk ve indirilen dosya **şifrelidir** (`.json.enc`); şifreleme anahtarı `.env`'de sağlanır. Eski düz metin `.json` yedekler restore'da hâlâ kabul edilir.
+- **Personel API**: yazma (create/update/delete) yalnızca süper kullanıcı/staff veya `rol=admin` personel; liste okunabilir.
 
 ## 4. Veritabanı (PostgreSQL) Kurulumu
 ```sql
@@ -79,6 +81,6 @@ Sonra `python manage.py migrate` ve `createsuperuser`.
 - ⚠️ Depodaki `ilk_veri.json` **eski şema** (rol'da `odunc_suresi_gun` vs. alanları var) — mevcut modele yüklenemez. Düzeltmek için `generate_fixture.py` çalıştırılmalı.
 
 ## 6. Test
-- `kutuphane_app/tests.py` mevcut (CRUD + iş akışı testleri).
-- `python manage.py test` ile çalıştırılır.
-- Ayrıntılı test planı dosyası: bkz. readme'de bahsi geçen `kutuphane_backend_test_plan.xlsx`.
+- `kutuphane_app/tests.py`: 16 çekirdek test — ödünç politikası, checkout akışı, barkod üretimi, alan şifreleme, personel yetkileri.
+- `python manage.py test` ile çalıştırılır (test DB için PostgreSQL kullanıcısının `CREATEDB` yetkisi gerekir).
+- Ayrıntılı test planı dosyası: `kutuphane_backend_test_plan.xlsx`.

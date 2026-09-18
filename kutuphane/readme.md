@@ -68,18 +68,21 @@ ALTER ROLE kutuphane_user SET timezone TO 'UTC';
 GRANT ALL PRIVILEGES ON DATABASE kutuphane TO kutuphane_user;
 
 
-settings.py içinde ayarları güncelle:
+settings.py içinde ayarları güncelle (veya kök dizinde `.env` kullan — önerilen):
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'kutuphane',
-        'USER': 'kutuphane_user',
-        'PASSWORD': 'parola',
-        'HOST': 'localhost',
-        'PORT': '5432',
-    }
-}
+```
+SECRET_KEY=...
+DB_NAME=kutuphane
+DB_USER=kutuphane_user
+DB_PASSWORD=parola
+DB_HOST=localhost
+# Kişisel veri şifrelemesi için ayrı anahtar (önerilir; boşsa SECRET_KEY devreye girer)
+FIELD_ENCRYPTION_KEY=...
+# Üretimde (DEBUG=False) SECRET_KEY boşken sunucu başlamaz (fail-fast).
+```
+
+Not: Telefon/e-posta ve bildirim kredileri alan düzeyinde şifreli saklanır;
+şifrelenmiş alanlar üzerinde kısmi arama (`icontains`) yapılamaz.
 
 5. Migration çalıştır
 python manage.py migrate
@@ -135,17 +138,17 @@ Backup
 
 Admin → Sistem Ayarları → “💾 Sistemi Yedekle”
 
-backups/backup_YYYYMMDD_HHMMSS.json olarak kaydedilir
+backups/backup_YYYYMMDD_HHMMSS.json.enc olarak şifreli kaydedilir
 
-Aynı zamanda tarayıcıya indirilebilir
+Aynı şifreli dosya tarayıcıya indirilebilir (içerik düz metin telefon/e-posta içerdiği için şifrelidir)
 
 Restore
 
 Admin → Sistem Ayarları → “♻️ Sistemi Geri Yükle”
 
-Adım adım güvenlik onayı
+Adım adım güvenlik onayı (EVET + 6 haneli kod)
 
-Dosya yükleyerek veya mevcut yedekten seçerek geri yükleme yapılır
+Dosya yükleyerek veya mevcut yedekten seçerek geri yükleme; hem yeni `.json.enc` hem eski düz metin `.json` desteklenir
 
 ⚠️ Restore işlemi tüm mevcut verileri siler. Dikkatli kullanılmalıdır.
 
@@ -159,8 +162,15 @@ Admin üzerinden geçmiş arşivlere erişilebilir.
 
 ✅ Test Planı
 
-Tüm CRUD ve admin fonksiyonları için detaylı bir test planı hazırlanmıştır.
-📂 kutuphane_backend_test_plan.xlsx
+Çekirdek testler: `cd kutuphane && python manage.py test`
+
+- Ödünç politikası (ceza, limit, hafta sonu kayması)
+- Checkout API akışı
+- Barkod otomatik üretimi (MAX + retry)
+- Alan şifrelemesi (KVKK)
+- Personel yetki sınırlamaları
+
+Detaylı uç test planı: kutuphane_backend_test_plan.xlsx
 
 🔒 Yayınlama (Deployment)
 
