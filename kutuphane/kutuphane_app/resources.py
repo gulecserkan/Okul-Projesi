@@ -5,6 +5,11 @@ from django.utils.timezone import now
 from .models import Ogrenci, Sinif, Rol
 
 class OgrenciResource(resources.ModelResource):
+    # Varsayılan KAPALI: True yalnızca "tam yoklama senkronu" yapılırken açılmalı.
+    # Kısmi bir CSV (tek sınıf, yeni kayıtlar vb.) yüklendiğinde listede olmayan
+    # öğrenciler pasifleştirilmez.
+    pasiflestir = False
+
     sinif = fields.Field(
         column_name="sinif",
         attribute="sinif",
@@ -44,7 +49,7 @@ class OgrenciResource(resources.ModelResource):
         return super().before_import(dataset, *args, **kwargs)
 
     def after_import(self, dataset, result, using_transactions, dry_run, **kwargs):
-        # Listede olmayanları pasifle
-        if getattr(self, 'gelen_ogr_no', None) and not dry_run:
+        # Listede olmayanları pasifle — yalnızca tam senkron bilinçli olarak açılırsa.
+        if self.pasiflestir and getattr(self, 'gelen_ogr_no', None) and not dry_run:
             adaylar = Ogrenci.objects.exclude(ogrenci_no__in=self.gelen_ogr_no).filter(aktif=True)
             adaylar.update(aktif=False, pasif_tarihi=now())
