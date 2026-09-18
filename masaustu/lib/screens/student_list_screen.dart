@@ -28,11 +28,15 @@ class _StudentListScreenState extends State<StudentListScreen> {
 
   DataCell _cell(Ogrenci o, Widget child) {
     return DataCell(
-      GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: () => setState(() => _selectedId = o.id),
-        onDoubleTap: () => _openDetail(o),
-        child: child,
+      Listener(
+        onPointerDown: (_) {
+          if (_selectedId != o.id) setState(() => _selectedId = o.id);
+        },
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onDoubleTap: () => _openDetail(o),
+          child: child,
+        ),
       ),
     );
   }
@@ -171,10 +175,14 @@ child: Card(
                         style: TextStyle(
                           color: o.aktif ? Colors.green.shade700 : Colors.grey,
                         ))),
-                    DataCell(IconButton(
-                      tooltip: 'Detaylar',
-                      icon: const Icon(Icons.chevron_right),
-                      onPressed: () => _openDetail(o),
+                    DataCell(Listener(
+                      onPointerDown: (_) =>
+                          setState(() => _selectedId = o.id),
+                      child: IconButton(
+                        tooltip: 'Detaylar',
+                        icon: const Icon(Icons.chevron_right),
+                        onPressed: () => _openDetail(o),
+                      ),
                     )),
                   ],
                 ),

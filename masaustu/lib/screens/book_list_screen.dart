@@ -28,11 +28,15 @@ class _BookListScreenState extends State<BookListScreen> {
 
   DataCell _cell(Kitap k, Widget child) {
     return DataCell(
-      GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: () => setState(() => _selectedId = k.id),
-        onDoubleTap: () => _openDetail(k),
-        child: child,
+      Listener(
+        onPointerDown: (_) {
+          if (_selectedId != k.id) setState(() => _selectedId = k.id);
+        },
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onDoubleTap: () => _openDetail(k),
+          child: child,
+        ),
       ),
     );
   }
@@ -181,10 +185,14 @@ child: Card(
                     _cell(k, Text(k.yayinYili?.toString() ?? '—')),
                     _cell(k, Text('${k.nushaSayisi}')),
                     _cell(k, Text(k.rafKodlari.join(', '))),
-                    DataCell(IconButton(
-                      tooltip: 'Detaylar',
-                      icon: const Icon(Icons.chevron_right),
-                      onPressed: () => _openDetail(k),
+                    DataCell(Listener(
+                      onPointerDown: (_) =>
+                          setState(() => _selectedId = k.id),
+                      child: IconButton(
+                        tooltip: 'Detaylar',
+                        icon: const Icon(Icons.chevron_right),
+                        onPressed: () => _openDetail(k),
+                      ),
                     )),
                   ],
                 ),
