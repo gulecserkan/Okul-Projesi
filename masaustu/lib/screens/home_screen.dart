@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../config.dart';
+import 'book_list_screen.dart';
+import 'student_list_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final Session session;
@@ -85,9 +87,13 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             const VerticalDivider(thickness: 1, width: 1),
             Expanded(
-              child: _selectedIndex == 0
-                  ? _Overview(session: widget.session)
-                  : _Placeholder(index: _selectedIndex),
+              child: switch (_selectedIndex) {
+                0 => _Overview(session: widget.session),
+                1 => const _Placeholder(index: 1),
+                2 => const StudentListScreen(),
+                3 => const BookListScreen(),
+                _ => const _Placeholder(index: 4),
+              },
             ),
           ],
         ),
