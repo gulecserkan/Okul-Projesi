@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../api/kutuphane_api.dart';
 import '../models.dart';
+import 'student_detail_screen.dart';
 
 class StudentListScreen extends StatefulWidget {
   const StudentListScreen({super.key});
@@ -17,6 +18,24 @@ class _StudentListScreenState extends State<StudentListScreen> {
   List<Ogrenci> _all = [];
   bool _loading = true;
   String? _error;
+  int? _selectedId;
+
+  void _openDetail(Ogrenci o) {
+    Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => StudentDetailScreen(ogrenci: o),
+    ));
+  }
+
+  DataCell _cell(Ogrenci o, Widget child) {
+    return DataCell(
+      GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => setState(() => _selectedId = o.id),
+        onDoubleTap: () => _openDetail(o),
+        child: child,
+      ),
+    );
+  }
 
   @override
   void initState() {
@@ -122,46 +141,57 @@ class _StudentListScreenState extends State<StudentListScreen> {
     final filtered = _filtered;
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
-      child: Card(
-        clipBehavior: Clip.antiAlias,
-        child: DataTable(
-          headingRowHeight: 44,
-          dataRowMinHeight: 40,
-          dataRowMaxHeight: 48,
-          columns: const [
-            DataColumn(label: Text('Öğrenci No')),
-            DataColumn(label: Text('Ad Soyad')),
-            DataColumn(label: Text('Sınıf')),
-            DataColumn(label: Text('Telefon')),
-            DataColumn(label: Text('Durum')),
-          ],
-          rows: [
-            for (final o in filtered)
-              DataRow(
-                cells: [
-                  DataCell(Text(o.ogrenciNo)),
-                  DataCell(Text(o.adSoyad)),
-                  DataCell(Text(o.sinif?.ad ?? '—')),
-                  DataCell(Text(o.telefon ?? '—')),
-                  DataCell(Text(o.aktif ? 'Aktif' : 'Pasif',
-                      style: TextStyle(
-                        color: o.aktif ? Colors.green.shade700 : Colors.grey,
-                      ))),
-                ],
-              ),
-            if (filtered.isEmpty)
-              const DataRow(
-                cells: [
-                  DataCell(Text('—')),
-                  DataCell(Text('Aranan kriterde öğrenci yok')),
-                  DataCell(Text('')),
-                  DataCell(Text('')),
-                  DataCell(Text('')),
-                ],
-              ),
-          ],
+child: Card(
+          clipBehavior: Clip.antiAlias,
+          child: DataTable(
+            headingRowHeight: 44,
+            dataRowMinHeight: 40,
+            dataRowMaxHeight: 48,
+            columns: const [
+              DataColumn(label: Text('Öğrenci No')),
+              DataColumn(label: Text('Ad Soyad')),
+              DataColumn(label: Text('Sınıf')),
+              DataColumn(label: Text('Telefon')),
+              DataColumn(label: Text('Durum')),
+              DataColumn(label: Text('')),
+            ],
+            rows: [
+              for (final o in filtered)
+                DataRow(
+                  color: _selectedId == o.id
+                      ? WidgetStatePropertyAll(
+                          Theme.of(context).colorScheme.primaryContainer)
+                      : null,
+                  cells: [
+                    _cell(o, Text(o.ogrenciNo)),
+                    _cell(o, Text(o.adSoyad)),
+                    _cell(o, Text(o.sinif?.ad ?? '—')),
+                    _cell(o, Text(o.telefon ?? '—')),
+                    _cell(o, Text(o.aktif ? 'Aktif' : 'Pasif',
+                        style: TextStyle(
+                          color: o.aktif ? Colors.green.shade700 : Colors.grey,
+                        ))),
+                    DataCell(IconButton(
+                      tooltip: 'Detaylar',
+                      icon: const Icon(Icons.chevron_right),
+                      onPressed: () => _openDetail(o),
+                    )),
+                  ],
+                ),
+              if (filtered.isEmpty)
+                const DataRow(
+                  cells: [
+                    DataCell(Text('—')),
+                    DataCell(Text('Aranan kriterde öğrenci yok')),
+                    DataCell(Text('')),
+                    DataCell(Text('')),
+                    DataCell(Text('')),
+                    DataCell(Text('')),
+                  ],
+                ),
+            ],
+          ),
         ),
-      ),
     );
   }
 }

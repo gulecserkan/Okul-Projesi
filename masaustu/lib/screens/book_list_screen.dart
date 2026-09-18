@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../api/kutuphane_api.dart';
 import '../models.dart';
+import 'book_detail_screen.dart';
 
 class BookListScreen extends StatefulWidget {
   const BookListScreen({super.key});
@@ -17,6 +18,24 @@ class _BookListScreenState extends State<BookListScreen> {
   List<Kitap> _all = [];
   bool _loading = true;
   String? _error;
+  int? _selectedId;
+
+  void _openDetail(Kitap k) {
+    Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => BookDetailScreen(kitap: k),
+    ));
+  }
+
+  DataCell _cell(Kitap k, Widget child) {
+    return DataCell(
+      GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => setState(() => _selectedId = k.id),
+        onDoubleTap: () => _openDetail(k),
+        child: child,
+      ),
+    );
+  }
 
   @override
   void initState() {
@@ -91,8 +110,11 @@ class _BookListScreenState extends State<BookListScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Align(
             alignment: Alignment.centerLeft,
-            child: Text('${_filtered.length} kitap',
-                style: Theme.of(context).textTheme.bodySmall),
+            child: Builder(builder: (context) {
+              final nusha = _filtered.fold<int>(0, (s, k) => s + k.nushaSayisi);
+              return Text('${_filtered.length} kitap ($nusha nüsha)',
+                  style: Theme.of(context).textTheme.bodySmall);
+            }),
           ),
         ),
         Expanded(child: _buildBody()),
@@ -122,54 +144,65 @@ class _BookListScreenState extends State<BookListScreen> {
     final filtered = _filtered;
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
-      child: Card(
-        clipBehavior: Clip.antiAlias,
-        child: DataTable(
-          headingRowHeight: 44,
-          dataRowMinHeight: 40,
-          dataRowMaxHeight: 48,
-          columns: const [
-            DataColumn(label: Text('Kitap')),
-            DataColumn(label: Text('Yazar')),
-            DataColumn(label: Text('Kategori')),
-            DataColumn(label: Text('Yıl')),
-            DataColumn(label: Text('Nüsha')),
-            DataColumn(label: Text('Raf')),
-          ],
-          rows: [
-            for (final k in filtered)
-              DataRow(
-                cells: [
-                  DataCell(SizedBox(
-                    width: 280,
-                    child: Text(
-                      k.baslik,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontWeight: FontWeight.w500),
-                    ),
-                  )),
-                  DataCell(Text(k.yazar?.adSoyad ?? '—')),
-                  DataCell(Text(k.kategori?.ad ?? '—')),
-                  DataCell(Text(k.yayinYili?.toString() ?? '—')),
-                  DataCell(Text('${k.nushaSayisi}')),
-                  DataCell(Text(k.rafKodlari.join(', '))),
-                ],
-              ),
-            if (filtered.isEmpty)
-              const DataRow(
-                cells: [
-                  DataCell(Text('Aranan kriterde kitap yok')),
-                  DataCell(Text('')),
-                  DataCell(Text('')),
-                  DataCell(Text('')),
-                  DataCell(Text('')),
-                  DataCell(Text('')),
-                ],
-              ),
-          ],
+child: Card(
+          clipBehavior: Clip.antiAlias,
+          child: DataTable(
+            headingRowHeight: 44,
+            dataRowMinHeight: 40,
+            dataRowMaxHeight: 48,
+            columns: const [
+              DataColumn(label: Text('Kitap')),
+              DataColumn(label: Text('Yazar')),
+              DataColumn(label: Text('Kategori')),
+              DataColumn(label: Text('Yıl')),
+              DataColumn(label: Text('Nüsha')),
+              DataColumn(label: Text('Raf')),
+              DataColumn(label: Text('')),
+            ],
+            rows: [
+              for (final k in filtered)
+                DataRow(
+                  color: _selectedId == k.id
+                      ? WidgetStatePropertyAll(
+                          Theme.of(context).colorScheme.primaryContainer)
+                      : null,
+                  cells: [
+                    _cell(k, SizedBox(
+                      width: 280,
+                      child: Text(
+                        k.baslik,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontWeight: FontWeight.w500),
+                      ),
+                    )),
+                    _cell(k, Text(k.yazar?.adSoyad ?? '—')),
+                    _cell(k, Text(k.kategori?.ad ?? '—')),
+                    _cell(k, Text(k.yayinYili?.toString() ?? '—')),
+                    _cell(k, Text('${k.nushaSayisi}')),
+                    _cell(k, Text(k.rafKodlari.join(', '))),
+                    DataCell(IconButton(
+                      tooltip: 'Detaylar',
+                      icon: const Icon(Icons.chevron_right),
+                      onPressed: () => _openDetail(k),
+                    )),
+                  ],
+                ),
+              if (filtered.isEmpty)
+                const DataRow(
+                  cells: [
+                    DataCell(Text('Aranan kriterde kitap yok')),
+                    DataCell(Text('')),
+                    DataCell(Text('')),
+                    DataCell(Text('')),
+                    DataCell(Text('')),
+                    DataCell(Text('')),
+                    DataCell(Text('')),
+                  ],
+                ),
+            ],
+          ),
         ),
-      ),
     );
   }
 }

@@ -37,6 +37,7 @@ class Ogrenci {
   final String? telefon;
   final String? eposta;
   final bool aktif;
+  final String? kayitTarihi;
 
   const Ogrenci({
     required this.id,
@@ -47,6 +48,7 @@ class Ogrenci {
     this.telefon,
     this.eposta,
     this.aktif = true,
+    this.kayitTarihi,
   });
 
   String get adSoyad => '$ad $soyad';
@@ -62,6 +64,7 @@ class Ogrenci {
         telefon: json['telefon'] as String?,
         eposta: json['eposta'] as String?,
         aktif: json['aktif'] as bool? ?? true,
+        kayitTarihi: json['kayit_tarihi'] as String?,
       );
 }
 
@@ -100,6 +103,112 @@ class Kitap {
         nushaSayisi: json['nusha_sayisi'] as int? ?? 0,
         rafKodlari: (json['raf_kodlari'] as List<dynamic>? ?? [])
             .whereType<String>()
+            .toList(),
+      );
+}
+
+/// Kitap nüshası (barkod, durum, raf).
+class Nusha {
+  final int id;
+  final String barkod;
+  final String durum;
+  final String? rafKodu;
+
+  const Nusha({
+    required this.id,
+    required this.barkod,
+    required this.durum,
+    this.rafKodu,
+  });
+
+  factory Nusha.fromJson(Map<String, dynamic> json) => Nusha(
+        id: json['id'] as int,
+        barkod: json['barkod'] as String? ?? '',
+        durum: json['durum'] as String? ?? '',
+        rafKodu: json['raf_kodu'] as String?,
+      );
+}
+
+/// Ödünç kaydı (öğrenci geçmişi / tarihçe satırı).
+class OduncKaydi {
+  final int id;
+  final String kitapBaslik;
+  final String barkod;
+  final String? oduncTarihi;
+  final String? iadeTarihi;
+  final String? teslimTarihi;
+  final String durum;
+  final String? gecikmeCezasi;
+
+  const OduncKaydi({
+    required this.id,
+    required this.kitapBaslik,
+    required this.barkod,
+    this.oduncTarihi,
+    this.iadeTarihi,
+    this.teslimTarihi,
+    required this.durum,
+    this.gecikmeCezasi,
+  });
+
+  factory OduncKaydi.fromJson(Map<String, dynamic> json) {
+    final nusha = json['kitap_nusha'];
+    final kitap = nusha is Map<String, dynamic> ? nusha['kitap'] : null;
+    return OduncKaydi(
+      id: json['id'] as int,
+      kitapBaslik: kitap is Map<String, dynamic> ? kitap['baslik'] as String? ?? '' : '',
+      barkod: nusha is Map<String, dynamic> ? nusha['barkod'] as String? ?? '' : '',
+      oduncTarihi: json['odunc_tarihi'] as String?,
+      iadeTarihi: json['iade_tarihi'] as String?,
+      teslimTarihi: json['teslim_tarihi'] as String?,
+      durum: json['durum'] as String? ?? '',
+      gecikmeCezasi: json['gecikme_cezasi'] as String?,
+    );
+  }
+}
+
+/// Ödenmemiş gecikme cezası girişi.
+class PenaltyEntry {
+  final int id;
+  final String kitap;
+  final String barkod;
+  final String? teslimTarihi;
+  final String gecikmeCezasi;
+
+  const PenaltyEntry({
+    required this.id,
+    required this.kitap,
+    required this.barkod,
+    this.teslimTarihi,
+    required this.gecikmeCezasi,
+  });
+
+  factory PenaltyEntry.fromJson(Map<String, dynamic> json) => PenaltyEntry(
+        id: json['id'] as int,
+        kitap: json['kitap'] as String? ?? '',
+        barkod: json['barkod'] as String? ?? '',
+        teslimTarihi: json['teslim_tarihi'] as String?,
+        gecikmeCezasi: json['gecikme_cezasi'] as String? ?? '0.00',
+      );
+}
+
+class PenaltySummary {
+  final String outstandingTotal;
+  final int outstandingCount;
+  final List<PenaltyEntry> entries;
+
+  const PenaltySummary({
+    this.outstandingTotal = '0.00',
+    this.outstandingCount = 0,
+    this.entries = const [],
+  });
+
+  factory PenaltySummary.fromJson(Map<String, dynamic> json) => PenaltySummary(
+        outstandingTotal: json['outstanding_total'] as String? ?? '0.00',
+        outstandingCount: json['outstanding_count'] as int? ?? 0,
+        entries: (json['entries'] as List<dynamic>? ?? const [])
+            .whereType<Map<String, dynamic>>()
+            .map(PenaltyEntry.fromJson)
             .toList(),
       );
 }

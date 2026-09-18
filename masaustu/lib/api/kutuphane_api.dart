@@ -65,4 +65,35 @@ class KutuphaneApi {
         .map(Sinif.fromJson)
         .toList();
   }
+
+  Future<List<Nusha>> copies(int kitapId) async {
+    final resp = await _client.request('GET', 'nushalar/?kitap=$kitapId', auth: true);
+    if (resp.statusCode != 200) return const [];
+    return _extractList(resp)
+        .whereType<Map<String, dynamic>>()
+        .map(Nusha.fromJson)
+        .toList();
+  }
+
+  Future<List<OduncKaydi>> studentHistory(String ogrenciNo) async {
+    final resp = await _client
+        .request('GET', 'student-history/$ogrenciNo/', auth: true);
+    if (resp.statusCode != 200) return const [];
+    return _extractList(resp)
+        .whereType<Map<String, dynamic>>()
+        .map(OduncKaydi.fromJson)
+        .toList();
+  }
+
+  Future<PenaltySummary> studentPenalties(String ogrenciNo) async {
+    final resp = await _client
+        .request('GET', 'student-penalties/$ogrenciNo/', auth: true);
+    if (resp.statusCode != 200) return const PenaltySummary();
+    try {
+      return PenaltySummary.fromJson(
+          jsonDecode(resp.body) as Map<String, dynamic>);
+    } catch (_) {
+      return const PenaltySummary();
+    }
+  }
 }
