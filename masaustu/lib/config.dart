@@ -1,0 +1,88 @@
+import 'dart:convert';
+import 'dart:io';
+
+/// Uygulama yapılandırması + oturum (token) saklaması.
+///
+/// Masaüstünde ~/.config/kutuphane_masaustu/config.json içinde tutulur
+/// (eski PyQt sürümü gibi dosya tabanlı).
+class AppConfig {
+  static const String defaultBaseUrl = 'http://127.0.0.1:8000/api';
+
+  static String get _dirPath =>
+      '${Platform.environment['HOME'] ?? '.'}/.config/kutuphane_masaustu';
+
+  static File get _file => File('$_dirPath/config.json');
+
+  static Map<String, dynamic> _read() {
+    try {
+      if (_file.existsSync()) {
+        return jsonDecode(_file.readAsStringSync()) as Map<String, dynamic>;
+      }
+    } catch (_) {}
+    return {};
+  }
+
+  static void _write(Map<String, dynamic> data) {
+    Directory(_dirPath).createSync(recursive: true);
+    _file.writeAsStringSync(jsonEncode(data));
+  }
+
+  static String get apiBaseUrl {
+    final data = _read();
+    final url = (data['api']?['base_url'] as String?)?.trim();
+    return (url == null || url.isEmpty) ? defaultBaseUrl : url;
+  }
+
+  static set apiBaseUrl(String url) {
+    final data = _read();
+    data['api'] = {'base_url': url.trim()};
+    _write(data);
+  }
+
+  static Session? get session {
+    final data = _read();
+    final s = data['session'];
+    if (s is! Map) return null;
+    return Session(
+      accessToken: s['access'] as String? ?? '',
+      refreshToken: s['refresh'] as String? ?? '',
+      username: s['username'] as String? ?? '',
+      fullName: s['full_name'] as String? ?? '',
+      role: s['role'] as String? ?? '',
+    );
+  }
+
+  static set session(Session? session) {
+    final data = _read();
+    if (session == null) {
+      data.remove('session');
+    } else {
+      data['session'] = {
+        'access': session.accessToken,
+        'refresh': session.refreshToken,
+        'username': session.username,
+        'full_name': session.fullName,
+        'role': session.role,
+      };
+    }
+    _write(data);
+  }
+}
+
+class Session {
+  final String accessToken;
+  final String refreshToken;
+  final String username;
+  final String fullName;
+  final String role;
+
+  const Session({
+    required this.accessToken,
+    required this.refreshToken,
+    required this.username,
+    this.fullName = '',
+    this.role = '',
+  });
+
+  bool get isValid => accessToken.isNotEmpty;
+}
