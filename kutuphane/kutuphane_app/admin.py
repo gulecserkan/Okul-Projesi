@@ -286,7 +286,7 @@ class OgrenciAdmin(ImportExportModelAdmin):
     resource_class = OgrenciResource
     list_display = ("ogrenci_no", "ad", "soyad", "sinif", "rol", "aktif", "kayit_tarihi", "pasif_tarihi")
     list_filter = ("sinif", "rol", "aktif")
-    search_fields = ("ogrenci_no", "ad", "soyad", "eposta")
+    search_fields = ("ogrenci_no", "ad", "soyad")  # eposta şifreli olduğundan aranamaz
     date_hierarchy = "kayit_tarihi"
 
     # Üstte özel buton göstermek için (şablonda link var)

@@ -1,6 +1,7 @@
 asgiref==3.9.2
 diff-match-patch==20241021
 Django==5.2.7
+cryptography==50.0.1
 django-import-export==4.3.10
 djangorestframework==3.16.1
 djangorestframework_simplejwt==5.5.1

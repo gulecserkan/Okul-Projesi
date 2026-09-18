@@ -6,7 +6,10 @@ from django.dispatch import receiver
 from django.contrib.auth import get_user_model
 from django.contrib.auth.hashers import make_password, check_password
 from django.conf import settings
+from django.core.validators import EmailValidator
 from django.utils import timezone
+
+from .encryption import EncryptedCharField
 
 
 # --- Sınıflar ---
@@ -53,8 +56,13 @@ class Ogrenci(models.Model):
     ogrenci_no = models.CharField(max_length=20, unique=True)
     sinif = models.ForeignKey('Sinif', on_delete=models.SET_NULL, null=True)
     rol = models.ForeignKey('Rol', on_delete=models.SET_NULL, null=True)
-    telefon = models.CharField(max_length=20, blank=True, null=True)
-    eposta = models.EmailField(blank=True, null=True)
+    telefon = EncryptedCharField(max_length=512, blank=True, null=True)
+    eposta = EncryptedCharField(
+        max_length=512,
+        blank=True,
+        null=True,
+        validators=[EmailValidator()],
+    )
     kayit_tarihi = models.DateTimeField(auto_now_add=True)
     # 🔹 yeni alanlar:
     aktif = models.BooleanField(default=True)
@@ -405,8 +413,8 @@ class NotificationSettings(models.Model):
     email_smtp_host = models.CharField(max_length=120, blank=True)
     email_smtp_port = models.PositiveIntegerField(default=587)
     email_use_tls = models.BooleanField(default=True)
-    email_username = models.CharField(max_length=120, blank=True)
-    email_password = models.CharField(max_length=255, blank=True)
+    email_username = EncryptedCharField(max_length=512, blank=True)
+    email_password = EncryptedCharField(max_length=512, blank=True)
     email_schedule_enabled = models.BooleanField(default=False)
     email_schedule_hour = models.PositiveSmallIntegerField(default=9)
     email_schedule_minute = models.PositiveSmallIntegerField(default=0)
@@ -415,7 +423,7 @@ class NotificationSettings(models.Model):
     sms_enabled = models.BooleanField(default=False)
     sms_provider = models.CharField(max_length=120, blank=True)
     sms_api_url = models.CharField(max_length=255, blank=True)
-    sms_api_key = models.CharField(max_length=255, blank=True)
+    sms_api_key = EncryptedCharField(max_length=512, blank=True)
     sms_schedule_enabled = models.BooleanField(default=False)
     sms_schedule_hour = models.PositiveSmallIntegerField(default=9)
     sms_schedule_minute = models.PositiveSmallIntegerField(default=0)

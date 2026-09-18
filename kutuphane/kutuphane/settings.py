@@ -57,6 +57,10 @@ if not _SECRET_KEY:
         )
 SECRET_KEY = _SECRET_KEY
 
+# Alan düzeyinde şifreleme anahtarı (KVKK). Ayrı saklanması önerilir:
+# SECRET_KEY döndürüldüğünde şifreli veri bozulmaz.
+FIELD_ENCRYPTION_KEY = os.environ.get("FIELD_ENCRYPTION_KEY", "") or None
+
 ALLOWED_HOSTS = [
     host.strip()
     for host in os.environ.get("ALLOWED_HOSTS", "127.0.0.1,localhost").split(",")
