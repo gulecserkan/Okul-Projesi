@@ -85,3 +85,22 @@ class EncryptedTextField(models.TextField):
     def get_prep_value(self, value):
         value = super().get_prep_value(value)
         return encrypt_str(value)
+
+
+# --- Blob (dosya) şifreleme — örn. yedek dosyaları ---
+
+_BACKUP_MARKER = b"KUTUPHANE_BACKUP:v1:"
+
+
+def encrypt_blob(data: bytes) -> bytes:
+    """Düz metin byte'ları şifreleyip imzalı blob döndürür."""
+    token = Fernet(_get_key()).encrypt(data)
+    return _BACKUP_MARKER + token
+
+
+def decrypt_blob(blob: bytes) -> bytes:
+    """İmzalı blobu çözer; eski (işaretsiz düz metin) yedekleri aynen döndürür."""
+    if blob.startswith(_BACKUP_MARKER):
+        token = blob[len(_BACKUP_MARKER):].decode("ascii")
+        return Fernet(_get_key()).decrypt(token)
+    return blob

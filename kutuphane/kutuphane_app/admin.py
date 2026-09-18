@@ -1,5 +1,4 @@
 from django.utils.crypto import get_random_string
-from django.core.files.storage import default_storage
 from django.conf import settings
 import os, json, io, datetime
 
@@ -20,6 +19,7 @@ from django.contrib.auth.hashers import make_password
 from import_export.admin import ImportExportModelAdmin
 
 from .resources import OgrenciResource
+from .encryption import encrypt_blob, decrypt_blob
 from .models import (
     Rol, Sinif, Ogrenci, Yazar, Kategori, Kitap, KitapNusha,
     OduncKaydi, Personel, AuditLog,
@@ -56,21 +56,34 @@ class CustomAdminSite(admin.AdminSite):
 
             if confirm != "EVET":
                 return HttpResponse("Hata: 'EVET' yazmanız gerekiyor.", status=400)
-            if code != self.restore_code:
-                return HttpResponse("Hata: Güvenlik kodu yanlış.", status=400)
+            if not self.restore_code or code != self.restore_code:
+                self.restore_code = None
+                return HttpResponse("Hata: Güvenlik kodu yanlış veya süresi doldu.", status=400)
 
+            raw = None
             if file:
-                path = default_storage.save("restore.json", file)
+                raw = file.read()
             elif selected_file:
-                path = backups_dir / selected_file
-                if not path.exists():
+                backups_root = backups_dir.resolve()
+                candidate = (backups_dir / selected_file).resolve()
+                if not str(candidate).startswith(str(backups_root)):
+                    return HttpResponse("Hata: Geçersiz yedek dosyası.", status=400)
+                if not candidate.exists():
                     return HttpResponse("Hata: Seçilen yedek bulunamadı.", status=400)
+                raw = candidate.read_bytes()
             else:
                 return HttpResponse("Hata: Dosya seçilmedi.", status=400)
 
-            management.call_command("flush", "--noinput")
-            full_path = os.path.join(settings.MEDIA_ROOT, path)  # gerçek tam yol
-            management.call_command("loaddata", full_path)
+            # Yedek şifreliyse çöz; eski düz metin JSON kabul edilir.
+            data = decrypt_blob(raw)
+            restore_path = backups_dir / "_restore_pending.json"
+            restore_path.write_bytes(data)
+            try:
+                management.call_command("flush", "--noinput")
+                management.call_command("loaddata", str(restore_path))
+            finally:
+                restore_path.unlink(missing_ok=True)
+            self.restore_code = None
             return HttpResponse("✅ Restore işlemi tamamlandı.")
 
     def get_urls(self):
@@ -90,7 +103,7 @@ class CustomAdminSite(admin.AdminSite):
         backups_dir.mkdir(exist_ok=True)
 
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"backup_{timestamp}.json"
+        filename = f"backup_{timestamp}.json.enc"
         filepath = backups_dir / filename
 
         buffer = io.StringIO()
@@ -107,10 +120,12 @@ class CustomAdminSite(admin.AdminSite):
             ],
         )
 
-        with open(filepath, "w", encoding="utf-8") as f:
-            f.write(buffer.getvalue())
+        # Şifre alanları düz metin içerdiği için yedek diskte şifreli saklanır.
+        encrypted = encrypt_blob(buffer.getvalue().encode("utf-8"))
+        with open(filepath, "wb") as f:
+            f.write(encrypted)
 
-        response = HttpResponse(buffer.getvalue(), content_type="application/json")
+        response = HttpResponse(encrypted, content_type="application/octet-stream")
         response["Content-Disposition"] = f'attachment; filename="{filename}"'
         return response
 
