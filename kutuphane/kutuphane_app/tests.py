@@ -31,6 +31,14 @@ from kutuphane_app.loan_policy import (
     compute_assigned_due,
     is_role_blocked,
 )
+from kutuphane_app.rules import (
+    apply_student_status,
+    can_delete_kitap,
+    can_delete_nusha,
+    can_delete_ogrenci,
+    suggested_loss_penalty,
+    validate_transition,
+)
 
 
 def make_policy(**kw):
@@ -360,3 +368,242 @@ class SearchFilterAPITests(APITestCase):
         resp = self.client.get("/api/ogrenciler/", {"q": "ilber"})
         row = self._as_list(resp.data)[0]
         self.assertNotIn("arama", row)
+
+
+class RulesUnitTests(TestCase):
+    """rules.py saf kurallar — geçiş matrisi, pasif_tarihi, silme, ceza önerisi."""
+
+    def setUp(self):
+        make_policy()
+        self.sinif = Sinif.objects.create(ad="6-A")
+        self.rol = Rol.objects.create(ad="Öğrenci")
+        self.ogrenci = Ogrenci.objects.create(
+            ad="Ali", soyad="Veli", ogrenci_no="60001", sinif=self.sinif, rol=self.rol
+        )
+        self.kitap, self.nusha = make_book_and_copy(barkod="KIT0000800")
+
+    def _loan(self, durum="oduncte"):
+        return OduncKaydi.objects.create(
+            ogrenci=self.ogrenci,
+            kitap_nusha=self.nusha,
+            iade_tarihi=timezone.now() + timedelta(days=15),
+            durum=durum,
+        )
+
+    def test_transition_valid(self):
+        ok, err = validate_transition(self._loan(), "teslim", teslim_tarihi=timezone.now())
+        self.assertTrue(ok)
+        self.assertIsNone(err)
+        ok2, _ = validate_transition(self._loan(), "iptal", teslim_tarihi=None)
+        self.assertTrue(ok2)
+
+    def test_transition_invalid_durum(self):
+        ok, err = validate_transition(self._loan(), "oduncte", teslim_tarihi=timezone.now())
+        self.assertFalse(ok)
+        self.assertIn("Geçersiz", err)
+
+    def test_transition_closed_rejected(self):
+        loan = self._loan("teslim")
+        ok, err = validate_transition(loan, "kayip", teslim_tarihi=timezone.now())
+        self.assertFalse(ok)
+        self.assertIn("kapanmış", err)
+
+    def test_transition_requires_teslim_date(self):
+        ok, err = validate_transition(self._loan(), "kayip", teslim_tarihi=None)
+        self.assertFalse(ok)
+        self.assertIn("teslim_tarihi", err)
+
+    def test_student_pasif_sets_date_and_warns(self):
+        self._loan()
+        warnings = apply_student_status(self.ogrenci, False)
+        self.ogrenci.refresh_from_db()
+        self.assertFalse(self.ogrenci.aktif)
+        self.assertIsNotNone(self.ogrenci.pasif_tarihi)
+        self.assertTrue(any("aktif ödüncü var" in w for w in warnings))
+
+    def test_student_back_active_clears_date(self):
+        apply_student_status(self.ogrenci, False)
+        apply_student_status(self.ogrenci, True)
+        self.ogrenci.refresh_from_db()
+        self.assertTrue(self.ogrenci.aktif)
+        self.assertIsNone(self.ogrenci.pasif_tarihi)
+
+    def test_delete_rules(self):
+        self.assertTrue(can_delete_ogrenci(self.ogrenci))
+        self.assertTrue(can_delete_nusha(self.nusha))
+        self.assertTrue(can_delete_kitap(self.kitap))
+        self._loan()
+        self.assertFalse(can_delete_ogrenci(self.ogrenci))
+        self.assertFalse(can_delete_nusha(self.nusha))
+        self.assertFalse(can_delete_kitap(self.kitap))
+
+    def test_suggested_loss_penalty(self):
+        make_policy(kayip_hasar_cezasi=Decimal("15.00"))
+        snapshot = policy_snapshot()
+        self.assertEqual(suggested_loss_penalty(snapshot), Decimal("15.00"))
+        make_policy(kayip_hasar_cezasi=Decimal("0"))
+        self.assertIsNone(suggested_loss_penalty(policy_snapshot()))
+
+
+class LoanCloseAPITests(APITestCase):
+    """POST /api/oduncler/{id}/kapat/ — atomik kapanış ve ham PATCH kilidi."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(username="testkutuphaneci", password="z1!")
+        self.client.force_authenticate(self.user)
+        make_policy()
+        self.sinif = Sinif.objects.create(ad="6-B")
+        self.rol = Rol.objects.create(ad="Öğrenci")
+        self.ogrenci = Ogrenci.objects.create(
+            ad="Mehmet", soyad="Demir", ogrenci_no="60124", sinif=self.sinif, rol=self.rol
+        )
+        self.kitap, self.nusha = make_book_and_copy(barkod="KIT0000777")
+
+    def _checkout(self):
+        resp = self.client.post(
+            "/api/checkout/", {"ogrenci_no": "60124", "barkod": "KIT0000777"}, format="json"
+        )
+        self.assertEqual(resp.status_code, status.HTTP_201_CREATED, resp.content)
+        return OduncKaydi.objects.get(ogrenci=self.ogrenci)
+
+    def _close(self, loan_id, payload):
+        return self.client.post(f"/api/oduncler/{loan_id}/kapat/", payload, format="json")
+
+    def test_close_teslim(self):
+        loan = self._checkout()
+        resp = self._close(loan.id, {"durum": "teslim", "teslim_tarihi": timezone.now().isoformat()})
+        self.assertEqual(resp.status_code, status.HTTP_200_OK, resp.content)
+        loan.refresh_from_db()
+        self.nusha.refresh_from_db()
+        self.assertEqual(loan.durum, "teslim")
+        self.assertIsNotNone(loan.teslim_tarihi)
+        self.assertEqual(self.nusha.durum, "mevcut")
+
+    def test_close_kayip_syncs_nusha(self):
+        loan = self._checkout()
+        resp = self._close(loan.id, {"durum": "kayip", "teslim_tarihi": timezone.now().isoformat()})
+        self.assertEqual(resp.status_code, status.HTTP_200_OK, resp.content)
+        self.nusha.refresh_from_db()
+        self.assertEqual(self.nusha.durum, "kayip")
+
+    def test_close_kayip_requires_teslim_date(self):
+        loan = self._checkout()
+        resp = self._close(loan.id, {"durum": "kayip"})
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+        self.nusha.refresh_from_db()
+        self.assertEqual(self.nusha.durum, "oduncte")
+
+    def test_close_hasarli_with_penalty_and_paid(self):
+        loan = self._checkout()
+        resp = self._close(loan.id, {
+            "durum": "hasarli",
+            "teslim_tarihi": timezone.now().isoformat(),
+            "gecikme_cezasi": "12.50",
+            "gecikme_cezasi_odendi": True,
+        })
+        self.assertEqual(resp.status_code, status.HTTP_200_OK, resp.content)
+        loan.refresh_from_db()
+        self.assertEqual(loan.durum, "hasarli")
+        self.assertEqual(loan.gecikme_cezasi, Decimal("12.50"))
+        self.assertTrue(loan.gecikme_cezasi_odendi)
+        self.assertIsNotNone(loan.gecikme_odeme_tarihi)
+
+    def test_close_iptal(self):
+        loan = self._checkout()
+        resp = self._close(loan.id, {"durum": "iptal"})
+        self.assertEqual(resp.status_code, status.HTTP_200_OK, resp.content)
+        loan.refresh_from_db()
+        self.nusha.refresh_from_db()
+        self.assertEqual(loan.durum, "iptal")
+        self.assertIsNone(loan.teslim_tarihi)
+        self.assertEqual(self.nusha.durum, "mevcut")
+
+    def test_double_close_rejected(self):
+        loan = self._checkout()
+        self._close(loan.id, {"durum": "teslim", "teslim_tarihi": timezone.now().isoformat()})
+        resp = self._close(loan.id, {"durum": "kayip", "teslim_tarihi": timezone.now().isoformat()})
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+        loan.refresh_from_db()
+        self.assertEqual(loan.durum, "teslim")
+
+    def test_gecikmis_can_close(self):
+        loan = self._checkout()
+        OduncKaydi.objects.filter(id=loan.id).update(durum="gecikmis")
+        resp = self._close(loan.id, {"durum": "teslim", "teslim_tarihi": timezone.now().isoformat()})
+        self.assertEqual(resp.status_code, status.HTTP_200_OK, resp.content)
+
+    def test_odendi_requires_ceza(self):
+        loan = self._checkout()
+        resp = self._close(loan.id, {
+            "durum": "teslim",
+            "teslim_tarihi": timezone.now().isoformat(),
+            "gecikme_cezasi_odendi": True,
+        })
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_patch_loan_durum_blocked(self):
+        loan = self._checkout()
+        resp = self.client.patch(f"/api/oduncler/{loan.id}/", {"durum": "teslim"}, format="json")
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        loan.refresh_from_db()
+        self.assertEqual(loan.durum, "oduncte")
+
+    def test_patch_nusha_durum_blocked(self):
+        self._checkout()
+        resp = self.client.patch(f"/api/nushalar/{self.nusha.id}/", {"durum": "kayip"}, format="json")
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.nusha.refresh_from_db()
+        self.assertEqual(self.nusha.durum, "oduncte")
+
+
+class OgrenciDurumAPITests(APITestCase):
+    """POST /api/ogrenciler/{id}/durum/ — aktif/pasif, yalnızca admin."""
+
+    def setUp(self):
+        make_policy()
+        self.admin_user = User.objects.create_user(username="admin2", password="a2!")
+        Personel.objects.create(
+            ad_soyad="Yönetici", kullanici_adi="admin2", rol="admin", user=self.admin_user
+        )
+        self.personel_user = User.objects.create_user(username="person2", password="p2!")
+        Personel.objects.create(
+            ad_soyad="Personel", kullanici_adi="person2", rol="personel", user=self.personel_user
+        )
+        self.sinif = Sinif.objects.create(ad="6-C")
+        self.rol = Rol.objects.create(ad="Öğrenci")
+        self.ogrenci = Ogrenci.objects.create(
+            ad="Ayşe", soyad="Can", ogrenci_no="60125", sinif=self.sinif, rol=self.rol
+        )
+
+    def test_non_admin_forbidden(self):
+        self.client.force_authenticate(self.personel_user)
+        resp = self.client.post(f"/api/ogrenciler/{self.ogrenci.id}/durum/", {"aktif": False}, format="json")
+        self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_anonymous_forbidden(self):
+        resp = self.client.post(f"/api/ogrenciler/{self.ogrenci.id}/durum/", {"aktif": False}, format="json")
+        self.assertEqual(resp.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_admin_pasif_sets_date_and_active_clears(self):
+        self.client.force_authenticate(self.admin_user)
+        resp = self.client.post(f"/api/ogrenciler/{self.ogrenci.id}/durum/", {"aktif": False}, format="json")
+        self.assertEqual(resp.status_code, status.HTTP_200_OK, resp.content)
+        self.ogrenci.refresh_from_db()
+        self.assertFalse(self.ogrenci.aktif)
+        self.assertIsNotNone(self.ogrenci.pasif_tarihi)
+        resp = self.client.post(f"/api/ogrenciler/{self.ogrenci.id}/durum/", {"aktif": True}, format="json")
+        self.ogrenci.refresh_from_db()
+        self.assertTrue(self.ogrenci.aktif)
+        self.assertIsNone(self.ogrenci.pasif_tarihi)
+
+    def test_admin_pasif_warns_active_loans(self):
+        self.client.force_authenticate(self.admin_user)
+        kitap, nusha = make_book_and_copy(barkod="KIT0000766")
+        resp = self.client.post(
+            "/api/checkout/", {"ogrenci_no": "60125", "barkod": nusha.barkod}, format="json"
+        )
+        self.assertEqual(resp.status_code, status.HTTP_201_CREATED, resp.content)
+        resp = self.client.post(f"/api/ogrenciler/{self.ogrenci.id}/durum/", {"aktif": False}, format="json")
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        warnings = resp.data.get("warnings", [])
+        self.assertTrue(any("aktif ödüncü var" in w for w in warnings))

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../api/kutuphane_api.dart';
+import '../config.dart';
 import '../formatters.dart';
 import '../models.dart';
 
@@ -17,6 +18,9 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
   final _api = KutuphaneApi();
   late Future<List<OduncKaydi>> _historyFuture;
   late Future<PenaltySummary> _penaltiesFuture;
+  late bool _aktif = widget.ogrenci.aktif;
+
+  bool get _isAdmin => AppConfig.session?.role == 'admin';
 
   @override
   void initState() {
@@ -29,11 +33,68 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
     _penaltiesFuture = _api.studentPenalties(widget.ogrenci.ogrenciNo);
   }
 
+  void _snack(String msg, {bool error = false}) {
+    if (!mounted) return;
+    final color = error
+        ? Theme.of(context).colorScheme.errorContainer
+        : Theme.of(context).colorScheme.secondaryContainer;
+    ScaffoldMessenger.of(context)
+      ..clearSnackBars()
+      ..showSnackBar(SnackBar(content: Text(msg), backgroundColor: color));
+  }
+
+  Future<void> _toggleStatus() async {
+    final o = widget.ogrenci;
+    final targetAktif = !_aktif;
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title:
+            Text(targetAktif ? 'Öğrenciyi aktifleştir' : 'Öğrenciyi pasife al'),
+        content: Text(targetAktif
+            ? '${o.adSoyad} (${o.ogrenciNo}) tekrar aktif olacak. Onaylıyor musunuz?'
+            : '${o.adSoyad} (${o.ogrenciNo}) pasife alınacak (mezun/nakil/tasdikname için). '
+                'Geçmiş kayıtları korunur; yeni ödünç verilemez. Onaylıyor musunuz?'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Vazgeç')),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Onayla'),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+    final res = await _api.setStudentStatus(o.id, targetAktif);
+    if (!mounted) return;
+    if (res.ok) {
+      setState(() => _aktif = targetAktif);
+      final extra = res.warnings.isEmpty ? '' : ' Uyarı: ${res.warnings.join(' ')}';
+      _snack((targetAktif ? 'Öğrenci aktifleştirildi.' : 'Öğrenci pasife alındı.') + extra);
+    } else {
+      _snack(res.error, error: true);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final o = widget.ogrenci;
     return Scaffold(
-      appBar: AppBar(title: Text(o.adSoyad)),
+      appBar: AppBar(
+        title: Text(o.adSoyad),
+        actions: [
+          if (_isAdmin)
+            IconButton(
+              tooltip: _aktif ? 'Pasife al' : 'Aktifleştir',
+              icon: Icon(
+                _aktif ? Icons.person_off_outlined : Icons.person_outline,
+              ),
+              onPressed: _toggleStatus,
+            ),
+        ],
+      ),
       body: ListView(
         padding: const EdgeInsets.all(24),
         children: [
@@ -159,9 +220,9 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
                           if (o.sinif != null)
                             Chip(label: Text(o.sinif!.ad), visualDensity: VisualDensity.compact),
                           Chip(
-                            label: Text(o.aktif ? 'Aktif' : 'Pasif',
+                            label: Text(_aktif ? 'Aktif' : 'Pasif',
                                 style: TextStyle(
-                                    color: o.aktif ? Colors.green.shade700 : Colors.grey)),
+                                    color: _aktif ? Colors.green.shade700 : Colors.grey)),
                             visualDensity: VisualDensity.compact,
                           ),
                         ],

@@ -95,28 +95,25 @@ class _LoanScreenState extends State<LoanScreen> {
     if (_busy) return;
     final action = await showDialog<Map<String, String>>(
       context: context,
-      builder: (_) => _ReturnDialog(loan: loan),
+      builder: (_) => _ReturnDialog(loan: loan, api: _api),
     );
     if (action == null) return;
     setState(() => _busy = true);
-    final loanResp = await _api.updateLoanStatus(
+    final resp = await _api.closeLoan(
       loan.id,
       durum: action['durum']!,
       teslimTarihi: DateTime.now().toUtc().toIso8601String(),
       gecikmeCezasi: action['penalty'],
+      odendi: action['odendi'] == 'true',
     );
-    var ok = loanResp.statusCode >= 200 && loanResp.statusCode < 300;
-    if (ok && loan.copyId != null) {
-      final copyDurum = action['durum'] == 'teslim' ? 'mevcut' : action['durum']!;
-      await _api.updateCopyStatus(loan.copyId!, copyDurum);
-    }
     if (!mounted) return;
     setState(() => _busy = false);
+    final ok = resp.statusCode >= 200 && resp.statusCode < 300;
     if (ok) {
       _snack('İade alındı (${durumLabel(action['durum']!)}).');
       _search(_lastQ);
     } else {
-      _snack(extractError(loanResp, fallback: 'İşlem başarısız oldu.'),
+      _snack(extractError(resp, fallback: 'İşlem başarısız oldu.'),
           error: true);
     }
   }
@@ -1112,11 +1109,12 @@ class _StudentPickerDialogState extends State<_StudentPickerDialog> {
   }
 }
 
-/// İade işlemi diyaloğu: durum + (gecikmişse) ceza.
+/// İade işlemi diyaloğu: durum + ceza (gecikme / kayıp / hasarlı önerisi).
 class _ReturnDialog extends StatefulWidget {
   final FastLoan loan;
+  final KutuphaneApi api;
 
-  const _ReturnDialog({required this.loan});
+  const _ReturnDialog({required this.loan, required this.api});
 
   @override
   State<_ReturnDialog> createState() => _ReturnDialogState();
@@ -1125,11 +1123,27 @@ class _ReturnDialog extends StatefulWidget {
 class _ReturnDialogState extends State<_ReturnDialog> {
   late String _durum = 'teslim';
   final _penaltyController = TextEditingController();
+  bool _odendi = false;
+  String? _suggestionNote;
+
+  bool get _isDamageClose => _durum == 'kayip' || _durum == 'hasarli';
 
   @override
   void initState() {
     super.initState();
     _penaltyController.text = widget.loan.penaltyPreview ?? '';
+    _loadSuggestion();
+  }
+
+  Future<void> _loadSuggestion() async {
+    final (suggestion, _) = await widget.api.fetchLoanPolicy();
+    if (!mounted || suggestion == null) return;
+    setState(() {
+      _suggestionNote = suggestion;
+      if (_isDamageClose && _penaltyController.text.isEmpty) {
+        _penaltyController.text = suggestion;
+      }
+    });
   }
 
   @override
@@ -1142,6 +1156,7 @@ class _ReturnDialogState extends State<_ReturnDialog> {
     Navigator.of(context).pop({
       'durum': _durum,
       'penalty': _penaltyController.text.trim().replaceAll(',', '.'),
+      'odendi': _odendi ? 'true' : 'false',
     });
   }
 
@@ -1196,7 +1211,15 @@ class _ReturnDialogState extends State<_ReturnDialog> {
                 DropdownMenuItem(value: 'hasarli', child: Text('Hasarlı')),
               ],
               onChanged: (v) {
-                if (v != null) setState(() => _durum = v);
+                if (v == null) return;
+                setState(() {
+                  _durum = v;
+                  if (_isDamageClose &&
+                      _suggestionNote != null &&
+                      _penaltyController.text.isEmpty) {
+                    _penaltyController.text = _suggestionNote!;
+                  }
+                });
               },
             ),
             const SizedBox(height: 12),
@@ -1204,11 +1227,32 @@ class _ReturnDialogState extends State<_ReturnDialog> {
               controller: _penaltyController,
               keyboardType:
                   const TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(
-                labelText: 'Gecikme cezası (₺) — boş bırakılırsa bağlanmaz',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText:
+                    _isDamageClose ? 'Ceza (₺) — gecikme + hasar' : 'Gecikme cezası (₺)',
+                hintText: _isDamageClose && _suggestionNote != null
+                    ? 'Önerilen: $_suggestionNote'
+                    : 'Boş bırakılırsa bağlanmaz',
+                border: const OutlineInputBorder(),
                 isDense: true,
               ),
+            ),
+            if (_suggestionNote != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                'Kayıp/hasarlı için önerilen ceza: ₺$_suggestionNote '
+                '(düzenlenebilir)',
+                style: theme.textTheme.bodySmall
+                    ?.copyWith(color: theme.colorScheme.primary),
+              ),
+            ],
+            const SizedBox(height: 12),
+            CheckboxListTile(
+              value: _odendi,
+              onChanged: (v) => setState(() => _odendi = v ?? false),
+              title: const Text('Ceza şimdi ödendi'),
+              contentPadding: EdgeInsets.zero,
+              controlAffinity: ListTileControlAffinity.leading,
             ),
           ],
         ),

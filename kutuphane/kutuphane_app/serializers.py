@@ -122,6 +122,12 @@ class KitapNushaSerializer(serializers.ModelSerializer):
         model = KitapNusha
         fields = ["id", "kitap", "kitap_id", "barkod", "durum", "raf_kodu"]
 
+    def get_fields(self):
+        fields = super().get_fields()
+        # K4.1: nüsha durumu yalnızca checkout/kapat (ve admin düzeltme) ile değişir.
+        fields["durum"].read_only = True
+        return fields
+
     def create(self, validated_data):
         barkod = validated_data.get("barkod")
         if barkod:
@@ -165,6 +171,20 @@ class OduncKaydiSerializer(serializers.ModelSerializer):
     class Meta:
         model = OduncKaydi
         fields = "__all__"
+
+    def get_fields(self):
+        fields = super().get_fields()
+        # K3.7: durum geçişleri yalnızca kapat endpoint'i üzerinden yapılır.
+        for name in (
+            "durum",
+            "teslim_tarihi",
+            "gecikme_cezasi",
+            "gecikme_cezasi_odendi",
+            "gecikme_odeme_tarihi",
+            "gecikme_odeme_tutari",
+        ):
+            fields[name].read_only = True
+        return fields
 
 
 class PersonelSerializer(serializers.ModelSerializer):

@@ -37,6 +37,7 @@ from .models import (
     InventoryItem,
 )
 from .turkish import fold
+from .rules import apply_student_status, validate_transition, NUSHA_KAPANIS_MAP
 from .serializers import (
     OgrenciSerializer,
     SinifSerializer,
@@ -223,6 +224,22 @@ class OgrenciViewSet(viewsets.ModelViewSet):
             qs = qs.filter(arama__icontains=fold(arama))
         return qs
 
+    @action(detail=True, methods=["post"], permission_classes=[IsAuthenticated, IsAdminPersonel])
+    def durum(self, request, pk=None):
+        """K2.6: aktif/pasif değişimi — yalnızca admin."""
+        ogrenci = self.get_object()
+        raw = request.data.get("aktif")
+        if raw is None:
+            return Response({"error": "aktif alanı gerekli"}, status=status.HTTP_400_BAD_REQUEST)
+        if isinstance(raw, str):
+            aktif = raw.strip().lower() in ("1", "true", "evet", "aktif")
+        else:
+            aktif = bool(raw)
+        warnings = apply_student_status(ogrenci, aktif)
+        data = OgrenciSerializer(ogrenci).data
+        data["warnings"] = warnings
+        return Response(data)
+
 class YazarViewSet(viewsets.ModelViewSet):
     queryset = Yazar.objects.all()
     serializer_class = YazarSerializer
@@ -389,6 +406,78 @@ class OduncKaydiViewSet(viewsets.ModelViewSet):
         if durum:
             qs = qs.filter(durum=durum)
         return qs
+
+class OduncKapatView(APIView):
+    """Ödünç kaydını kapatır — K3.1-K3.6, atomik (ödünç + nüsha + ceza).
+
+    POST /api/oduncler/{pk}/kapat/
+    body: {"durum": teslim|kayip|hasarli|iptal,
+           "teslim_tarihi": iso (iptal dışı zorunlu),
+           "gecikme_cezasi": decimal (ops.), "gecikme_cezasi_odendi": bool (ops.)}
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        loan = get_object_or_404(
+            OduncKaydi.objects.select_related("ogrenci", "kitap_nusha"), pk=pk
+        )
+        durum = (request.data.get("durum") or "").strip()
+        ok, error = validate_transition(loan, durum, teslim_tarihi=request.data.get("teslim_tarihi"))
+        if not ok:
+            return Response({"error": error}, status=status.HTTP_400_BAD_REQUEST)
+
+        teslim = None
+        if durum != "iptal":
+            teslim_val = request.data.get("teslim_tarihi") or now().isoformat()
+            teslim = parse_datetime(teslim_val) or timezone.now()
+        else:
+            # iptal: ödünç hiç fiilen verilmemiş sayılır
+            teslim = None
+
+        ceza = request.data.get("gecikme_cezasi")
+        ceza_val = None
+        if ceza not in (None, ""):
+            try:
+                ceza_val = Decimal(str(ceza))
+            except InvalidOperation:
+                return Response({"error": "Geçersiz ceza tutarı"}, status=status.HTTP_400_BAD_REQUEST)
+            if ceza_val < 0:
+                return Response({"error": "Ceza tutarı negatif olamaz"}, status=status.HTTP_400_BAD_REQUEST)
+            if loan.gecikme_cezasi_odendi:
+                return Response(
+                    {"error": "Ödenmiş bir kaydın cezası değiştirilemez"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+        odendi = request.data.get("gecikme_cezasi_odendi")
+        odendi_val = False
+        if isinstance(odendi, str):
+            odendi_val = odendi.strip().lower() in ("1", "true", "evet")
+        elif odendi is not None:
+            odendi_val = bool(odendi)
+        if odendi_val and ceza_val is None:
+            return Response(
+                {"error": "Ödendi işareti için önce ceza tutarı belirtin"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        with transaction.atomic():
+            loan.durum = durum
+            loan.teslim_tarihi = teslim
+            if ceza_val is not None:
+                loan.gecikme_cezasi = ceza_val
+            if odendi_val:
+                loan.gecikme_cezasi_odendi = True
+                loan.gecikme_odeme_tarihi = timezone.now()
+                loan.gecikme_odeme_tutari = ceza_val
+            loan.save()
+            nusha = loan.kitap_nusha
+            nusha.durum = NUSHA_KAPANIS_MAP[durum]
+            nusha.save(update_fields=["durum"])
+
+        serializer = OduncKaydiSerializer(loan)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 class PersonelViewSet(viewsets.ModelViewSet):
     queryset = Personel.objects.all()

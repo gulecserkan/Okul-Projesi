@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../api/kutuphane_api.dart';
+import '../config.dart';
 import '../models.dart';
 import '../widgets/row_table.dart';
 import 'student_detail_screen.dart';
@@ -116,6 +117,52 @@ class _StudentListScreenState extends State<StudentListScreen> {
     ));
   }
 
+  bool get _isAdmin => AppConfig.session?.role == 'admin';
+
+  void _snack(String msg, {bool error = false}) {
+    if (!mounted) return;
+    final color = error ? Theme.of(context).colorScheme.errorContainer
+        : Theme.of(context).colorScheme.secondaryContainer;
+    ScaffoldMessenger.of(context)
+      ..clearSnackBars()
+      ..showSnackBar(SnackBar(content: Text(msg), backgroundColor: color));
+  }
+
+  Future<void> _toggleStatus(Ogrenci o) async {
+    final targetAktif = !o.aktif;
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text(targetAktif ? 'Öğrenciyi aktifleştir' : 'Öğrenciyi pasife al'),
+        content: Text(targetAktif
+            ? '${o.adSoyad} (${o.ogrenciNo}) tekrar aktif olacak. Onaylıyor musunuz?'
+            : '${o.adSoyad} (${o.ogrenciNo}) pasife alınacak (mezun/nakil/tasdikname için). '
+                'Geçmiş kayıtları korunur; yeni ödünç verilemez. Onaylıyor musunuz?'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Vazgeç')),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Onayla'),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+    final res = await _api.setStudentStatus(o.id, targetAktif);
+    if (!mounted) return;
+    if (res.ok) {
+      final extra =
+          res.warnings.isEmpty ? '' : ' Uyarı: ${res.warnings.join(' ')}';
+      _snack((targetAktif ? 'Öğrenci aktifleştirildi.' : 'Öğrenci pasife alındı.') +
+          extra);
+      _load(reset: true);
+    } else {
+      _snack(res.error, error: true);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -217,6 +264,16 @@ class _StudentListScreenState extends State<StudentListScreen> {
                       color: o.aktif ? Colors.green.shade700 : Colors.grey,
                       fontWeight: FontWeight.w500,
                     )),
+                if (_isAdmin)
+                  IconButton(
+                    tooltip: o.aktif ? 'Pasife al' : 'Aktifleştir',
+                    visualDensity: VisualDensity.compact,
+                    icon: Icon(
+                      o.aktif ? Icons.person_off_outlined : Icons.person_outline,
+                      color: o.aktif ? null : Colors.grey.shade600,
+                    ),
+                    onPressed: () => _toggleStatus(o),
+                  ),
                 IconButton(
                   tooltip: 'Detaylar',
                   visualDensity: VisualDensity.compact,

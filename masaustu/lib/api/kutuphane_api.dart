@@ -183,34 +183,70 @@ class KutuphaneApi {
     );
   }
 
-  /// İade durumu güncelle: PATCH `/api/oduncler/{id}/`.
-  Future<http.Response> updateLoanStatus(
+  /// Ödünç kaydını kapatır (atomik: ödünç + nüsha + ceza).
+  /// `POST /api/oduncler/{id}/kapat/`
+  Future<http.Response> closeLoan(
     int loanId, {
     required String durum,
-    String? teslimTarihi,
+    required String teslimTarihi,
     String? gecikmeCezasi,
+    bool odendi = false,
   }) {
     return _client.request(
-      'PATCH',
-      'oduncler/$loanId/',
+      'POST',
+      'oduncler/$loanId/kapat/',
       auth: true,
       body: {
         'durum': durum,
-        'teslim_tarihi': ?teslimTarihi,
+        'teslim_tarihi': teslimTarihi,
         if (gecikmeCezasi != null && gecikmeCezasi.trim().isNotEmpty)
           'gecikme_cezasi': gecikmeCezasi.trim(),
+        if (odendi) 'gecikme_cezasi_odendi': true,
       },
     );
   }
 
-  /// Nüsha durumu güncelle: PATCH `/api/nushalar/{id}/`.
-  Future<http.Response> updateCopyStatus(int copyId, String durum) {
-    return _client.request(
-      'PATCH',
-      'nushalar/$copyId/',
-      auth: true,
-      body: {'durum': durum},
-    );
+  /// Öğrenci aktif/pasif değişimi (yalnızca admin). Uyarıları döndürür.
+  Future<({bool ok, List<String> warnings, String error})> setStudentStatus(
+    int studentId,
+    bool aktif,
+  ) async {
+    try {
+      final resp = await _client.request(
+        'POST',
+        'ogrenciler/$studentId/durum/',
+        auth: true,
+        body: {'aktif': aktif},
+      );
+      if (resp.statusCode >= 200 && resp.statusCode < 300) {
+        final data = jsonDecode(utf8.decode(resp.bodyBytes));
+        final warnings = data is Map && data['warnings'] is List
+            ? (data['warnings'] as List).whereType<String>().toList()
+            : <String>[];
+        return (ok: true, warnings: warnings, error: '');
+      }
+      return (ok: false, warnings: const <String>[], error: extractError(resp));
+    } catch (_) {
+      return (ok: false, warnings: const <String>[], error: 'İşlem yapılamadı.');
+    }
+  }
+
+  /// Kayıp/hasarlı ceza önerisi dahil ödünç politikasını getirir.
+  Future<(String? kayipHasarCezasi, String? error)> fetchLoanPolicy() async {
+    try {
+      final resp = await _client.request('GET', 'settings/loans/', auth: true);
+      if (resp.statusCode < 200 || resp.statusCode >= 300) {
+        return (null, 'Politika alınamadı (${resp.statusCode})');
+      }
+      final data = jsonDecode(utf8.decode(resp.bodyBytes));
+      if (data is! Map<String, dynamic>) return (null, null);
+      final val = data['kayip_hasar_cezasi'];
+      if (val is num) return (val.toString(), null);
+      if (val is String && val.trim().isNotEmpty) return (val.trim(), null);
+      return (null, null);
+    } catch (_) {
+      return (null, 'Politika alınamadı');
+    }
   }
 }
 

@@ -28,6 +28,7 @@ class LoanPolicySnapshot:
     role_overrides: Dict[int, "RolePolicyOverride"]
     penalty_max_per_loan: Decimal
     penalty_max_per_student: Decimal
+    kayip_hasar_cezasi: Decimal
 
     @classmethod
     def from_policy(cls, policy: LoanPolicy) -> "LoanPolicySnapshot":
@@ -59,6 +60,7 @@ class LoanPolicySnapshot:
             role_overrides=overrides,
             penalty_max_per_loan=Decimal(policy.penalty_max_per_loan or 0),
             penalty_max_per_student=Decimal(policy.penalty_max_per_student or 0),
+            kayip_hasar_cezasi=Decimal(policy.kayip_hasar_cezasi or 0),
         )
 
 
