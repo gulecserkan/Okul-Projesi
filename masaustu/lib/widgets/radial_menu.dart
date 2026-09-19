@@ -23,7 +23,7 @@ Future<String?> showRadialRowMenu(
   Offset globalPosition,
   List<RadialMenuItem> items,
 ) {
-  const radius = 104.0;
+  const radius = 78.0;
   final size = MediaQuery.of(context).size;
   final left = globalPosition.dx.clamp(radius, size.width - radius);
   final top = globalPosition.dy.clamp(radius, size.height - radius);
@@ -32,7 +32,7 @@ Future<String?> showRadialRowMenu(
     context: context,
     barrierDismissible: true,
     barrierLabel: 'İşlem menüsü',
-    barrierColor: Colors.black.withValues(alpha: 0.10),
+    barrierColor: Colors.black.withValues(alpha: 0.06),
     transitionDuration: const Duration(milliseconds: 120),
     pageBuilder: (ctx, anim, sec) => Stack(
       children: [
@@ -79,7 +79,7 @@ class _PieMenu extends StatelessWidget {
       behavior: HitTestBehavior.opaque,
       onTapUp: (d) {
         final v = d.localPosition - Offset(size / 2, size / 2);
-        if (v.distance < 34) {
+        if (v.distance < 22) {
           Navigator.of(context).pop(); // merkez: kapat
           return;
         }
@@ -124,7 +124,7 @@ class _PiePainter extends CustomPainter {
     final rect = Rect.fromCircle(center: center, radius: radius - 1);
     final n = items.length;
     final sweep = 360 / n;
-    const gapDeg = 2.0;
+    const gapDeg = 3.0;
 
     // Gölge
     canvas.drawCircle(
@@ -132,7 +132,7 @@ class _PiePainter extends CustomPainter {
       radius - 1,
       Paint()
         ..color = Colors.black.withValues(alpha: 0.12)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6),
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5),
     );
 
     for (var i = 0; i < n; i++) {
@@ -150,12 +150,12 @@ class _PiePainter extends CustomPainter {
     }
 
     // Merkez daire (kapat)
-    canvas.drawCircle(center, 30, Paint()..color = surface);
+    canvas.drawCircle(center, 22, Paint()..color = surface);
     _drawIcon(
       canvas,
       center,
       Icons.close,
-      20,
+      16,
       onSurfaceVariant,
     );
 
@@ -164,7 +164,7 @@ class _PiePainter extends CustomPainter {
       final midDeg = -150 + i * sweep + sweep / 2;
       final midRad = midDeg * math.pi / 180;
       final pos = center +
-          Offset(math.cos(midRad), math.sin(midRad)) * (radius * 0.63);
+          Offset(math.cos(midRad), math.sin(midRad)) * (radius * 0.64);
       _drawItem(canvas, pos, items[i], foregrounds[i % foregrounds.length]);
     }
   }
@@ -174,7 +174,7 @@ class _PiePainter extends CustomPainter {
       text: TextSpan(
         text: String.fromCharCode(item.icon.codePoint),
         style: TextStyle(
-          fontSize: 22,
+          fontSize: 18,
           fontFamily: item.icon.fontFamily,
           package: item.icon.fontPackage,
           color: color,
@@ -186,7 +186,7 @@ class _PiePainter extends CustomPainter {
       text: TextSpan(
         text: item.label,
         style: TextStyle(
-            fontSize: 12, fontWeight: FontWeight.w600, color: color),
+            fontSize: 11, fontWeight: FontWeight.w600, color: color),
       ),
       textDirection: TextDirection.ltr,
     )..layout();
