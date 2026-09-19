@@ -749,7 +749,9 @@ class _StudentResult extends StatelessWidget {
                   children: [
                     CircleAvatar(
                       radius: 24,
-                      child: Text(st.adSoyad.substring(0, 1).toUpperCase()),
+                      child: Text(st.adSoyad.isNotEmpty
+                          ? st.adSoyad.substring(0, 1).toUpperCase()
+                          : '?'),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
