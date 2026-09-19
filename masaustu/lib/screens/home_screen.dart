@@ -158,6 +158,14 @@ class _OverviewState extends State<_Overview> {
   OverlayEntry? _menuEntry;
   Offset? _sonTikPos;
 
+  // Hızlı işlem (barkod / üye no)
+  final _hizliController = TextEditingController();
+  final _hizliFocus = FocusNode();
+  bool _hizliBusy = false;
+  String? _hizliBekleyenUyeNo;
+  String? _hizliBekleyenBarkod;
+  String? _hizliMesaj;
+
   @override
   void initState() {
     super.initState();
@@ -167,6 +175,8 @@ class _OverviewState extends State<_Overview> {
   @override
   void dispose() {
     _kapatMenu();
+    _hizliController.dispose();
+    _hizliFocus.dispose();
     super.dispose();
   }
 
@@ -212,6 +222,126 @@ class _OverviewState extends State<_Overview> {
   }
 
   int get _gecikenSayisi => _loans.where((l) => l.durum == 'gecikmis').length;
+
+  void _hizliIptal() {
+    setState(() {
+      _hizliBekleyenUyeNo = null;
+      _hizliBekleyenBarkod = null;
+      _hizliMesaj = null;
+    });
+    _hizliFocus.requestFocus();
+  }
+
+  /// Hızlı işlem: barkod veya üye no. İlk girilen türe göre ikinci adım istenir.
+  /// - Barkod: ödünçteyse iade; müsaitse üye no istenir.
+  /// - Üye no: kitap barkodu istenir.
+  Future<void> _hizliIslem(String raw) async {
+    final q = raw.trim();
+    if (q.isEmpty || _hizliBusy) return;
+    _hizliController.clear();
+
+    // 2. adım: bekleyen üye + barkod
+    if (_hizliBekleyenUyeNo != null) {
+      await _hizliOdunc(_hizliBekleyenUyeNo!, q);
+      return;
+    }
+    // 2. adım: bekleyen barkod + üye no
+    if (_hizliBekleyenBarkod != null) {
+      await _hizliOdunc(q, _hizliBekleyenBarkod!);
+      return;
+    }
+
+    // 1. adım: türü çöz
+    setState(() {
+      _hizliBusy = true;
+      _hizliMesaj = null;
+    });
+    final data = await _api.fastQuery(q);
+    if (!mounted) return;
+    setState(() => _hizliBusy = false);
+    if (data == null) {
+      setState(() => _hizliMesaj = 'Eşleşme bulunamadı.');
+      return;
+    }
+    final type = data['type'];
+    if (type == 'book_copy') {
+      final copy = data['copy'] as Map<String, dynamic>?;
+      final durum = (copy?['durum'] ?? '').toString();
+      final loan = data['loan'] as Map<String, dynamic>?;
+      if (loan != null && (durum == 'oduncte' || durum == 'gecikmis')) {
+        await _hizliIade(loan);
+      } else if (durum == 'mevcut') {
+        final book = data['book'] as Map<String, dynamic>?;
+        setState(() {
+          _hizliBekleyenBarkod = (copy?['barkod'] ?? q).toString();
+          _hizliMesaj = '"${book?['baslik'] ?? q}" için üye no okutun.';
+        });
+      } else {
+        setState(() => _hizliMesaj = 'Bu nüsha ödünç verilemez (durum: $durum).');
+      }
+      return;
+    }
+    if (type == 'student') {
+      final s = data['student'] as Map<String, dynamic>?;
+      final no = (s?['no'] ?? s?['uye_no'] ?? q).toString();
+      setState(() {
+        _hizliBekleyenUyeNo = no;
+        _hizliMesaj =
+            '${s?['ad'] ?? ''} ${s?['soyad'] ?? ''} için kitap barkodu okutun.';
+      });
+      return;
+    }
+    setState(() => _hizliMesaj =
+        'Bu arama için Ödünç / İade sayfasını kullanın.');
+  }
+
+  Future<void> _hizliIade(Map<String, dynamic> loan) async {
+    final id = loan['id'] as int?;
+    if (id == null) return;
+    setState(() => _hizliBusy = true);
+    final resp = await _api.closeLoan(
+      id,
+      durum: 'teslim',
+      teslimTarihi: DateTime.now().toUtc().toIso8601String(),
+      gecikmeCezasi: loan['penalty_preview'] as String?,
+      odendi: false,
+    );
+    if (!mounted) return;
+    setState(() {
+      _hizliBusy = false;
+      _hizliMesaj = null;
+    });
+    final ok = resp.statusCode >= 200 && resp.statusCode < 300;
+    showAppSnack(
+      context,
+      ok ? 'İade alındı.' : extractError(resp, fallback: 'İade yapılamadı.'),
+      error: !ok,
+    );
+    if (ok) _load();
+    _hizliFocus.requestFocus();
+  }
+
+  Future<void> _hizliOdunc(String uyeNo, String barkod) async {
+    setState(() => _hizliBusy = true);
+    final resp = await _api.checkout(uyeNo, barkod);
+    if (!mounted) return;
+    setState(() {
+      _hizliBusy = false;
+      _hizliBekleyenUyeNo = null;
+      _hizliBekleyenBarkod = null;
+      _hizliMesaj = null;
+    });
+    final ok = resp.statusCode >= 200 && resp.statusCode < 300;
+    showAppSnack(
+      context,
+      ok
+          ? '$barkod ödünç verildi.'
+          : extractError(resp, fallback: 'Ödünç verilemedi.'),
+      error: !ok,
+    );
+    if (ok) _load();
+    _hizliFocus.requestFocus();
+  }
 
   /// Genel Bakış'tan hızlı iade: satıra çift tıklama.
   Future<void> _iadeAl(OduncKaydi l) async {
@@ -308,6 +438,8 @@ class _OverviewState extends State<_Overview> {
         const SizedBox(height: 8),
         Text('Ödünç, iade ve üye işlemleri için soldaki menüyü kullanın.',
             style: theme.textTheme.bodyMedium),
+        const SizedBox(height: 16),
+        _hizliIslemKarti(theme),
         const SizedBox(height: 24),
         Wrap(
           spacing: 16,
@@ -354,6 +486,69 @@ class _OverviewState extends State<_Overview> {
         _aktifOdunclerBolumu(theme),
       ],
     ),
+      ),
+    );
+  }
+
+  /// Hızlı işlem kartı: barkod/üye no ile hızlı iade-ödünç.
+  Widget _hizliIslemKarti(ThemeData theme) {
+    final bekliyor = _hizliBekleyenUyeNo != null || _hizliBekleyenBarkod != null;
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.qr_code_scanner, color: theme.colorScheme.primary),
+                const SizedBox(width: 8),
+                Text('Hızlı İşlem',
+                    style: theme.textTheme.titleSmall
+                        ?.copyWith(fontWeight: FontWeight.bold)),
+                const Spacer(),
+                if (bekliyor)
+                  TextButton(
+                    onPressed: _hizliBusy ? null : _hizliIptal,
+                    child: const Text('Vazgeç'),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _hizliController,
+              focusNode: _hizliFocus,
+              autofocus: true,
+              enabled: !_hizliBusy,
+              onSubmitted: _hizliIslem,
+              decoration: InputDecoration(
+                hintText: 'Barkod veya üye no okutun...',
+                prefixIcon: _hizliBusy
+                    ? const Padding(
+                        padding: EdgeInsets.all(12),
+                        child: SizedBox(
+                            height: 18,
+                            width: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2)),
+                      )
+                    : const Icon(Icons.qr_code_scanner),
+                border: const OutlineInputBorder(),
+                isDense: true,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              _hizliMesaj ??
+                  'Barkod ödünçteyse iade edilir; müsaitse üye no istenir. '
+                      'Üye no girilirse kitap barkodu istenir.',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: bekliyor
+                    ? theme.colorScheme.primary
+                    : theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
