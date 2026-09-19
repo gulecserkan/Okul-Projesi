@@ -36,6 +36,7 @@ class _StudentListScreenState extends State<StudentListScreen> {
   String _sortKey = 'uye_no';
   bool _sortAsc = true;
   Timer? _debounce;
+  OverlayEntry? _menuEntry;
 
   @override
   void initState() {
@@ -46,13 +47,20 @@ class _StudentListScreenState extends State<StudentListScreen> {
 
   @override
   void dispose() {
+    _kapatMenu();
     _debounce?.cancel();
     _scrollController.dispose();
     super.dispose();
   }
 
+  void _kapatMenu() {
+    _menuEntry?.remove();
+    _menuEntry = null;
+  }
+
   void _onScroll() {
     if (!_scrollController.hasClients) return;
+    if (_menuEntry != null) _kapatMenu();
     final pos = _scrollController.position;
     if (pos.pixels >= pos.maxScrollExtent - 200) _load(reset: false);
   }
@@ -234,7 +242,9 @@ void _snack(String msg, {bool error = false}) {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    return Listener(
+      onPointerDown: (_) => _kapatMenu(),
+      child: Column(
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
@@ -278,6 +288,7 @@ void _snack(String msg, {bool error = false}) {
         ),
         Expanded(child: _buildBody()),
       ],
+      ),
     );
   }
 
@@ -350,8 +361,9 @@ void _snack(String msg, {bool error = false}) {
     );
   }
 
-  /// Satıra tıklanınca imleç yanında yuvarlak (dilimli) işlem menüsü.
-  Future<void> _satirMenu(Uye o, Offset globalPos) async {
+  /// Satıra tıklanınca imlecin hemen altında yatay işlem menüsü (modal değil).
+  void _satirMenu(Uye o, Offset globalPos) {
+    _kapatMenu();
     final items = <RadialMenuItem>[
       const RadialMenuItem(
           icon: Icons.edit_outlined, label: 'Düzenle', value: 'duzenle'),
@@ -367,8 +379,23 @@ void _snack(String msg, {bool error = false}) {
         const RadialMenuItem(
             icon: Icons.delete_outline, label: 'Sil', value: 'sil'),
     ];
-    final secim = await showHorizontalRowMenu(context, globalPos, items);
-    if (!mounted || secim == null) return;
+    // Dış tıklama kapatması (Listener) ile aynı olayda çakışmaması için
+    // menüyü bir mikro-görevde aç.
+    scheduleMicrotask(() {
+      if (!mounted) return;
+      _menuEntry = buildHorizontalRowMenu(
+        globalPosition: globalPos,
+        items: items,
+        onSelect: (value) {
+          _kapatMenu();
+          _menuSecildi(o, value);
+        },
+      );
+      Overlay.of(context).insert(_menuEntry!);
+    });
+  }
+
+  Future<void> _menuSecildi(Uye o, String secim) async {
     switch (secim) {
       case 'duzenle':
         await _editStudent(o);
