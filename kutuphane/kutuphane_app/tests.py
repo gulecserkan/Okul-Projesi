@@ -1184,3 +1184,51 @@ class BorrowerAccountTests(APITestCase):
         relogin = self._login("9001", "Guvenli!234")
         self.assertEqual(relogin.status_code, status.HTTP_200_OK, relogin.content)
         self.assertFalse(relogin.data["parola_degistirilsin"])
+
+
+class UyeNoCaseInsensitiveTests(APITestCase):
+    """Üye numarası büyük/küçük harf duyarsız (5a01 ↔ 5A01)."""
+
+    def setUp(self):
+        make_policy()
+        self.sinif = Sinif.objects.create(ad="7-A")
+        self.rol = Rol.objects.create(ad="Öğrenci")
+        self.uye = Uye.objects.create(
+            ad="Ali", soyad="Veli", uye_no="5a01", sinif=self.sinif, rol=self.rol
+        )
+        self.admin = User.objects.create_superuser(username="admin", password="a1!")
+
+    def test_uye_no_upper_on_save(self):
+        self.uye.refresh_from_db()
+        self.assertEqual(self.uye.uye_no, "5A01")
+
+    def test_uye_no_case_insensitive_unique(self):
+        from django.db import IntegrityError, transaction
+
+        with self.assertRaises(IntegrityError):
+            with transaction.atomic():
+                Uye.objects.create(
+                    ad="X", soyad="Y", uye_no="5A01",
+                    sinif=self.sinif, rol=self.rol,
+                )
+
+    def test_login_case_insensitive(self):
+        self.client.force_authenticate(self.admin)
+        resp = self.client.patch(
+            f"/api/uyeler/{self.uye.id}/", {"sifre": "ilk1234"}, format="json"
+        )
+        self.assertEqual(resp.status_code, status.HTTP_200_OK, resp.content)
+        self.client.force_authenticate(None)
+        login = self.client.post(
+            "/api/token/", {"username": "5a01", "password": "ilk1234"}, format="json"
+        )
+        self.assertEqual(login.status_code, status.HTTP_200_OK, login.content)
+        self.assertEqual(login.data["uye_no"], "5A01")
+
+    def test_fast_query_and_penalty_case_insensitive(self):
+        self.client.force_authenticate(self.admin)
+        resp = self.client.get("/api/fast-query/", {"q": "5a01"})
+        self.assertEqual(resp.status_code, status.HTTP_200_OK, resp.content)
+        self.assertEqual(resp.data.get("type"), "student")
+        resp = self.client.get("/api/uye-ceza/5a01/")
+        self.assertEqual(resp.status_code, status.HTTP_200_OK, resp.content)

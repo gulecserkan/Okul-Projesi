@@ -1084,11 +1084,11 @@ class UyeGecmisView(ListAPIView):
     def get_queryset(self):
         uye_no = self.kwargs["uye_no"]
         borrower = requester_uye(self.request.user)
-        if borrower is not None and borrower.uye_no != uye_no:
+        if borrower is not None and (borrower.uye_no or "").upper() != uye_no.upper():
             return OduncKaydi.objects.none()
         return (
             OduncKaydi.objects
-            .filter(uye__uye_no=uye_no)
+            .filter(uye__uye_no__iexact=uye_no)
             .exclude(durum="iptal")
             .select_related("kitap_nusha__kitap", "uye")
             .order_by("-odunc_tarihi")
@@ -1098,12 +1098,12 @@ class UyeGecmisView(ListAPIView):
 class UyeCezaView(APIView):
     def get(self, request, uye_no):
         borrower = requester_uye(request.user)
-        if borrower is not None and borrower.uye_no != uye_no:
+        if borrower is not None and (borrower.uye_no or "").upper() != uye_no.upper():
             return Response({"detail": "Bu kayda erişim yetkiniz yok."},
                             status=status.HTTP_403_FORBIDDEN)
         uye = (
             Uye.objects
-            .filter(uye_no=uye_no)
+            .filter(uye_no__iexact=uye_no)
             .select_related("sinif", "rol")
             .first()
         )
@@ -1199,8 +1199,8 @@ class FastQueryView(APIView):
                 primary = matches[0]
                 return Response(self._book_payload(primary, "title", policy_data, suggestions=suggestions))
 
-        # 3. Öğrenci numarası kontrolü
-        uye = Uye.objects.filter(uye_no=q).select_related("sinif", "rol").first()
+        # 3. Öğrenci numarası kontrolü (büyük/küçük harf duyarsız)
+        uye = Uye.objects.filter(uye_no__iexact=q).select_related("sinif", "rol").first()
         if uye:
             aktif_oduncler = (
                 OduncKaydi.objects
@@ -1477,7 +1477,7 @@ class CheckoutView(APIView):
             return Response({"error": "uye_no ve barkod gerekli"}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            uye = Uye.objects.select_related("rol").get(uye_no=uye_no)
+            uye = Uye.objects.select_related("rol").get(uye_no__iexact=uye_no)
         except Uye.DoesNotExist:
             return Response({"error": "Öğrenci bulunamadı"}, status=status.HTTP_404_NOT_FOUND)
 

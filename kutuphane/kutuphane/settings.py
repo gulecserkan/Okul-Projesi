@@ -152,6 +152,11 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
+# K9: kullanıcı adı (üye numarası) büyük/küçük harf duyarsız giriş.
+AUTHENTICATION_BACKENDS = [
+    "kutuphane_app.auth_backends.CaseInsensitiveModelBackend",
+]
+
 # --- Güvenlik sıkılaştırma ---
 # Ters proxy (nginx vb.) HTTPS sonlandırıyorsa güvenilir header'ları kabul et
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")

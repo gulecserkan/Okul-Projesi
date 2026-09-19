@@ -81,6 +81,9 @@ class Uye(models.Model):
     arama = models.CharField(max_length=400, blank=True, default="")
 
     def save(self, *args, **kwargs):
+        # Üye numarası büyük/küçük harf duyarsız: kanonik biçim BÜYÜK harf.
+        if self.uye_no is not None:
+            self.uye_no = str(self.uye_no).strip().upper() or None
         self.arama = self._build_arama()
         super().save(*args, **kwargs)
 

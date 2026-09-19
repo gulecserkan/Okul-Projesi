@@ -172,7 +172,7 @@ Not: Akıllı raf öneri sistemi (rafların program tarafından düzenli tutulma
 | K9.2 | **Admin = `is_superuser`** (Django admin + tüm masaüstü). Personel kaydı kavramı yoktur | `IsAdminPersonel` |
 | K9.3 | **Operatör** = Uye bağı olmayan normal User; masaüstü yönetimi. **Editör** = `Uye.rol="Editör"` → öğretmen gibi ödünç + **kitap düzenleme** | `IsPersonel` / `IsEditor` |
 | K9.4 | **Üye uçları salt-okunur ve kendine ait**: kitap/kategori/yazar listesi açık; `uye-gecmis`/`uye-ceza` yalnız kendi numarası. Personel uçları (`uyeler`, `oduncler`, `nushalar`, `istatistik`, `checkout`, ayarlar...) üyeye **kapalı**; editör yalnız kitap düzenleme uçlarına erişir | `IsPersonel` + `IsEditor` + `requester_uye` |
-| K9.5 | Üye girişi: kullanıcı adı = `uye_no`; personel **basit başlangıç şifresi** belirler; ilk girişte **şifre değiştirme zorunlu** (`parola_degistirilsin`). `uye_no` personel/editör için opsiyonel, öğrencide zorunlu | `UyeSerializer`, `ChangePasswordView` |
+| K9.5 | Üye girişi: kullanıcı adı = `uye_no`; personel **basit başlangıç şifresi** belirler; ilk girişte **şifre değiştirme zorunlu** (`parola_degistirilsin`). `uye_no` personel/editör için opsiyonel, öğrencide zorunlu; **büyük harfe normalize edilir** ve arama/giriş **harf duyarsızdır** (5a01 ≡ 5A01) | `Uye.save`, `UyeSerializer`, `CaseInsensitiveModelBackend` |
 | K9.6 | `Uye.user` opsiyonel: Uye→User yalnız şifre verilince oluşturulur; User→Uye **otomatik değil**. Personel/öğretmen kendini **Ayarlar → "Kendimi üye olarak ekle"** ile bağlar (`POST /api/uyeler/ben-ekle/`) | `UyeViewSet.ben_ekle` |
 | K9.7 | **Tek mobil uygulama** rol bazlı: `uye` → gezinti + ödünçlerim; `editor` → kitap düzenleme + ödünçlerim; `personel`/admin → yönetim; ilk girişte şifre ekranı | `mobil/kutuphane` |
 
