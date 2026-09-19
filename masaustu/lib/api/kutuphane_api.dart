@@ -580,16 +580,18 @@ class KutuphaneApi {
     }
   }
 
-  /// Google Books otomatik doldurma önerisi (manuel giriş birincil). Faz C.
-  Future<({List<Map<String, dynamic>> results, String? error})> googleBook(
-    String q,
-  ) async {
+  /// Çok kaynaklı kitap arama (Google Books + Open Library). Faz C / K7.
+  /// ISBN doluysa `isbn` ile ISBN öncelikli arama yapılır.
+  Future<({List<Map<String, dynamic>> results, String? error})> bookLookup(
+    String q, {
+    String isbn = '',
+  }) async {
     try {
       final resp = await _client.request(
         'POST',
         'kitap-google/',
         auth: true,
-        body: {'q': q},
+        body: {'q': q, 'isbn': isbn},
       );
       if (resp.statusCode >= 200 && resp.statusCode < 300) {
         final data = jsonDecode(utf8.decode(resp.bodyBytes));

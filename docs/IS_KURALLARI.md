@@ -137,11 +137,13 @@ Not: Akıllı raf öneri sistemi (rafların program tarafından düzenli tutulma
 
 | # | Kural | İşlenir |
 |---|---|---|
-| K7.1 | Kitap eklerken başlık/ISBN ile otomatik veri+kapak çekme (Google Books, en çok 5 sonuç) **yardımcı** yoldur; manuel giriş birincildir | Evet — `POST /api/kitap-google/` |
-| K7.2 | Çekilen veri el ile doğrulanmadan kaydetme onayı ister (form "Google'dan Doldur" + kullanıcı düzenler, kaydeder) | Evet |
+| K7.1 | Kitap eklerken başlık/yazar/ISBN ile otomatik veri+kapak çekme (Google Books + Open Library, kaynak başına en çok 5 sonuç) **yardımcı** yoldur; manuel giriş birincildir | Evet — `POST /api/kitap-google/` |
+| K7.2 | Çekilen veri el ile doğrulanmadan kaydetme onayı ister (form "Doldur" + kullanıcı düzenler, kaydeder) | Evet |
 | K7.3 | İnternet yoksa/başarısızsa otomatik çekme gizlenir/sessizce biter, manuel giriş devam eder | Evet |
-| K7.4 | Kapak **dosya yüklenmez**; `kapak_url` alanına internet adresi depolanır (Google kitaplı adreslerde `zoom=2` kullanılır) | Evet |
-| K7.5 | Google araması `.env`'deki `GOOGLE_BOOKS_API_KEY` ile yapılır (anonim 429 havuzuna düşülmez); başarılı aramalar 7 gün önbelleklenir, ağ hatası/429 önbelleklenmez; istemci ardışık aramalar arasında en az 3 sn bekler; doldurma **akıllı birleştirir** (Google alanı boşsa mevcut değer korunur, doluysa Google değeri yazılır) | Evet — `kutuphane_app/book_lookup.py` |
+| K7.4 | Kapak **dosya yüklenmez**; `kapak_url` alanına internet adresi depolanır (Google kitaplı adreslerde `zoom=2` kullanılır). Adres doluysa form önizlemede kapak görselini **resim olarak gösterir**; görsel yüklenemezse sessizce/hata metniyle geçilir | Evet |
+| K7.5 | Arama Google Books (`.env` `GOOGLE_BOOKS_API_KEY`) + Open Library (anahtarsız) ile yapılır; başarılı aramalar 7 gün önbelleklenir, ağ hatası/429 önbelleklenmez; istemci ardışık aramalar arasında en az 3 sn bekler; doldurma **akıllı birleştirir** (gelen alan boşsa mevcut değer korunur, doluysa gelen değer yazılır) | Evet — `kutuphane_app/book_lookup.py` |
+| K7.6 | **ISBN önceliği:** ISBN alanı doluysa (veya arama metni ISBN ise) tire/boşluk normalize edilip `isbn:` ile aranır; kaynaklar ISBN'e göre tekilleştirilir, eksik alan/kapak diğer kaynaktan tamamlanır | Evet |
+| K7.7 | Sonuçlar **kapak görselli liste** olarak sunulur; kullanıcı seçer. Tek sonuç varsa doğrudan doldurulur. Kapak hiçbir kaynakta yoksa boş bırakılır | Evet |
 
 ---
 
@@ -166,5 +168,5 @@ Her kural için en az bir test:
   öğrenci durum yetkisi (K2.6), silme kısıtları (K2.7, K4.3-4.4).
 - Flutter widget: kapat diyaloğu + ceza önerisi; admin gating (K5).
 - K8: ISBN/başlık çakışma → 409, `force` bypass, farklı kitap → 201 (K8.1-8.2).
-- K7.5: anahtar URL'de; ikinci arama önbellekten gelir (ağ yok); 429 yanıtı.
+- K7.5: anahtar URL'de; ikinci arama önbellekten gelir (ağ yok); 429 yanıtı; ISBN önceliği (`isbn:` + Open Library `/isbn/`); kaynak birleştirme/tekilleştirme + kapak yedekleme (K7.5-K7.7).
 - E2E canlı smoke: checkout → kapat döngüsü.

@@ -101,8 +101,9 @@ class _BookFormDialogState extends State<BookFormDialog> {
 
   Future<void> _googleDoldur() async {
     final q = _googleController.text.trim();
-    if (q.length < 3) {
-      _snack('Google araması için en az 3 karakter girin.');
+    final isbn = _isbnController.text.trim();
+    if (q.length < 3 && isbn.isEmpty) {
+      _snack('Arama için en az 3 karakter veya bir ISBN girin.');
       return;
     }
     // K7.5: ardışık aramalar arasında en az 3 sn bekleyin (kota dostu).
@@ -113,18 +114,86 @@ class _BookFormDialogState extends State<BookFormDialog> {
     }
     _sonGoogle = now;
     setState(() => _busy = true);
-    final res = await _api.googleBook(q);
+    final res = await _api.bookLookup(q, isbn: isbn);
     if (!mounted) return;
     setState(() => _busy = false);
     if (res.results.isEmpty) {
       _snack(res.error ?? 'Sonuç bulunamadı.');
       return;
     }
-    final r = res.results.first;
+    final secili = res.results.length == 1
+        ? res.results.first
+        : await _sonucSec(res.results);
+    if (secili == null || !mounted) return;
+    _sonucuUygula(secili);
+  }
+
+  /// K7.1: arama sonuçlarını kapak resimli liste olarak sunar; seçilen döner.
+  Future<Map<String, dynamic>?> _sonucSec(
+    List<Map<String, dynamic>> results,
+  ) {
+    return showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Arama sonuçları'),
+        content: SizedBox(
+          width: 540,
+          height: 400,
+          child: ListView.separated(
+            itemCount: results.length,
+            separatorBuilder: (_, _) => const Divider(height: 1),
+            itemBuilder: (ctx, i) {
+              final r = results[i];
+              final yazar = (r['yazar'] as String? ?? '').trim();
+              final yil = r['yayin_yili'];
+              final kaynak = (r['kaynak'] as String? ?? '').trim();
+              return ListTile(
+                leading: _kapakKucuk((r['kapak_url'] as String?)?.trim()),
+                title: Text((r['baslik'] as String? ?? '').trim()),
+                subtitle: Text([
+                  if (yazar.isNotEmpty) yazar,
+                  if (yil != null) '$yil',
+                  if (kaynak.isNotEmpty) kaynak,
+                ].join(' · ')),
+                onTap: () => Navigator.of(ctx).pop(r),
+              );
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Vazgeç'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _kapakKucuk(String? url) {
+    const bos = SizedBox(
+      width: 40,
+      height: 56,
+      child: Icon(Icons.menu_book_rounded),
+    );
+    if (url == null || url.isEmpty) return bos;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(4),
+      child: Image.network(
+        url,
+        width: 40,
+        height: 56,
+        fit: BoxFit.cover,
+        errorBuilder: (_, _, _) => bos,
+      ),
+    );
+  }
+
+  void _sonucuUygula(Map<String, dynamic> r) {
     setState(() {
-      // Akıllı birleştir (K7.5): Google alanı boşsa kullanıcının girdiği
-      // değer korunur, doluysa Google değeri yazılır. Başlık hariç düzenleme
-      // modunda mevcut veriler silinmez.
+      // Akıllı birleştir (K7.5): kaynak alanı boşsa kullanıcının girdiği
+      // değer korunur, doluysa gelen değer yazılır. Düzenleme modunda mevcut
+      // veriler boş değerle silinmez.
       final gBaslik = (r['baslik'] as String? ?? '').trim();
       final gIsbn = (r['isbn'] as String? ?? '').trim();
       final gAciklama = (r['aciklama'] as String? ?? '').trim();
@@ -159,6 +228,35 @@ class _BookFormDialogState extends State<BookFormDialog> {
   void _snack(String msg) {
     if (!mounted) return;
     showAppSnack(context, msg);
+  }
+
+  /// K7.4: kapak adresi doluysa görseli önizlemede gösterir.
+  Widget _kapakOnizleme(BuildContext context) {
+    return ValueListenableBuilder<TextEditingValue>(
+      valueListenable: _kapakController,
+      builder: (context, value, _) {
+        final url = value.text.trim();
+        if (url.isEmpty) return const SizedBox.shrink();
+        return Padding(
+          padding: const EdgeInsets.only(top: 8),
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Image.network(
+                url,
+                height: 160,
+                fit: BoxFit.contain,
+                errorBuilder: (_, _, _) => Text(
+                  'Kapak görseli yüklenemedi.',
+                  style: TextStyle(color: dangerColor(context), fontSize: 12),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
   }
 
   Future<void> _save({bool force = false}) async {
@@ -414,13 +512,14 @@ class _BookFormDialogState extends State<BookFormDialog> {
                     isDense: true,
                   ),
                 ),
+                _kapakOnizleme(context),
                 const Divider(height: 24),
                 Row(children: [
                   Expanded(
                     child: TextField(
                       controller: _googleController,
                       decoration: const InputDecoration(
-                        hintText: 'Google Books araması...',
+                        hintText: 'Kitap ara (başlık / yazar / ISBN)...',
                         prefixIcon: Icon(Icons.travel_explore),
                         border: OutlineInputBorder(),
                         isDense: true,

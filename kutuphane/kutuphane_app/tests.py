@@ -41,7 +41,29 @@ from kutuphane_app.rules import (
     suggested_loss_penalty,
     validate_transition,
 )
-from kutuphane_app.book_lookup import google_books_lookup
+from kutuphane_app.book_lookup import (
+    lookup_books,
+    looks_like_isbn,
+    normalize_isbn,
+)
+
+
+class _FakeResp:
+    """`urlopen` taklidi için basit yanıt nesnesi (JSON gövde)."""
+
+    def __init__(self, payload):
+        import json as _json
+
+        self._body = _json.dumps(payload).encode("utf-8")
+
+    def read(self):
+        return self._body
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *a):
+        return False
 
 
 def make_policy(**kw):
@@ -863,12 +885,10 @@ class KatalogAPITests(APITestCase):
 
     def test_google_books_endpoint(self):
         import unittest.mock as mock
-        import json as _json
-        from io import BytesIO
 
         cache.clear()
 
-        fake_payload = {
+        google_payload = {
             "items": [
                 {
                     "volumeInfo": {
@@ -883,23 +903,42 @@ class KatalogAPITests(APITestCase):
             ]
         }
 
-        class FakeResp:
-            def read(self):
-                return _json.dumps(fake_payload).encode("utf-8")
+        def _route(req, **kwargs):
+            if "googleapis.com" in req.full_url:
+                return _FakeResp(google_payload)
+            return _FakeResp({"docs": []})
 
-            def __enter__(self):
-                return self
-
-            def __exit__(self, *a):
-                return False
-
-        with mock.patch("kutuphane_app.book_lookup.urlopen", return_value=FakeResp()):
+        with mock.patch("kutuphane_app.book_lookup.urlopen", side_effect=_route):
             resp = self.client.post("/api/kitap-google/", {"q": "sineklerin tanrisi"}, format="json")
         self.assertEqual(resp.status_code, status.HTTP_200_OK, resp.content)
         first = resp.data["results"][0]
         self.assertEqual(first["baslik"], "Sineklerin Tanrısı")
         self.assertEqual(first["isbn"], "9781234")
         self.assertIn("zoom=2", first["kapak_url"])
+        self.assertEqual(first["kaynak"], "google")
+
+    def test_google_books_isbn_endpoint(self):
+        import unittest.mock as mock
+
+        cache.clear()
+
+        def _route(req, **kwargs):
+            if "googleapis.com" in req.full_url:
+                return _FakeResp({"items": [{"volumeInfo": {
+                    "title": "Daginik Zihinler",
+                    "authors": ["Gabor Mate"],
+                    "industryIdentifiers": [{"type": "ISBN_10", "identifier": "6051924736"}],
+                }}]})
+            return _FakeResp({"docs": []})
+
+        with mock.patch("kutuphane_app.book_lookup.urlopen", side_effect=_route):
+            resp = self.client.post(
+                "/api/kitap-google/",
+                {"q": "", "isbn": "978-605-192-473-1"},
+                format="json",
+            )
+        self.assertEqual(resp.status_code, status.HTTP_200_OK, resp.content)
+        self.assertEqual(resp.data["results"][0]["baslik"], "Daginik Zihinler")
 
     def test_google_books_rete_limit_429(self):
         import unittest.mock as mock
@@ -908,10 +947,8 @@ class KatalogAPITests(APITestCase):
 
         cache.clear()
 
-        def _boom(*args, _headers=None, **kwargs):
-            req = args[0]
-            raise HTTPError(req.full_url, 429, "Too Many Requests",
-                            {}, BytesIO(b""))
+        def _boom(req, **kwargs):
+            raise HTTPError(req.full_url, 429, "Too Many Requests", {}, BytesIO(b""))
 
         with mock.patch("kutuphane_app.book_lookup.urlopen", side_effect=_boom):
             resp = self.client.post("/api/kitap-google/", {"q": "arnold"}, format="json")
@@ -920,71 +957,134 @@ class KatalogAPITests(APITestCase):
 
 
 class BookLookupTests(TestCase):
-    """K7.5: anahtar URL'de; önbellek 7 gün; 429/başarısız sonuç önbelleklenmez."""
+    """K7.1/K7.5: çok kaynaklı arama, ISBN önceliği, önbellek, 429 davranışı."""
 
     def setUp(self):
         cache.clear()
 
-    def _fake_http(self, payload, record):
-        import json as _json
+    def _fake_http(self, routes, record):
+        """`routes`: (url_parçası, payload) listesi; eşleşmeyen boş sözlük döner."""
         from unittest import mock
 
-        class FakeResp:
-            def read(self):
-                return _json.dumps(payload).encode("utf-8")
-
-            def __enter__(self):
-                return self
-
-            def __exit__(self, *a):
-                return False
-
         def _capture(req, **kwargs):
-            record["calls"] += 1
-            record["url"] = req.full_url
-            return FakeResp()
+            url = req.full_url
+            record["urls"].append(url)
+            for needle, payload in routes:
+                if needle in url:
+                    return _FakeResp(payload)
+            return _FakeResp({})
 
         return mock.patch("kutuphane_app.book_lookup.urlopen", side_effect=_capture)
 
-    def test_key_and_country_in_url_when_set(self):
+    def _record(self):
+        return {"urls": []}
+
+    def _google_urls(self, record):
+        return [u for u in record["urls"] if "googleapis.com" in u]
+
+    def test_normalize_and_detect_isbn(self):
+        self.assertEqual(normalize_isbn("978-605-192-473-1"), "9786051924731")
+        self.assertTrue(looks_like_isbn("978-605-192-473-1"))
+        self.assertFalse(looks_like_isbn("Dağınık Zihinler"))
+
+    def test_google_url_has_key_country_and_results(self):
         payload = {"items": [{"volumeInfo": {"title": "Kurtuluş Savaşı"}}]}
-        record = {"calls": 0, "url": ""}
+        record = self._record()
         with override_settings(GOOGLE_BOOKS_API_KEY="AIza_TEST_KEY"):
-            with self._fake_http(payload, record):
-                results, err = google_books_lookup("kurtulus savasi")
+            with self._fake_http(
+                [("googleapis.com", payload), ("openlibrary.org", {"docs": []})], record
+            ):
+                results, err = lookup_books("kurtulus savasi")
         self.assertIsNone(err)
         self.assertEqual(results[0]["baslik"], "Kurtuluş Savaşı")
-        self.assertIn("key=AIza_TEST_KEY", record["url"])
-        self.assertIn("country=TR", record["url"])
+        gurl = self._google_urls(record)[0]
+        self.assertIn("key=AIza_TEST_KEY", gurl)
+        self.assertIn("country=TR", gurl)
 
     def test_no_key_when_unset(self):
-        payload = {"items": []}
-        record = {"calls": 0, "url": ""}
+        record = self._record()
         with override_settings(GOOGLE_BOOKS_API_KEY=""):
-            with self._fake_http(payload, record):
-                _, err = google_books_lookup("deneme")
+            with self._fake_http(
+                [("googleapis.com", {"items": []}), ("openlibrary.org", {"docs": []})], record
+            ):
+                _, err = lookup_books("deneme")
         self.assertEqual(err, "not_found")
-        self.assertNotIn("key=", record["url"])
+        self.assertTrue(all("key=" not in u for u in self._google_urls(record)))
+
+    def test_isbn_search_uses_isbn_prefix_and_ol_endpoint(self):
+        record = self._record()
+        google = {"items": [{"volumeInfo": {
+            "title": "Daginik Zihinler",
+            "industryIdentifiers": [{"type": "ISBN_10", "identifier": "6051924736"}],
+        }}]}
+        with self._fake_http(
+            [("googleapis.com", google), ("openlibrary.org", {"docs": []})], record
+        ):
+            results, err = lookup_books(isbn="978-605-192-473-1")
+        self.assertIsNone(err)
+        self.assertEqual(results[0]["baslik"], "Daginik Zihinler")
+        gurl = self._google_urls(record)[0]
+        self.assertIn("9786051924731", gurl)
+        self.assertIn("isbn", gurl)
+        self.assertTrue(any("/isbn/9786051924731.json" in u for u in record["urls"]))
+
+    def test_isbn_autodetected_from_q(self):
+        record = self._record()
+        with self._fake_http(
+            [("googleapis.com", {"items": []}), ("openlibrary.org", {"docs": []})], record
+        ):
+            _, err = lookup_books("9786051924731")
+        self.assertEqual(err, "not_found")
+        self.assertIn("9786051924731", self._google_urls(record)[0])
+
+    def test_merge_dedupes_and_takes_ol_cover(self):
+        record = self._record()
+        google = {"items": [{"volumeInfo": {
+            "title": "Tutunamayanlar",
+            "authors": ["Oğuz Atay"],
+            "industryIdentifiers": [{"type": "ISBN_10", "identifier": "9754700117"}],
+        }}]}
+        ol_edition = {
+            "title": "Tutunamayanlar",
+            "by_statement": "Oguz Atay.",
+            "covers": [8730101],
+            "isbn_13": ["9789754700114"],
+            "isbn_10": ["9754700117"],
+        }
+        with self._fake_http(
+            [("googleapis.com", google), ("openlibrary.org", ol_edition)], record
+        ):
+            results, err = lookup_books(isbn="9754700117")
+        self.assertIsNone(err)
+        self.assertEqual(len(results), 1)
+        self.assertIn("covers.openlibrary.org/b/id/8730101", results[0]["kapak_url"])
+        self.assertEqual(results[0]["yazar"], "Oğuz Atay")
 
     def test_cache_hit_no_network(self):
+        record = self._record()
         payload = {"items": [{"volumeInfo": {"title": "Devlet-i Aliyye"}}]}
-        record = {"calls": 0, "url": ""}
-        with self._fake_http(payload, record):
-            r1, e1 = google_books_lookup("İlber Ortaylı")
-            r2, e2 = google_books_lookup("İLBER ORTAYLI")
-        self.assertEqual(record["calls"], 1)
+        with self._fake_http(
+            [("googleapis.com", payload), ("openlibrary.org", {"docs": []})], record
+        ):
+            r1, e1 = lookup_books("İlber Ortaylı")
+            after_first = len(record["urls"])
+            r2, e2 = lookup_books("İLBER ORTAYLI")
+        self.assertEqual(len(record["urls"]), after_first)
         self.assertIsNone(e1)
         self.assertIsNone(e2)
         self.assertEqual(r1, r2)
 
     def test_empty_result_cached(self):
-        record = {"calls": 0, "url": ""}
-        with self._fake_http({"items": []}, record):
-            _, e1 = google_books_lookup("olmayan-kitap-xyz")
-            _, e2 = google_books_lookup("olmayan-kitap-xyz")
+        record = self._record()
+        with self._fake_http(
+            [("googleapis.com", {"items": []}), ("openlibrary.org", {"docs": []})], record
+        ):
+            _, e1 = lookup_books("olmayan-kitap-xyz")
+            after_first = len(record["urls"])
+            _, e2 = lookup_books("olmayan-kitap-xyz")
         self.assertEqual(e1, "not_found")
         self.assertEqual(e2, "not_found")
-        self.assertEqual(record["calls"], 1)
+        self.assertEqual(len(record["urls"]), after_first)
 
     def test_429_not_cached(self):
         import unittest.mock as mock
@@ -995,8 +1095,25 @@ class BookLookupTests(TestCase):
             raise HTTPError(req.full_url, 429, "Too Many Requests", {}, BytesIO(b""))
 
         with mock.patch("kutuphane_app.book_lookup.urlopen", side_effect=_boom) as m:
-            _, e1 = google_books_lookup("arnold")
-            _, e2 = google_books_lookup("arnold")
+            _, e1 = lookup_books("arnold")
+            _, e2 = lookup_books("arnold")
         self.assertEqual(e1, "429")
         self.assertEqual(e2, "429")
-        self.assertEqual(m.call_count, 2)
+        self.assertEqual(m.call_count, 4)
+
+    def test_open_library_404_not_error_when_google_has_result(self):
+        import unittest.mock as mock
+        from io import BytesIO
+        from urllib.error import HTTPError
+
+        google = {"items": [{"volumeInfo": {"title": "Daginik Zihinler"}}]}
+
+        def _route(req, **kwargs):
+            if "googleapis.com" in req.full_url:
+                return _FakeResp(google)
+            raise HTTPError(req.full_url, 404, "Not Found", {}, BytesIO(b""))
+
+        with mock.patch("kutuphane_app.book_lookup.urlopen", side_effect=_route):
+            results, err = lookup_books(isbn="9786051924731")
+        self.assertIsNone(err)
+        self.assertEqual(results[0]["baslik"], "Daginik Zihinler")

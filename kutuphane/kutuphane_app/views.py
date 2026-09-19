@@ -19,7 +19,7 @@ from django.utils.dateparse import parse_datetime
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 
-from .book_lookup import google_books_lookup
+from .book_lookup import lookup_books
 
 from .models import (
     Ogrenci,
@@ -617,33 +617,35 @@ class KitapNushaViewSet(viewsets.ModelViewSet):
 class GoogleBooksView(APIView):
     """Faz C: internetten kitap verisi + kapak önerisi (manuel giriş birincil).
 
-    K7.5: arama `.env`'deki API anahtarıyla yapılır; sonuçlar 7 gün önbelleklenir.
+    K7.1/K7.5: Google Books + Open Library birlikte aranır; ISBN verilirse
+    ISBN önceliklidir. Sonuçlar 7 gün önbelleklenir.
     """
 
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
         q = (request.data.get("q") or "").strip()
-        if len(q) < 3:
+        isbn = (request.data.get("isbn") or "").strip()
+        if len(q) < 3 and not isbn:
             return Response(
-                {"error": "Arama için en az 3 karakter girin."},
+                {"error": "Arama için en az 3 karakter veya bir ISBN girin."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        results, err = google_books_lookup(q)
+        results, err = lookup_books(q, isbn=isbn)
         if err == "429":
             return Response(
-                {"error": "Google Books geçici olarak çok sayıda istek aldı (429); "
+                {"error": "Arama servisi geçici olarak çok sayıda istek aldı (429); "
                           "kısa süre sonra tekrar deneyin. Manuel girişe devam edebilirsiniz."},
                 status=status.HTTP_429_TOO_MANY_REQUESTS,
             )
         if err == "bad_gateway":
             return Response(
-                {"error": "İnternet/Google Books'a erişilemedi. Manuel girişi kullanın."},
+                {"error": "İnternet/arama servisine erişilemedi. Manuel girişi kullanın."},
                 status=status.HTTP_502_BAD_GATEWAY,
             )
         if err == "not_found":
             return Response(
-                {"error": "Google Books'ta sonuç bulunamadı."},
+                {"error": "Kaynaklarda sonuç bulunamadı."},
                 status=status.HTTP_404_NOT_FOUND,
             )
         return Response({"results": results})
