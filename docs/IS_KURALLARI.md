@@ -35,7 +35,7 @@
 | K2.3 | Pasif öğrenci ödünç verme | Reddedilir: "Pasif öğrenci (mezun/nakil/tasdikname) ödünç alamaz" | `CheckoutView` | ✓ mevcut (views.py:1062) |
 | K2.4 | Pasif edilirken aktif ödüncü varsa | İşlem **yapılır ama** uyarı döner; kitaplar otomatik kapatılmaz (fiziksel toplama kullanıcı işi) | kapat/status response, masaüstü uyarı | Evet |
 | K2.5 | Pasif öğrencinin geçmişi | Kayıtlar **korunur**, silinmez; arşiv akışı 3 yıl sonra devreye girer | admin arşiv, geçmiş ekranları | Mevcut (admin) |
-| K2.6 | `aktif/pasif` değişimi yetkisi | Yalnız `admin` (`IsAdminPersonel`) | `OgrenciViewSet` durum action | Evet |
+| K2.6 | `aktif/pasif` değişimi yetkisi | Yalnız `admin` (`IsAdminPersonel`) | `UyeViewSet` durum action | Evet |
 | K2.7 | Öğrenci silme (CRUD) | **Hiçbir `OduncKaydi` kaydı yoksa** silinebilir; varsa sileme reddedilir, pasife alınır | `can_delete_ogrenci` | Evet |
 
 Not: Öğrenci→ödünç FK'sı `CASCADE` olduğundan, silme kurallarına uyulmazsa **tüm geçmiş
@@ -160,19 +160,23 @@ Not: Akıllı raf öneri sistemi (rafların program tarafından düzenli tutulma
 
 ---
 
-## 9. KİMLİK VE HESAP TİPLERİ (K9)
+## 9. KİMLİK VE ÜYE MODELİ (K9)
 
-İki hesap tipi: **personel** (kütüphane görevlisi/editör) ve **üye** (öğrenci/öğretmen).
-Öğretmen/öğrenci ayrımı `Rol` (ödünç grubu) ile; "kitap düzenleme" ise hesap tipiyle çözülür.
+**İki tablo:** `User` (kimlik) + `Uye` (kişi). `Personel` tablosu kaldırıldı.
+`Uye` = kütüphane kişisi (öğrenci/öğretmen/editör); ödünç/iade/ceza buraya bağlı.
+`Uye.user` **opsiyonel** 1:1 bağlantıdır.
 
 | # | Kural | İşlenir |
 |---|---|---|
-| K9.1 | Token `tip` taşır: `personel` (Personel kaydı) veya `uye` (Ogrenci bağlantılı üye). Üye için `ogrenci_no` da eklenir | `TokenObtainPairSerializer` |
-| K9.2 | Personel kaydı olmayan **superuser/staff** admin sayılır (`tip=personel, role=admin`) — masaüstünde admin ekranları görünür | Evet |
-| K9.3 | **Editör öğretmen** = `Personel(rol=personel)`: kitap ekle/düzenle yapar; silme/katalog/öğrenci yönetimi yok | `IsPersonel` / `IsAdminPersonel` |
-| K9.4 | **Üye uçları salt-okunur ve kendine ait**: kitap/kategori/yazar listesi açık; `student-history`/`student-penalties` yalnız kendi numarası. Personel uçları (`ogrenciler`, `oduncler`, `nushalar`, `istatistik`, `checkout`, ayarlar...) üyeye **kapalı** | `IsPersonel` + `requester_ogrenci` |
-| K9.5 | Üye girişi: kullanıcı adı = `ogrenci_no`; personel **basit başlangıç şifresi** belirler; ilk girişte **şifre değiştirme zorunlu** (`parola_degistirilsin`) | `OgrenciSerializer.sifre`, `ChangePasswordView` |
-| K9.6 | **Tek mobil uygulama** rol bazlı çalışır: `personel` → kitap yönetimi; `uye` → gezinti + ödünçlerim; ilk girişte şifre ekranı | `mobil/kutuphane` |
+| K9.1 | Token `tip` taşır: `personel` (operatör/admin) veya `uye` (Uye bağlantılı). `role`: `admin`\|`personel`\|`editor`\|`ogretmen`\|`ogrenci`. Üye için `uye_no` da eklenir | `TokenObtainPairSerializer` |
+| K9.2 | **Admin = `is_superuser`** (Django admin + tüm masaüstü). Personel kaydı kavramı yoktur | `IsAdminPersonel` |
+| K9.3 | **Operatör** = Uye bağı olmayan normal User; masaüstü yönetimi. **Editör** = `Uye.rol="Editör"` → öğretmen gibi ödünç + **kitap düzenleme** | `IsPersonel` / `IsEditor` |
+| K9.4 | **Üye uçları salt-okunur ve kendine ait**: kitap/kategori/yazar listesi açık; `uye-gecmis`/`uye-ceza` yalnız kendi numarası. Personel uçları (`uyeler`, `oduncler`, `nushalar`, `istatistik`, `checkout`, ayarlar...) üyeye **kapalı**; editör yalnız kitap düzenleme uçlarına erişir | `IsPersonel` + `IsEditor` + `requester_uye` |
+| K9.5 | Üye girişi: kullanıcı adı = `uye_no`; personel **basit başlangıç şifresi** belirler; ilk girişte **şifre değiştirme zorunlu** (`parola_degistirilsin`). `uye_no` personel/editör için opsiyonel, öğrencide zorunlu | `UyeSerializer`, `ChangePasswordView` |
+| K9.6 | `Uye.user` opsiyonel: Uye→User yalnız şifre verilince oluşturulur; User→Uye **otomatik değil**. Personel/öğretmen kendini **Ayarlar → "Kendimi üye olarak ekle"** ile bağlar (`POST /api/uyeler/ben-ekle/`) | `UyeViewSet.ben_ekle` |
+| K9.7 | **Tek mobil uygulama** rol bazlı: `uye` → gezinti + ödünçlerim; `editor` → kitap düzenleme + ödünçlerim; `personel`/admin → yönetim; ilk girişte şifre ekranı | `mobil/kutuphane` |
+
+> Not: `Rol` (Öğrenci/Öğretmen/Editör) ödünç grubudur ve `RoleLoanPolicy` ile süre/limit/ceza belirler; Editör politikası Öğretmen ile aynıdır.
 
 ---
 
@@ -181,9 +185,9 @@ Not: Akıllı raf öneri sistemi (rafların program tarafından düzenli tutulma
 Her kural için en az bir test:
 - `rules.py` birim testleri (matris K3.1, çift yazım K3.2, pasif_tarihi K2.1-2).
 - API: `kapat` her senaryo (K3.1-3.6), ham PATCH kilidi (K3.7), pasif checkout (K2.3),
-  öğrenci durum yetkisi (K2.6), silme kısıtları (K2.7, K4.3-4.4).
+  üye durum yetkisi (K2.6), silme kısıtları (K2.7, K4.3-4.4).
 - Flutter widget: kapat diyaloğu + ceza önerisi; admin gating (K5).
 - K8: ISBN/başlık çakışma → 409, `force` bypass, farklı kitap → 201 (K8.1-8.2).
 - K7.5: anahtar URL'de; ikinci arama önbellekten gelir (ağ yok); 429 yanıtı; ISBN önceliği (`isbn:` + Open Library `/isbn/`); kaynak birleştirme/tekilleştirme + kapak yedekleme (K7.5-K7.7).
-- K9: superuser token `role=admin`; üye girişi (`tip=uye`, `ogrenci_no`, `parola_degistirilsin`); üye personel ucuna 403; kendi/başkası geçmiş kapsamı; şifre değişince bayrak kalkar (K9.1-K9.5).
+- K9: superuser token `role=admin`; üye girişi (`tip=uye`, `uye_no`, `parola_degistirilsin`); üye personel ucuna 403; editör kitap ekleyebilir / üye listesine 403; kendi/başkası geçmiş kapsamı; şifre değişince bayrak kalkar (K9.1-K9.6).
 - E2E canlı smoke: checkout → kapat döngüsü.

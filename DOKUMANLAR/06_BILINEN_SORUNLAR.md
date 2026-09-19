@@ -37,8 +37,8 @@ Durum etiketleri: ✅ çözüldü (dalda) · ⏳ açık
 
 1. **Postgres'e bağımlılık**: trigram (`pg_trgm`), `ArrayAgg`, `DATE_TRUNC`, `TrigramSimilarity`. DB PostgreSQL değilse çalışmaz.
 2. **Arşiv & restore yıkıcıdır**: `arsiv_onayla` canlı öğrenciyi siliyor; restore önce `flush`. Yedek alınmadan yapılmamalı.
-3. ✅ **CSV içe aktarma pasifleştirme**: artık varsayılan kapalı (`OgrenciResource.pasiflestir=False`); kısmi CSV güvenle yüklenir.
-4. ⏳ **JWT tek doğrulama** — DRF permission seviyesinde rol ayrımı yalnızca personel yazma işlemleri için var (`IsAdminPersonel`); diğer uçlarda iş mantığı rollerde.
+3. ✅ **CSV içe aktarma pasifleştirme**: artık varsayılan kapalı (`UyeResource.pasiflestir=False`); kısmi CSV güvenle yüklenir.
+4. ⏳ **JWT tek doğrulama** — DRF permission seviyesinde rol ayrımı: `IsAdminPersonel` (admin=superuser), `IsPersonel` (operatör), `IsEditor` (kitap düzenleme); üye uçları self-scoped (K9).
 5. **Zaman dilimi**: `TIME_ZONE='Europe/Istanbul'`, `USE_TZ=True`; istemciler UTC ISO gönderir.
 6. ✅ **Barkod**: sunucu otomatik üretir (`KIT`+6 hane); artık tek `MAX` sorgusu + IntegrityError retry — çakışma riski yok denecek kadar az.
 7. **Anahtar teslim ssh** proje dışı; docs'ta yok (güvenlik notu: `~/.git-credentials` token içeriyor — paylaşılmamalı).

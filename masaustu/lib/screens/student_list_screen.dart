@@ -23,7 +23,7 @@ class _StudentListScreenState extends State<StudentListScreen> {
   final _searchController = TextEditingController();
   final _scrollController = ScrollController();
 
-  List<Ogrenci> _items = [];
+  List<Uye> _items = [];
   int _total = 0;
   int _loadedPage = 0;
   bool _hasMore = true;
@@ -37,8 +37,8 @@ class _StudentListScreenState extends State<StudentListScreen> {
   final _stackKey = GlobalKey();
   int _scrollTick = 0;
 
-  GlobalKey _rowKeyOf(Ogrenci o) =>
-      _rowKeys.putIfAbsent(o.id, () => GlobalObjectKey('ogrenci-${o.id}'));
+  GlobalKey _rowKeyOf(Uye o) =>
+      _rowKeys.putIfAbsent(o.id, () => GlobalObjectKey('uye-${o.id}'));
 
   @override
   void initState() {
@@ -95,7 +95,7 @@ class _StudentListScreenState extends State<StudentListScreen> {
       setState(() {
         _initialLoading = false;
         _loadingMore = false;
-        _error = 'Öğrenci listesi alınamadı. Bağlantıyı kontrol edin.';
+        _error = 'Üye listesi alınamadı. Bağlantıyı kontrol edin.';
       });
     }
   }
@@ -122,39 +122,39 @@ class _StudentListScreenState extends State<StudentListScreen> {
     });
   }
 
-  void _openDetail(Ogrenci o) async {
-    final result = await Navigator.of(context).push<Ogrenci>(
+  void _openDetail(Uye o) async {
+    final result = await Navigator.of(context).push<Uye>(
       MaterialPageRoute(
-        builder: (_) => StudentDetailScreen(ogrenci: o),
+        builder: (_) => StudentDetailScreen(uye: o),
       ),
     );
     if (result != null && mounted) _load(reset: true);
   }
 
   Future<void> _newStudent() async {
-    final saved = await showDialog<Ogrenci>(
+    final saved = await showDialog<Uye>(
       context: context,
       builder: (_) => const StudentFormDialog(),
     );
     if (saved != null && mounted) _load(reset: true);
   }
 
-  Future<void> _editStudent(Ogrenci o) async {
-    final saved = await showDialog<Ogrenci>(
+  Future<void> _editStudent(Uye o) async {
+    final saved = await showDialog<Uye>(
       context: context,
-      builder: (_) => StudentFormDialog(ogrenci: o),
+      builder: (_) => StudentFormDialog(uye: o),
     );
     if (saved != null && mounted) _load(reset: true);
   }
 
-  Future<void> _deleteStudent(Ogrenci o) async {
+  Future<void> _deleteStudent(Uye o) async {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('Öğrenciyi sil'),
+        title: const Text('Üyeyi sil'),
         content: Text(
-            '${o.adSoyad} (${o.ogrenciNo}) silinecek. Bu işlem kalıcıdır; '
-            'yalnızca ödünç geçmişi olmayan öğrenciler silinebilir. Onaylıyor musunuz?'),
+            '${o.adSoyad} (${o.uyeNo}) silinecek. Bu işlem kalıcıdır; '
+            'yalnızca ödünç geçmişi olmayan üyeler silinebilir. Onaylıyor musunuz?'),
         actions: [
           TextButton(
               onPressed: () => Navigator.of(context).pop(false),
@@ -171,7 +171,7 @@ class _StudentListScreenState extends State<StudentListScreen> {
     if (!mounted) return;
     if (res.ok) {
       setState(() => _selectedId = null);
-      _snack('Öğrenci silindi.');
+      _snack('Üye silindi.');
       _load(reset: true);
     } else {
       _snack(res.error ?? 'Silme yapılamadı.', error: true);
@@ -184,15 +184,15 @@ void _snack(String msg, {bool error = false}) {
     showAppSnack(context, msg, error: error);
   }
 
-  Future<void> _toggleStatus(Ogrenci o) async {
+  Future<void> _toggleStatus(Uye o) async {
     final targetAktif = !o.aktif;
     final confirm = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: Text(targetAktif ? 'Öğrenciyi aktifleştir' : 'Öğrenciyi pasife al'),
+        title: Text(targetAktif ? 'Üyeyi aktifleştir' : 'Üyeyi pasife al'),
         content: Text(targetAktif
-            ? '${o.adSoyad} (${o.ogrenciNo}) tekrar aktif olacak. Onaylıyor musunuz?'
-            : '${o.adSoyad} (${o.ogrenciNo}) pasife alınacak (mezun/nakil/tasdikname için). '
+            ? '${o.adSoyad} (${o.uyeNo}) tekrar aktif olacak. Onaylıyor musunuz?'
+            : '${o.adSoyad} (${o.uyeNo}) pasife alınacak (mezun/nakil/tasdikname için). '
                 'Geçmiş kayıtları korunur; yeni ödünç verilemez. Onaylıyor musunuz?'),
         actions: [
           TextButton(
@@ -211,7 +211,7 @@ void _snack(String msg, {bool error = false}) {
     if (res.ok) {
       final extra =
           res.warnings.isEmpty ? '' : ' Uyarı: ${res.warnings.join(' ')}';
-      _snack((targetAktif ? 'Öğrenci aktifleştirildi.' : 'Öğrenci pasife alındı.') +
+      _snack((targetAktif ? 'Üye aktifleştirildi.' : 'Üye pasife alındı.') +
           extra);
       _load(reset: true);
     } else {
@@ -250,7 +250,7 @@ void _snack(String msg, {bool error = false}) {
               FilledButton.icon(
                 onPressed: _newStudent,
                 icon: const Icon(Icons.person_add),
-                label: const Text('Yeni Öğrenci'),
+                label: const Text('Yeni Üye'),
               ),
             ],
           ),
@@ -259,7 +259,7 @@ void _snack(String msg, {bool error = false}) {
           padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Align(
             alignment: Alignment.centerLeft,
-            child: Text('$_total öğrenci',
+            child: Text('$_total üye',
                 style: Theme.of(context).textTheme.bodySmall),
           ),
         ),
@@ -289,8 +289,8 @@ void _snack(String msg, {bool error = false}) {
     if (_items.isEmpty) {
       return Center(
         child: Text(_query.isEmpty
-            ? 'Kayıtlı öğrenci bulunamadı.'
-            : 'Aranan kriterde öğrenci yok.'),
+            ? 'Kayıtlı üye bulunamadı.'
+            : 'Aranan kriterde üye yok.'),
       );
     }
     final selectedIdx = _selectedId == null
@@ -308,7 +308,7 @@ void _snack(String msg, {bool error = false}) {
               footer: _footer(),
               minWidth: 900,
               columns: const [
-                RowTableColumn('Öğrenci No', flex: 2),
+                RowTableColumn('Üye No', flex: 2),
                 RowTableColumn('Ad Soyad', flex: 3),
                 RowTableColumn('Sınıf', flex: 1),
                 RowTableColumn('Telefon', flex: 3),
@@ -324,7 +324,7 @@ void _snack(String msg, {bool error = false}) {
                     },
                     onOpen: () => _openDetail(o),
                     cells: [
-                      Text(o.ogrenciNo,
+                      Text(o.uyeNo,
                           style: const TextStyle(fontWeight: FontWeight.w600)),
                       Text(o.adSoyad, overflow: TextOverflow.ellipsis),
                       Text(o.sinif?.ad ?? '—'),

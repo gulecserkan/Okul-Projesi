@@ -22,7 +22,7 @@ from django.core.exceptions import ValidationError
 from .book_lookup import lookup_books
 
 from .models import (
-    Ogrenci,
+    Uye,
     Sinif,
     Rol,
     Yazar,
@@ -31,7 +31,6 @@ from .models import (
     Kitap,
     KitapNusha,
     OduncKaydi,
-    Personel,
     LoanPolicy,
     RoleLoanPolicy,
     NotificationSettings,
@@ -45,14 +44,14 @@ from .rules import (
     apply_student_status,
     can_delete_kitap,
     can_delete_nusha,
-    can_delete_ogrenci,
+    can_delete_uye,
     can_duzelt_nusha,
     merge_referential,
     similar_kitap,
     validate_transition,
 )
 from .serializers import (
-    OgrenciSerializer,
+    UyeSerializer,
     SinifSerializer,
     RolSerializer,
     YazarSerializer,
@@ -62,7 +61,6 @@ from .serializers import (
     KitapDetailSerializer,
     KitapNushaSerializer,
     OduncKaydiSerializer,
-    PersonelSerializer,
     LoanPolicySerializer,
     RoleLoanPolicySerializer,
     NotificationSettingsSerializer,
@@ -135,24 +133,17 @@ def _client_ip_from_request(request):
 
 
 class IsAdminPersonel(BasePermission):
-    """Yalnızca süper kullanıcı/staff veya 'admin' rotlu personel erişebilir."""
+    """K9: yalnızca süper kullanıcı (admin) erişebilir."""
 
     message = "Bu işlem için yönetici yetkisi gerekli."
 
     def has_permission(self, request, view):
         user = getattr(request, "user", None)
-        if not user or not user.is_authenticated:
-            return False
-        if user.is_superuser or user.is_staff:
-            return True
-        personel = getattr(user, "personel", None)
-        return personel is not None and getattr(personel, "rol", None) == "admin"
+        return bool(user and user.is_authenticated and user.is_superuser)
 
 
 class IsPersonel(BasePermission):
-    """K9: personel uçları için. Üye (Ogrenci bağlantılı, Personel olmayan)
-    hesaplar erişemez; superuser/staff ve Personel kayıtlı kullanıcılar erişir.
-    """
+    """K9: operatör/admin uçları. Üye (editör dahil) ve borçlular erişemez."""
 
     message = "Bu işlem için personel yetkisi gerekli."
 
@@ -160,31 +151,42 @@ class IsPersonel(BasePermission):
         user = getattr(request, "user", None)
         if not user or not user.is_authenticated:
             return False
-        if user.is_superuser or user.is_staff:
+        if user.is_superuser:
             return True
-        personel = getattr(user, "personel", None)
-        ogrenci = getattr(user, "ogrenci", None)
-        if personel is None and ogrenci is not None:
-            return False  # yalnız üye hesabı
-        return True
+        return getattr(user, "uye", None) is None  # operatör (üye bağı yok)
 
 
-def requester_ogrenci(user):
-    """K9: istek sahibi üye (öğrenci/öğretmen) ise Ogrenci kaydını döner.
+class IsEditor(BasePermission):
+    """K9: kitap düzenleme uçları. Operatör/admin + 'Editör' rollü üyeler."""
 
-    Personel/superuser/staff için None döner (kısıt yok).
+    message = "Bu işlem için düzenleme yetkisi gerekli."
+
+    def has_permission(self, request, view):
+        user = getattr(request, "user", None)
+        if not user or not user.is_authenticated:
+            return False
+        if user.is_superuser:
+            return True
+        uye = getattr(user, "uye", None)
+        if uye is None:
+            return True  # operatör
+        return bool(uye.rol and uye.rol.ad == "Editör")
+
+
+def requester_uye(user):
+    """K9: istek sahibi üye ise Uye kaydını döner (self-kapsam).
+
+    Superuser ve operatör için None döner (kısıt yok).
     """
     if not user or not user.is_authenticated:
         return None
-    if user.is_superuser or user.is_staff:
+    if user.is_superuser:
         return None
-    if getattr(user, "personel", None) is not None:
-        return None
-    return getattr(user, "ogrenci", None)
+    return getattr(user, "uye", None)
 
 
-def penalty_summary_for_student(ogrenci, limit=None):
-    if not ogrenci:
+def penalty_summary_for_student(uye, limit=None):
+    if not uye:
         return {
             "outstanding_total": "0.00",
             "outstanding_count": 0,
@@ -195,7 +197,7 @@ def penalty_summary_for_student(ogrenci, limit=None):
     qs = (
         OduncKaydi.objects
         .filter(
-            ogrenci=ogrenci,
+            uye=uye,
             gecikme_cezasi__gt=0,
             gecikme_cezasi_odendi=False,
             teslim_tarihi__isnull=False,
@@ -260,9 +262,9 @@ class SinifViewSet(viewsets.ModelViewSet):
     queryset = Sinif.objects.all()
     serializer_class = SinifSerializer
 
-class OgrenciViewSet(viewsets.ModelViewSet):
-    queryset = Ogrenci.objects.select_related("sinif", "rol").all()
-    serializer_class = OgrenciSerializer
+class UyeViewSet(viewsets.ModelViewSet):
+    queryset = Uye.objects.select_related("sinif", "rol").all()
+    serializer_class = UyeSerializer
     pagination_class = ConditionalPageNumberPagination
 
     def get_permissions(self):
@@ -279,21 +281,52 @@ class OgrenciViewSet(viewsets.ModelViewSet):
         return qs
 
     def destroy(self, request, *args, **kwargs):
-        # K2.7: ödünç geçmişi olan öğrenci silinemez; veri kaybını önle, pasife alınır.
-        ogrenci = self.get_object()
-        if not can_delete_ogrenci(ogrenci):
+        # K2.7: ödünç geçmişi olan üye silinemez; veri kaybını önle, pasife alınır.
+        uye = self.get_object()
+        if not can_delete_uye(uye):
             return Response(
-                {"error": "Bu öğrencinin ödünç geçmişi var; veri kaybını önlemek için "
-                          "silinemez. Bunun yerine öğrenciyi pasife alabilirsiniz."},
+                {"error": "Bu üyenin ödünç geçmişi var; veri kaybını önlemek için "
+                          "silinemez. Bunun yerine üyeyi pasife alabilirsiniz."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        self.perform_destroy(ogrenci)
+        self.perform_destroy(uye)
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=False, methods=["post"], permission_classes=[IsAuthenticated],
+            url_path="ben-ekle")
+    def ben_ekle(self, request):
+        """K9: giriş yapan kullanıcı kendisi için Uye kaydı oluşturur ve bağlar.
+
+        Personel/öğretmen/admin'in de ödünç alabilmesi için (self-servis).
+        """
+        if getattr(request.user, "uye", None) is not None:
+            return Response(
+                {"error": "Zaten bir üye kaydınız var."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        data = request.data or {}
+        ad = (data.get("ad") or "").strip()
+        soyad = (data.get("soyad") or "").strip()
+        if not ad or not soyad:
+            return Response(
+                {"error": "ad ve soyad zorunludur."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        rol_id = data.get("rol_id")
+        rol = Rol.objects.filter(pk=rol_id).first() if rol_id else Rol.objects.filter(ad="Editör").first()
+        uye = Uye.objects.create(
+            ad=ad,
+            soyad=soyad,
+            uye_no=(data.get("uye_no") or None),
+            rol=rol,
+            user=request.user,
+        )
+        return Response(UyeSerializer(uye).data, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=["post"], permission_classes=[IsAuthenticated, IsAdminPersonel])
     def durum(self, request, pk=None):
         """K2.6: aktif/pasif değişimi — yalnızca admin."""
-        ogrenci = self.get_object()
+        uye = self.get_object()
         raw = request.data.get("aktif")
         if raw is None:
             return Response({"error": "aktif alanı gerekli"}, status=status.HTTP_400_BAD_REQUEST)
@@ -301,8 +334,8 @@ class OgrenciViewSet(viewsets.ModelViewSet):
             aktif = raw.strip().lower() in ("1", "true", "evet", "aktif")
         else:
             aktif = bool(raw)
-        warnings = apply_student_status(ogrenci, aktif)
-        data = OgrenciSerializer(ogrenci).data
+        warnings = apply_student_status(uye, aktif)
+        data = UyeSerializer(uye).data
         data["warnings"] = warnings
         return Response(data)
 
@@ -315,7 +348,7 @@ class YazarViewSet(viewsets.ModelViewSet):
         if self.action in ("update", "partial_update", "destroy", "birles"):
             return [IsAdminPersonel()]
         if self.action == "create":
-            return [IsPersonel()]
+            return [IsEditor()]
         return [IsAuthenticated()]
 
     @action(detail=True, methods=["post"])
@@ -392,7 +425,7 @@ class KitapViewSet(viewsets.ModelViewSet):
         if self.action in ("destroy", "birles"):
             return [IsAdminPersonel()]
         if self.action in ("create", "update", "partial_update"):
-            return [IsPersonel()]
+            return [IsEditor()]
         return [IsAuthenticated()]
 
     def create(self, request, *args, **kwargs):
@@ -587,7 +620,7 @@ class KitapViewSet(viewsets.ModelViewSet):
 
 
 class ShelfCodeListView(APIView):
-    permission_classes = [IsPersonel]
+    permission_classes = [IsEditor]
 
     def get(self, request):
         codes = (
@@ -605,10 +638,10 @@ class KitapNushaViewSet(viewsets.ModelViewSet):
     pagination_class = ConditionalPageNumberPagination
 
     def get_permissions(self):
-        # Faz C + K9: nüsha ekle/raf düzenle personel; silme + durum düzeltme admin.
+        # Faz C + K9: nüsha ekle/raf düzenle editör/personel; silme + durum düzeltme admin.
         if self.action in ("destroy", "durum_duzelt"):
             return [IsAdminPersonel()]
-        return [IsPersonel()]
+        return [IsEditor()]
 
     def destroy(self, request, *args, **kwargs):
         # K4.3: ödünç kaydı olan nüsha silinemez (geçmiş kaybı).
@@ -690,8 +723,8 @@ class GoogleBooksView(APIView):
 
 class OduncKaydiViewSet(viewsets.ModelViewSet):
     queryset = OduncKaydi.objects.select_related(
-        "ogrenci__sinif",
-        "ogrenci__rol",
+        "uye__sinif",
+        "uye__rol",
         "kitap_nusha__kitap__yazar",
         "kitap_nusha__kitap__kategori",
     ).all()
@@ -719,7 +752,7 @@ class OduncKapatView(APIView):
 
     def post(self, request, pk):
         loan = get_object_or_404(
-            OduncKaydi.objects.select_related("ogrenci", "kitap_nusha"), pk=pk
+            OduncKaydi.objects.select_related("uye", "kitap_nusha"), pk=pk
         )
         durum = (request.data.get("durum") or "").strip()
         ok, error = validate_transition(loan, durum, teslim_tarihi=request.data.get("teslim_tarihi"))
@@ -777,17 +810,6 @@ class OduncKapatView(APIView):
 
         serializer = OduncKaydiSerializer(loan)
         return Response(serializer.data, status=status.HTTP_200_OK)
-
-class PersonelViewSet(viewsets.ModelViewSet):
-    queryset = Personel.objects.all()
-    serializer_class = PersonelSerializer
-    permission_classes = [IsPersonel]
-
-    def get_permissions(self):
-        if self.action in ("create", "update", "partial_update", "destroy"):
-            return [IsAdminPersonel()]
-        return [IsPersonel()]
-
 
 class InventorySessionViewSet(viewsets.ModelViewSet):
     queryset = InventorySession.objects.all().select_related("created_by")
@@ -952,39 +974,39 @@ class IstatistikViewSet(viewsets.ViewSet):
 
     # 1. En çok okuyan öğrenci
     @action(detail=False, methods=['get'])
-    def en_cok_okuyan_ogrenci(self, request):
+    def en_cok_okuyan_uye(self, request):
         ay = int(request.query_params.get('ay', 0))
-        qs = Ogrenci.objects.annotate(okunan=Count('odunckaydi'))
+        qs = Uye.objects.annotate(okunan=Count('odunckaydi'))
         if ay > 0:
             baslangic = now() - timedelta(days=30*ay)
-            qs = Ogrenci.objects.annotate(
+            qs = Uye.objects.annotate(
                 okunan=Count('odunckaydi', filter=Q(odunckaydi__odunc_tarihi__gte=baslangic))
             )
         ogr = qs.order_by('-okunan').first()
         if ogr:
-            return Response({"ogrenci": str(ogr), "okunan_sayi": ogr.okunan})
+            return Response({"uye": str(ogr), "okunan_sayi": ogr.okunan})
         return Response({"mesaj": "Veri bulunamadı"})
 
     # 2. En az okuyan öğrenci
     @action(detail=False, methods=['get'])
-    def en_az_okuyan_ogrenci(self, request):
-        ogr = Ogrenci.objects.annotate(okunan=Count('odunckaydi')).order_by('okunan').first()
+    def en_az_okuyan_uye(self, request):
+        ogr = Uye.objects.annotate(okunan=Count('odunckaydi')).order_by('okunan').first()
         if ogr:
-            return Response({"ogrenci": str(ogr), "okunan_sayi": ogr.okunan})
+            return Response({"uye": str(ogr), "okunan_sayi": ogr.okunan})
         return Response({"mesaj": "Veri bulunamadı"})
 
     # 3. Bir öğrencinin toplam ödünç sayısı
     @action(detail=False, methods=['get'])
-    def ogrenci_toplam(self, request):
-        ogr_id = request.query_params.get('ogrenci_id')
-        toplam = OduncKaydi.objects.filter(ogrenci_id=ogr_id).count()
-        return Response({"ogrenci_id": ogr_id, "toplam_odunc": toplam})
+    def uye_toplam(self, request):
+        ogr_id = request.query_params.get('uye_id')
+        toplam = OduncKaydi.objects.filter(uye_id=ogr_id).count()
+        return Response({"uye_id": ogr_id, "toplam_odunc": toplam})
 
     # 4. En çok okuyan sınıf
     @action(detail=False, methods=['get'])
     def en_cok_okuyan_sinif(self, request):
         sinif = Sinif.objects.annotate(
-            okunan=Count('ogrenci__odunckaydi')
+            okunan=Count('uye__odunckaydi')
         ).order_by('-okunan').first()
         if sinif:
             return Response({"sinif": sinif.ad, "okunan_sayi": sinif.okunan})
@@ -994,10 +1016,10 @@ class IstatistikViewSet(viewsets.ViewSet):
     @action(detail=False, methods=['get'])
     def sinif_dagilimi(self, request):
         sinif_id = request.query_params.get('sinif_id')
-        ogrenciler = Ogrenci.objects.filter(sinif_id=sinif_id).annotate(
+        uyeler = Uye.objects.filter(sinif_id=sinif_id).annotate(
             okunan=Count('odunckaydi')
         ).values("id", "ad", "soyad", "okunan")
-        return Response(list(ogrenciler))
+        return Response(list(uyeler))
 
     # 6. En çok okunan kitaplar (ilk 10)
     @action(detail=False, methods=['get'])
@@ -1033,13 +1055,13 @@ class IstatistikViewSet(viewsets.ViewSet):
     @action(detail=False, methods=['get'])
     def en_cok_geciken(self, request):
         limit = int(request.query_params.get('limit', 5))
-        ogrenciler = (Ogrenci.objects
+        uyeler = (Uye.objects
             .annotate(gecikme=Count('odunckaydi', filter=Q(
                 odunckaydi__gecikme_cezasi__gt=0,
                 odunckaydi__gecikme_cezasi_odendi=False,
             )))
             .order_by('-gecikme')[:limit])
-        return Response([{"ogrenci": str(o), "gecikme": o.gecikme} for o in ogrenciler])
+        return Response([{"uye": str(o), "gecikme": o.gecikme} for o in uyeler])
 
     # 10. Toplam ceza miktarı
     @action(detail=False, methods=['get'])
@@ -1056,47 +1078,47 @@ class IstatistikViewSet(viewsets.ViewSet):
         return Response({"toplam_ceza": float(toplam)})
     
 
-class StudentHistoryView(ListAPIView):
+class UyeGecmisView(ListAPIView):
     serializer_class = OduncKaydiSerializer
 
     def get_queryset(self):
-        ogrenci_no = self.kwargs["ogrenci_no"]
-        borrower = requester_ogrenci(self.request.user)
-        if borrower is not None and borrower.ogrenci_no != ogrenci_no:
+        uye_no = self.kwargs["uye_no"]
+        borrower = requester_uye(self.request.user)
+        if borrower is not None and borrower.uye_no != uye_no:
             return OduncKaydi.objects.none()
         return (
             OduncKaydi.objects
-            .filter(ogrenci__ogrenci_no=ogrenci_no)
+            .filter(uye__uye_no=uye_no)
             .exclude(durum="iptal")
-            .select_related("kitap_nusha__kitap", "ogrenci")
+            .select_related("kitap_nusha__kitap", "uye")
             .order_by("-odunc_tarihi")
         )
 
 
-class StudentPenaltySummaryView(APIView):
-    def get(self, request, ogrenci_no):
-        borrower = requester_ogrenci(request.user)
-        if borrower is not None and borrower.ogrenci_no != ogrenci_no:
+class UyeCezaView(APIView):
+    def get(self, request, uye_no):
+        borrower = requester_uye(request.user)
+        if borrower is not None and borrower.uye_no != uye_no:
             return Response({"detail": "Bu kayda erişim yetkiniz yok."},
                             status=status.HTTP_403_FORBIDDEN)
-        ogrenci = (
-            Ogrenci.objects
-            .filter(ogrenci_no=ogrenci_no)
+        uye = (
+            Uye.objects
+            .filter(uye_no=uye_no)
             .select_related("sinif", "rol")
             .first()
         )
-        if not ogrenci:
+        if not uye:
             return Response({"detail": "Öğrenci bulunamadı."}, status=status.HTTP_404_NOT_FOUND)
 
-        summary = penalty_summary_for_student(ogrenci, limit=None)
+        summary = penalty_summary_for_student(uye, limit=None)
         summary.update({
             "student": {
-                "id": ogrenci.id,
-                "ad": ogrenci.ad,
-                "soyad": ogrenci.soyad,
-                "ogrenci_no": ogrenci.ogrenci_no,
-                "sinif": ogrenci.sinif.ad if ogrenci.sinif else None,
-                "rol": ogrenci.rol.ad if ogrenci.rol else None,
+                "id": uye.id,
+                "ad": uye.ad,
+                "soyad": uye.soyad,
+                "uye_no": uye.uye_no,
+                "sinif": uye.sinif.ad if uye.sinif else None,
+                "rol": uye.rol.ad if uye.rol else None,
             }
         })
         return Response(summary)
@@ -1125,7 +1147,7 @@ class FastQueryView(APIView):
             loan = (
                 OduncKaydi.objects
                 .filter(kitap_nusha=nusha, durum__in=["oduncte", "gecikmis"])
-                .select_related("ogrenci")
+                .select_related("uye")
                 .order_by("-odunc_tarihi")
                 .first()
             )
@@ -1133,7 +1155,7 @@ class FastQueryView(APIView):
                 OduncKaydi.objects
                 .filter(kitap_nusha=nusha)
                 .exclude(durum__in=["oduncte", "iptal"])
-                .select_related("ogrenci")
+                .select_related("uye")
                 .order_by("-odunc_tarihi")[:5]
             )
             return Response({
@@ -1147,7 +1169,7 @@ class FastQueryView(APIView):
                 "book": serialize_book_payload(nusha.kitap, request),
                 "policy": policy_data,
                 "loan": self._serialize_loan(loan, policy_snapshot, include_student=True, include_copy=False) if loan else None,
-                "penalty_summary": penalty_summary_for_student(loan.ogrenci, limit=10) if loan else None,
+                "penalty_summary": penalty_summary_for_student(loan.uye, limit=10) if loan else None,
                 "history": [
                     self._serialize_loan(h, policy_snapshot, include_student=True, include_copy=False)
                     for h in history
@@ -1178,16 +1200,16 @@ class FastQueryView(APIView):
                 return Response(self._book_payload(primary, "title", policy_data, suggestions=suggestions))
 
         # 3. Öğrenci numarası kontrolü
-        ogrenci = Ogrenci.objects.filter(ogrenci_no=q).select_related("sinif", "rol").first()
-        if ogrenci:
+        uye = Uye.objects.filter(uye_no=q).select_related("sinif", "rol").first()
+        if uye:
             aktif_oduncler = (
                 OduncKaydi.objects
-                .filter(ogrenci=ogrenci, durum__in=["oduncte", "gecikmis"])
+                .filter(uye=uye, durum__in=["oduncte", "gecikmis"])
                 .select_related("kitap_nusha__kitap")
             )
             history = (
                 OduncKaydi.objects
-                .filter(ogrenci=ogrenci)
+                .filter(uye=uye)
                 .exclude(durum__in=["oduncte", "iptal"])
                 .select_related("kitap_nusha__kitap")
                 .order_by("-odunc_tarihi")[:5]
@@ -1195,20 +1217,20 @@ class FastQueryView(APIView):
             return Response({
                 "type": "student",
                 "student": {
-                    "id": ogrenci.id,
-                    "ad": ogrenci.ad,
-                    "soyad": ogrenci.soyad,
-                    "no": ogrenci.ogrenci_no,
-                    "sinif": ogrenci.sinif.ad if ogrenci.sinif else None,
-                    "rol": ogrenci.rol.ad if ogrenci.rol else None,
-                    "aktif": ogrenci.aktif,
-                    "pasif_tarihi": ogrenci.pasif_tarihi,
+                    "id": uye.id,
+                    "ad": uye.ad,
+                    "soyad": uye.soyad,
+                    "no": uye.uye_no,
+                    "sinif": uye.sinif.ad if uye.sinif else None,
+                    "rol": uye.rol.ad if uye.rol else None,
+                    "aktif": uye.aktif,
+                    "pasif_tarihi": uye.pasif_tarihi,
                 },
                 "policy": {
                     **policy_data,
-                    "role": self._serialize_role_policy(policy_snapshot, ogrenci.rol),
+                    "role": self._serialize_role_policy(policy_snapshot, uye.rol),
                 },
-                "penalty_summary": penalty_summary_for_student(ogrenci, limit=10),
+                "penalty_summary": penalty_summary_for_student(uye, limit=10),
                 "active_loans": [
                     self._serialize_loan(od, policy_snapshot, include_copy=True)
                     for od in aktif_oduncler
@@ -1273,7 +1295,7 @@ class FastQueryView(APIView):
         copy = getattr(loan, "kitap_nusha", None)
         book = getattr(copy, "kitap", None) if copy else None
 
-        role = getattr(getattr(loan, "ogrenci", None), "rol", None)
+        role = getattr(getattr(loan, "uye", None), "rol", None)
 
         effective_due = compute_effective_due(loan.iade_tarihi, snapshot, role)
         overdue_days = compute_overdue_days(loan.iade_tarihi, snapshot, role)
@@ -1286,7 +1308,7 @@ class FastQueryView(APIView):
                 other_total = (
                     OduncKaydi.objects
                     .filter(
-                        ogrenci=loan.ogrenci,
+                        uye=loan.uye,
                         gecikme_cezasi__gt=0,
                         gecikme_cezasi_odendi=False,
                     )
@@ -1335,13 +1357,13 @@ class FastQueryView(APIView):
                     "isbn": book.isbn,
                 }
 
-        if include_student and hasattr(loan, "ogrenci") and loan.ogrenci:
-            ogr = loan.ogrenci
-            data["ogrenci"] = {
+        if include_student and hasattr(loan, "uye") and loan.uye:
+            ogr = loan.uye
+            data["uye"] = {
                 "id": ogr.id,
                 "ad": ogr.ad,
                 "soyad": ogr.soyad,
-                "ogrenci_no": ogr.ogrenci_no,
+                "uye_no": ogr.uye_no,
                 "aktif": ogr.aktif,
                 "pasif_tarihi": ogr.pasif_tarihi,
             }
@@ -1364,7 +1386,7 @@ class FastQueryView(APIView):
                 kitap_nusha__kitap=kitap,
                 durum__in=["oduncte", "gecikmis"]
             )
-            .select_related("ogrenci")
+            .select_related("uye")
         }
 
         result = []
@@ -1377,16 +1399,16 @@ class FastQueryView(APIView):
             }
             loan = loan_map.get(cp.get("id"))
             if loan:
-                ogr = loan.ogrenci
+                ogr = loan.uye
                 entry["loan"] = {
                     "id": loan.id,
                     "durum": loan.durum,
                     "iade_tarihi": loan.iade_tarihi,
-                    "ogrenci": {
+                    "uye": {
                         "id": ogr.id,
                         "ad": ogr.ad,
                         "soyad": ogr.soyad,
-                        "ogrenci_no": ogr.ogrenci_no,
+                        "uye_no": ogr.uye_no,
                     } if ogr else None,
                 }
             result.append(entry)
@@ -1443,23 +1465,23 @@ class FastQueryView(APIView):
 class CheckoutView(APIView):
     """
     Bir öğrencinin belirli bir barkoda sahip kitabı ödünç almasını sağlar.
-    POST /api/checkout/  -> {"ogrenci_no": "...", "barkod": "..."}
+    POST /api/checkout/  -> {"uye_no": "...", "barkod": "..."}
     """
     permission_classes = [IsPersonel]
 
     def post(self, request):
-        ogrenci_no = (request.data.get("ogrenci_no") or "").strip()
+        uye_no = (request.data.get("uye_no") or "").strip()
         barkod = (request.data.get("barkod") or "").strip()
 
-        if not ogrenci_no or not barkod:
-            return Response({"error": "ogrenci_no ve barkod gerekli"}, status=status.HTTP_400_BAD_REQUEST)
+        if not uye_no or not barkod:
+            return Response({"error": "uye_no ve barkod gerekli"}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            ogrenci = Ogrenci.objects.select_related("rol").get(ogrenci_no=ogrenci_no)
-        except Ogrenci.DoesNotExist:
+            uye = Uye.objects.select_related("rol").get(uye_no=uye_no)
+        except Uye.DoesNotExist:
             return Response({"error": "Öğrenci bulunamadı"}, status=status.HTTP_404_NOT_FOUND)
 
-        if not ogrenci.aktif:
+        if not uye.aktif:
             return Response(
                 {
                     "error": "Pasif öğrenci (mezun / nakil / tasdikname) ödünç alamaz. "
@@ -1470,15 +1492,15 @@ class CheckoutView(APIView):
 
         snapshot = get_snapshot()
 
-        if is_role_blocked(snapshot, ogrenci.rol):
+        if is_role_blocked(snapshot, uye.rol):
             return Response({"error": "Bu rol için ödünç işlemi yapılamıyor."}, status=status.HTTP_400_BAD_REQUEST)
 
         aktif_sayi = OduncKaydi.objects.filter(
-            ogrenci=ogrenci,
+            uye=uye,
             durum__in=["oduncte", "gecikmis"]
         ).count()
 
-        role_limit = max_items_for_role(ogrenci.rol, snapshot)
+        role_limit = max_items_for_role(uye.rol, snapshot)
         if role_limit is not None and aktif_sayi >= role_limit:
             return Response(
                 {"error": f"Öğrencinin aktif ödünç sayısı üst limit olan {role_limit} değerine ulaştı"},
@@ -1507,7 +1529,7 @@ class CheckoutView(APIView):
             except (TypeError, ValueError):
                 max_allowed = None
             if max_allowed and OduncKaydi.objects.filter(
-                ogrenci=ogrenci,
+                uye=uye,
                 durum__in=["oduncte", "gecikmis"]
             ).count() >= max_allowed:
                 return Response({"error": "Öğrencinin aktif ödünç sayısı limitte"}, status=status.HTTP_400_BAD_REQUEST)
@@ -1525,12 +1547,12 @@ class CheckoutView(APIView):
             iade_tarihi = parsed
 
         if iade_tarihi is None:
-            gun_sayisi = duration_for_role(ogrenci.rol, snapshot)
-            iade_tarihi = compute_assigned_due(now(), gun_sayisi, snapshot, ogrenci.rol)
+            gun_sayisi = duration_for_role(uye.rol, snapshot)
+            iade_tarihi = compute_assigned_due(now(), gun_sayisi, snapshot, uye.rol)
 
         with transaction.atomic():
             odunc = OduncKaydi.objects.create(
-                ogrenci=ogrenci,
+                uye=uye,
                 kitap_nusha=nusha,
                 iade_tarihi=iade_tarihi,
                 durum="oduncte"
@@ -1585,16 +1607,11 @@ class ChangePasswordView(APIView):
         user.set_password(new_password)
         user.save(update_fields=["password"])
 
-        personel = getattr(user, "personel", None)
-        if personel is not None:
-            personel.sifre_hash = user.password
-            personel.save(update_fields=["sifre_hash"])
-
         # K9: üye ilk giriş şifresini değiştirdiyse zorunluluk kalkar.
-        ogrenci = getattr(user, "ogrenci", None)
-        if ogrenci is not None and ogrenci.parola_degistirilsin:
-            ogrenci.parola_degistirilsin = False
-            ogrenci.save(update_fields=["parola_degistirilsin"])
+        uye = getattr(user, "uye", None)
+        if uye is not None and uye.parola_degistirilsin:
+            uye.parola_degistirilsin = False
+            uye.save(update_fields=["parola_degistirilsin"])
 
         return Response({"detail": "Şifre güncellendi."}, status=status.HTTP_200_OK)
 
@@ -1759,7 +1776,7 @@ class PenaltyPaymentView(APIView):
 
     def post(self, request, pk):
         try:
-            loan = OduncKaydi.objects.select_related("ogrenci").get(pk=pk)
+            loan = OduncKaydi.objects.select_related("uye").get(pk=pk)
         except OduncKaydi.DoesNotExist:
             return Response({"error": "Kayıt bulunamadı."}, status=status.HTTP_404_NOT_FOUND)
 
@@ -1789,7 +1806,7 @@ class PenaltyPaymentView(APIView):
             loan.gecikme_odeme_tutari = amount_dec
             loan.save(update_fields=["gecikme_cezasi_odendi", "gecikme_odeme_tarihi", "gecikme_odeme_tutari"])
 
-        summary = penalty_summary_for_student(loan.ogrenci, limit=10)
+        summary = penalty_summary_for_student(loan.uye, limit=10)
         return Response(
             {
                 "detail": "Ceza ödemesi kaydedildi.",
@@ -1843,16 +1860,16 @@ class BookHistoryView(APIView):
             history_qs = (
                 OduncKaydi.objects
                 .filter(kitap_nusha=nusha)
-                .select_related("ogrenci", "kitap_nusha__kitap")
+                .select_related("uye", "kitap_nusha__kitap")
                 .order_by("-odunc_tarihi")
             )
 
             history_data = []
             for rec in history_qs:
                 history_data.append({
-                    "ogrenci": {
-                        "ad": rec.ogrenci.ad,
-                        "soyad": rec.ogrenci.soyad,
+                    "uye": {
+                        "ad": rec.uye.ad,
+                        "soyad": rec.uye.soyad,
                     },
                     "odunc_tarihi": rec.odunc_tarihi,
                     "iade_tarihi": rec.iade_tarihi,
@@ -1874,7 +1891,7 @@ class BookHistoryView(APIView):
                     OduncKaydi.objects
                     .filter(kitap_nusha=c)
                     .exclude(durum="iptal")
-                    .select_related("ogrenci")
+                    .select_related("uye")
                     .order_by("-odunc_tarihi")
                     .first()
                 )
@@ -1882,7 +1899,7 @@ class BookHistoryView(APIView):
                 latest_any = (
                     OduncKaydi.objects
                     .filter(kitap_nusha=c)
-                    .select_related("ogrenci")
+                    .select_related("uye")
                     .order_by("-odunc_tarihi")
                     .first()
                 )
@@ -1892,18 +1909,18 @@ class BookHistoryView(APIView):
                 if last_loan:
                     durum = last_loan.durum
                     son_islem = last_loan.teslim_tarihi or last_loan.iade_tarihi or last_loan.odunc_tarihi
-                    ogrenci_ad = f"{last_loan.ogrenci.ad} {last_loan.ogrenci.soyad}"
+                    uye_ad = f"{last_loan.uye.ad} {last_loan.uye.soyad}"
                 else:
                     durum = "kütüphanede"
                     son_islem = None
-                    ogrenci_ad = ""
+                    uye_ad = ""
 
                 all_copies.append({
                     "barkod": c.barkod,
                     "raf_kodu": c.raf_kodu,
                     "durum": durum,
                     "son_islem": son_islem,
-                    "ogrenci": ogrenci_ad,
+                    "uye": uye_ad,
                     "aktif": (c.barkod == barkod),  # 🔹 aktif nüsha
                 })
 

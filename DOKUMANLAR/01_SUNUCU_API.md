@@ -12,9 +12,9 @@ Django REST Framework. Tüm uçlar varsayılan olarak **JWT + IsAuthenticated** 
 
 | Yöntem | Uç | Açıklama |
 |---|---|---|
-| POST | `/api/token/` | `{username, password}` → `{access, refresh, full_name, role}` |
-| POST | `/api/token/refresh/` | `{refresh}` → yeni token + `full_name`, `role` |
-| POST | `/api/change-password/` | `{eski_sifre, yeni_sifre, yeni_sifre2}` → User + Personel.sifre_hash güncellenir |
+| POST | `/api/token/` | `{username, password}` → `{access, refresh, full_name, role, tip, uye_no, parola_degistirilsin}` |
+| POST | `/api/token/refresh/` | `{refresh}` → yeni token + `full_name`, `role`, `tip` |
+| POST | `/api/change-password/` | `{current_password, new_password, new_password_confirm}` → `User.password`; üye ise `parola_degistirilsin` kalkar |
 | GET | `/api/health/` | Açık uç. `{status:"ok", timestamp}` |
 
 ## 2. Temel CRUD (ModelViewSet)
@@ -23,13 +23,12 @@ Django REST Framework. Tüm uçlar varsayılan olarak **JWT + IsAuthenticated** 
 |---|---|
 | `/api/roller/` | Rol CRUD |
 | `/api/siniflar/` | Sınıf CRUD |
-| `/api/ogrenciler/` | Öğrenci CRUD |
+| `/api/uyeler/` | Üye CRUD (öğrenci/öğretmen/editör). Yazma personel; silme/durum admin. `sifre` alanı verilirse üye girişi oluşturulur. `/api/uyeler/ben-ekle/` → giriş yapan kullanıcı kendini üye yapar |
 | `/api/yazarlar/` | Yazar CRUD |
 | `/api/kategoriler/` | Kategori CRUD |
 | `/api/kitaplar/` | Kitap CRUD (zengin filtrelerle) |
 | `/api/nushalar/` | Kitap nüshası CRUD (otomatik barkod: `KIT000123`) |
 | `/api/oduncler/` | Ödünç kaydı CRUD (`?durum=`) |
-| `/api/personel/` | Personel CRUD — **yazma (POST/PUT/PATCH/DELETE) yalnızca admin** (süper/staff veya `rol=admin`); yanıt `{id, ad_soyad, kullanici_adi, rol}` (sifre_hash dışarı verilmez); `kullanici_adi`/`rol` güncellemede değiştirilemez |
 
 ### Kitaplar — Filtreler
 `?yazar=` `?kategori=` `?q=` (başlık içinde geçen) `?isbn=` `?barkod=` / `?barcode=`
@@ -46,10 +45,10 @@ Liste yanıtı `KitapSerializer` (özet, resimsiz); detay `GET /api/kitaplar/<id
 
 | Yöntem | Uç | Açıklama |
 |---|---|---|
-| GET | `/api/fast-query/?q=...` | **Tür tanıyan hızlı arama.** `?barkod=`, `?isbn=`, `?baslik=`, `?ogrenci_no=` veya tek `q`. Sıra: barkod → ISBN → başlık (trigram ≥0.2, 10 öneri) → öğrenci no. Öğrenci yanıtına aktif ödünçler + geçmiş + ceza özeti + rol politikası eklenir. |
-| POST | `/api/checkout/` | `{ogrenci_no, barkod}` → ödünç açar. Doğrular: rol bloklu mu, aktif ödünç limiti (isteğe bağlı `max_allowed`), nüsha durumu, mükerrer aktif ödünç. `iade_tarihi` hesabı: rol süresi + hafta sonu kaydırma; `?iade_tarihi=` ile elle geçersiz kılınabilir. |
-| GET | `/api/student-history/<ogrenci_no>/` | Öğrencinin tüm ödünç geçmişi (iptal hariç, yeniden eskiye) |
-| GET | `/api/student-penalties/<ogrenci_no>/` | Ceza özeti `{outstanding_total, outstanding_count, entries, has_more}` + öğrenci |
+| GET | `/api/fast-query/?q=...` | **Tür tanıyan hızlı arama.** `?barkod=`, `?isbn=`, `?baslik=`, `?uye_no=` veya tek `q`. Sıra: barkod → ISBN → başlık (trigram ≥0.2, 10 öneri) → öğrenci no. Öğrenci yanıtına aktif ödünçler + geçmiş + ceza özeti + rol politikası eklenir. |
+| POST | `/api/checkout/` | `{uye_no, barkod}` → ödünç açar. Doğrular: rol bloklu mu, aktif ödünç limiti (isteğe bağlı `max_allowed`), nüsha durumu, mükerrer aktif ödünç. `iade_tarihi` hesabı: rol süresi + hafta sonu kaydırma; `?iade_tarihi=` ile elle geçersiz kılınabilir. |
+| GET | `/api/uye-gecmis/<uye_no>/` | Öğrencinin tüm ödünç geçmişi (iptal hariç, yeniden eskiye) |
+| GET | `/api/uye-ceza/<uye_no>/` | Ceza özeti `{outstanding_total, outstanding_count, entries, has_more}` + öğrenci |
 | GET | `/api/book-history/<barkod>/` | Nüshanın geçmişi + aynı kitabın TÜM nüshalarının durumu (aktifler başta) |
 | GET | `/api/raf-kodlari/` | Benzersiz raf kodu listesi |
 | POST | `/api/penalties/<int:pk>/pay/` | `{amount}` birebir ceza tahsilatı; ödeme alanlarını günceller, güncel özeti döner |
@@ -110,7 +109,7 @@ curl -s "http://127.0.0.1:8000/api/fast-query/?q=12345" \
 curl -s -X POST http://127.0.0.1:8000/api/checkout/ \
   -H "Authorization: Bearer <access>" \
   -H "Content-Type: application/json" \
-  -d '{"ogrenci_no":"12345","barkod":"KIT000001"}'
+  -d '{"uye_no":"12345","barkod":"KIT000001"}'
 ```
 
 ### Ceza Ödeme

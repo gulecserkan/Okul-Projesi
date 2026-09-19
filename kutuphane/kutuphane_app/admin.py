@@ -18,12 +18,12 @@ from django.contrib.auth.hashers import make_password
 
 from import_export.admin import ImportExportModelAdmin
 
-from .resources import OgrenciResource
+from .resources import UyeResource
 from .encryption import encrypt_blob, decrypt_blob
 from .models import (
-    Rol, Sinif, Ogrenci, Yazar, Kategori, Raf, Kitap, KitapNusha,
-    OduncKaydi, Personel, AuditLog,
-    ArsivBatch, ArsivOgrenci, ArsivOdunc,
+    Rol, Sinif, Uye, Yazar, Kategori, Raf, Kitap, KitapNusha,
+    OduncKaydi, AuditLog,
+    ArsivBatch, ArsivUye, ArsivOdunc,
     LoanPolicy, RoleLoanPolicy, NotificationSettings,
     InventorySession, InventoryItem
 )
@@ -201,79 +201,12 @@ class KitapNushaAdmin(admin.ModelAdmin):
 admin_site.register(KitapNusha, KitapNushaAdmin)
 
 class OduncKaydiAdmin(admin.ModelAdmin):
-    list_display = ("ogrenci", "kitap_nusha", "odunc_tarihi", "iade_tarihi", "teslim_tarihi", "durum", "gecikme_cezasi")
-    list_filter = ("durum", "ogrenci__sinif", "ogrenci__rol")
-    search_fields = ("ogrenci__ad", "ogrenci__soyad", "kitap_nusha__barkod", "kitap_nusha__kitap__baslik")
+    list_display = ("uye", "kitap_nusha", "odunc_tarihi", "iade_tarihi", "teslim_tarihi", "durum", "gecikme_cezasi")
+    list_filter = ("durum", "uye__sinif", "uye__rol")
+    search_fields = ("uye__ad", "uye__soyad", "kitap_nusha__barkod", "kitap_nusha__kitap__baslik")
     date_hierarchy = "odunc_tarihi"
-    raw_id_fields = ("ogrenci", "kitap_nusha")
+    raw_id_fields = ("uye", "kitap_nusha")
 admin_site.register(OduncKaydi, OduncKaydiAdmin)
-
-class PersonelAdminForm(forms.ModelForm):
-    password = forms.CharField(
-        label="Yeni şifre",
-        widget=forms.PasswordInput,
-        required=False,
-        help_text="Şifreyi değiştirmek isterseniz doldurun."
-    )
-    password_confirm = forms.CharField(
-        label="Yeni şifre (tekrar)",
-        widget=forms.PasswordInput,
-        required=False,
-    )
-
-    class Meta:
-        model = Personel
-        fields = ("ad_soyad", "kullanici_adi", "rol")
-
-    def clean(self):
-        cleaned = super().clean()
-        pw = cleaned.get("password")
-        pw_confirm = cleaned.get("password_confirm")
-        if pw or pw_confirm:
-            if pw != pw_confirm:
-                raise forms.ValidationError("Yeni şifre alanları uyuşmuyor.")
-            if not pw:
-                raise forms.ValidationError("Şifre boş olamaz.")
-        return cleaned
-
-
-class PersonelAdmin(admin.ModelAdmin):
-    form = PersonelAdminForm
-    list_display = ("ad_soyad", "kullanici_adi", "rol")
-    search_fields = ("ad_soyad", "kullanici_adi")
-    list_filter = ("rol",)
-
-    def save_model(self, request, obj, form, change):
-        raw_password = form.cleaned_data.get("password")
-
-        # Kullanıcı kaydı yoksa oluştur
-        if not obj.user:
-            user = User.objects.create_user(
-                username=obj.kullanici_adi,
-                password=raw_password or User.objects.make_random_password(),
-                first_name=obj.ad_soyad,
-                is_staff=True,
-            )
-            obj.user = user
-        else:
-            obj.user.username = obj.kullanici_adi
-            obj.user.first_name = obj.ad_soyad
-            if raw_password:
-                obj.user.set_password(raw_password)
-            obj.user.save()
-
-        if raw_password:
-            obj.set_password(raw_password)
-        elif not change and not obj.sifre_hash:
-            # yeni kayıtta şifre verilmemişse rasgele oluştur
-            generated = User.objects.make_random_password()
-            obj.set_password(generated)
-            obj.user.set_password(generated)
-            obj.user.save()
-
-        super().save_model(request, obj, form, change)
-admin_site.register(Personel, PersonelAdmin)
-
 
 class InventoryItemInline(admin.TabularInline):
     model = InventoryItem
@@ -301,16 +234,16 @@ class AuditLogAdmin(admin.ModelAdmin):
     list_filter = ("islem", "kullanici")
     search_fields = ("islem", "detay", "kullanici__username", "kullanici__first_name", "kullanici__last_name")
 
-# --- Ogrenci + import-export + ARŞİV Özel URL + İşlem ---
-class OgrenciAdmin(ImportExportModelAdmin):
-    resource_class = OgrenciResource
-    list_display = ("ogrenci_no", "ad", "soyad", "sinif", "rol", "aktif", "kayit_tarihi", "pasif_tarihi")
+# --- Uye + import-export + ARŞİV Özel URL + İşlem ---
+class UyeAdmin(ImportExportModelAdmin):
+    resource_class = UyeResource
+    list_display = ("uye_no", "ad", "soyad", "sinif", "rol", "aktif", "kayit_tarihi", "pasif_tarihi")
     list_filter = ("sinif", "rol", "aktif")
-    search_fields = ("ogrenci_no", "ad", "soyad")  # eposta şifreli olduğundan aranamaz
+    search_fields = ("uye_no", "ad", "soyad")  # eposta şifreli olduğundan aranamaz
     date_hierarchy = "kayit_tarihi"
 
     # Üstte özel buton göstermek için (şablonda link var)
-    change_list_template = "admin/kutuphane_app/ogrenci_change_list.html"
+    change_list_template = "admin/kutuphane_app/uye_change_list.html"
 
     # Özel URL’ler (önizleme / onay)
     def get_urls(self):
@@ -319,12 +252,12 @@ class OgrenciAdmin(ImportExportModelAdmin):
             path(
                 "arsiv_onizleme/",
                 self.admin_site.admin_view(self.arsiv_onizleme),
-                name="ogrenci-arsiv-onizleme",
+                name="uye-arsiv-onizleme",
             ),
             path(
                 "arsiv_onayla/",
                 self.admin_site.admin_view(self.arsiv_onayla),
-                name="ogrenci-arsiv-onayla",
+                name="uye-arsiv-onayla",
             ),
         ]
         return custom_urls + urls
@@ -332,12 +265,12 @@ class OgrenciAdmin(ImportExportModelAdmin):
     # 3+ yıl pasif (veya pasif_tarihi boş ama 3+ yıl önce kaydedilmiş) adayları göster
     def arsiv_onizleme(self, request):
         uc_yil_once = now().replace(year=now().year - 3)
-        adaylar = Ogrenci.objects.filter(
+        adaylar = Uye.objects.filter(
             Q(aktif=False) &
             (Q(pasif_tarihi__lt=uc_yil_once) |
              (Q(pasif_tarihi__isnull=True) & Q(kayit_tarihi__lt=uc_yil_once)))
         )
-        return render(request, "admin/ogrenci_arsiv_onizleme.html", {
+        return render(request, "admin/uye_arsiv_onizleme.html", {
             "adaylar": adaylar,
             "toplam": adaylar.count(),
         })
@@ -345,7 +278,7 @@ class OgrenciAdmin(ImportExportModelAdmin):
     # Adayları arşive taşı + JSON paket üret + canlı DB’den temizle
     def arsiv_onayla(self, request):
         uc_yil_once = now().replace(year=now().year - 3)
-        hedef = Ogrenci.objects.filter(
+        hedef = Uye.objects.filter(
             Q(aktif=False) &
             (Q(pasif_tarihi__lt=uc_yil_once) |
              (Q(pasif_tarihi__isnull=True) & Q(kayit_tarihi__lt=uc_yil_once)))
@@ -358,15 +291,15 @@ class OgrenciAdmin(ImportExportModelAdmin):
         with transaction.atomic():
             batch = ArsivBatch.objects.create(aciklama="3+ yıl pasif öğrenciler")
 
-            json_ogrenciler: list[dict] = []
+            json_uyeler: list[dict] = []
             json_oduncler: list[dict] = []
             nusha_ids, kitap_ids = set(), set()
 
             # Öğrencileri arşive yaz + JSON’a ekle
             for o in hedef.select_related("sinif", "rol"):
-                ArsivOgrenci.objects.create(
+                ArsivUye.objects.create(
                     batch=batch,
-                    ogrenci_no=o.ogrenci_no,
+                    uye_no=o.uye_no,
                     ad=o.ad,
                     soyad=o.soyad,
                     sinif_ad=o.sinif.ad if o.sinif else None,
@@ -376,8 +309,8 @@ class OgrenciAdmin(ImportExportModelAdmin):
                     kayit_tarihi=o.kayit_tarihi,
                     pasif_tarihi=o.pasif_tarihi,
                 )
-                json_ogrenciler.append({
-                    "ogrenci_no": o.ogrenci_no,
+                json_uyeler.append({
+                    "uye_no": o.uye_no,
                     "ad": o.ad,
                     "soyad": o.soyad,
                     "sinif": o.sinif.ad if o.sinif else None,
@@ -390,15 +323,15 @@ class OgrenciAdmin(ImportExportModelAdmin):
 
             # Öğrencilerin ödünç kayıtlarını topla → arşive yaz + JSON
             oduncler = (OduncKaydi.objects
-                        .select_related("kitap_nusha", "kitap_nusha__kitap", "ogrenci")
-                        .filter(ogrenci__in=hedef))
+                        .select_related("kitap_nusha", "kitap_nusha__kitap", "uye")
+                        .filter(uye__in=hedef))
             for k in oduncler:
                 nusha = k.kitap_nusha
                 kitap = nusha.kitap if nusha else None
 
                 ArsivOdunc.objects.create(
                     batch=batch,
-                    ogrenci_no=k.ogrenci.ogrenci_no if k.ogrenci else "",
+                    uye_no=k.uye.uye_no if k.uye else "",
                     kitap_baslik=kitap.baslik if kitap else "",
                     barkod=nusha.barkod if nusha else "",
                     odunc_tarihi=k.odunc_tarihi,
@@ -408,7 +341,7 @@ class OgrenciAdmin(ImportExportModelAdmin):
                     gecikme_cezasi=k.gecikme_cezasi,
                 )
                 json_oduncler.append({
-                    "ogrenci_no": k.ogrenci.ogrenci_no if k.ogrenci else "",
+                    "uye_no": k.uye.uye_no if k.uye else "",
                     "kitap_baslik": kitap.baslik if kitap else "",
                     "barkod": nusha.barkod if nusha else "",
                     "odunc_tarihi": k.odunc_tarihi.isoformat(),
@@ -448,7 +381,7 @@ class OgrenciAdmin(ImportExportModelAdmin):
                     "aciklama": batch.aciklama,
                     "olusturma_tarihi": now().isoformat()
                 },
-                "ogrenciler": json_ogrenciler,
+                "uyeler": json_uyeler,
                 "oduncler": json_oduncler,
                 "nushalar": json_nushalar,
                 "kitaplar": json_kitaplar,
@@ -460,11 +393,11 @@ class OgrenciAdmin(ImportExportModelAdmin):
             oduncler.delete()
             hedef.delete()
 
-        messages.success(request, f"{len(json_ogrenciler)} öğrenci arşive taşındı.")
+        messages.success(request, f"{len(json_uyeler)} öğrenci arşive taşındı.")
         return redirect("..")
 
 # kayıt
-admin_site.register(Ogrenci, OgrenciAdmin)
+admin_site.register(Uye, UyeAdmin)
 
 
 class ArsivBatchAdmin(admin.ModelAdmin):
@@ -473,17 +406,17 @@ class ArsivBatchAdmin(admin.ModelAdmin):
     search_fields = ("aciklama",)
 admin_site.register(ArsivBatch, ArsivBatchAdmin)
 
-class ArsivOgrenciAdmin(admin.ModelAdmin):
-    list_display = ("batch", "ogrenci_no", "ad", "soyad", "sinif_ad", "rol_ad", "pasif_tarihi")
+class ArsivUyeAdmin(admin.ModelAdmin):
+    list_display = ("batch", "uye_no", "ad", "soyad", "sinif_ad", "rol_ad", "pasif_tarihi")
     list_filter = ("batch", "rol_ad", "sinif_ad")
-    search_fields = ("ogrenci_no", "ad", "soyad")
-admin_site.register(ArsivOgrenci, ArsivOgrenciAdmin)
+    search_fields = ("uye_no", "ad", "soyad")
+admin_site.register(ArsivUye, ArsivUyeAdmin)
 
 class ArsivOduncAdmin(admin.ModelAdmin):
-    list_display = ("batch", "ogrenci_no", "kitap_baslik", "barkod", "odunc_tarihi", "iade_tarihi", "teslim_tarihi", "durum")
+    list_display = ("batch", "uye_no", "kitap_baslik", "barkod", "odunc_tarihi", "iade_tarihi", "teslim_tarihi", "durum")
     list_filter = ("batch", "durum")
     date_hierarchy = "odunc_tarihi"
-    search_fields = ("ogrenci_no", "kitap_baslik", "barkod")
+    search_fields = ("uye_no", "kitap_baslik", "barkod")
 admin_site.register(ArsivOdunc, ArsivOduncAdmin)
 
 

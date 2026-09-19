@@ -9,7 +9,7 @@ class SessionStorage {
   static const _fullNameKey = "user_full_name";
   static const _roleKey = "user_role";
   static const _tipKey = "user_tip";
-  static const _ogrenciNoKey = "user_ogrenci_no";
+  static const _uyeNoKey = "user_uye_no";
   static const _parolaDegistirKey = "user_parola_degistirilsin";
   static const _lastAuthKey = "last_auth_at";
   static const _themeKey = "app_theme";
@@ -42,7 +42,7 @@ class SessionStorage {
       fullName: prefs.getString(_fullNameKey),
       role: prefs.getString(_roleKey),
       tip: prefs.getString(_tipKey) ?? "personel",
-      ogrenciNo: prefs.getString(_ogrenciNoKey),
+      uyeNo: prefs.getString(_uyeNoKey),
       parolaDegistirilsin: prefs.getBool(_parolaDegistirKey) ?? false,
     );
   }
@@ -54,7 +54,7 @@ class SessionStorage {
     await prefs.setString(_fullNameKey, tokens.fullName ?? "");
     await prefs.setString(_roleKey, tokens.role ?? "");
     await prefs.setString(_tipKey, tokens.tip);
-    await prefs.setString(_ogrenciNoKey, tokens.ogrenciNo ?? "");
+    await prefs.setString(_uyeNoKey, tokens.uyeNo ?? "");
     await prefs.setBool(_parolaDegistirKey, tokens.parolaDegistirilsin);
   }
 
@@ -77,7 +77,7 @@ class SessionStorage {
     await prefs.remove(_fullNameKey);
     await prefs.remove(_roleKey);
     await prefs.remove(_tipKey);
-    await prefs.remove(_ogrenciNoKey);
+    await prefs.remove(_uyeNoKey);
     await prefs.remove(_parolaDegistirKey);
     await prefs.remove(_lastAuthKey);
   }

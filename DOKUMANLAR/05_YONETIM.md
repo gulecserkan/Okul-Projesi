@@ -13,9 +13,9 @@
 
 ### Kayıtlı Modeller ve Özel Alanlar
 - **Rol** listesi: bağlı `loan_policy` değerlerini gösterir (süre, max kitap, günlük ceza).
-- **Öğrenci** (`ImportExportModelAdmin`): CSV/JSON içe-dışa aktarma (`ogrenci_no,ad,soyad,sinif,rol`; UTF-8; başlık satırı zorunlu; virgül ayraçlı, tırnaksız). CSV'de olmayan öğrencileri pasife çekmek **varsayılan olarak kapalıdır**; yalnızca "tam yoklama senkronu" bilinçli yapılırken `OgrenciResource.pasiflestir=True` ile açılır (kısmi CSV yüklerken sınıf listesi dışındakiler silinmesin diye).
-- **Arşivleme** (Öğrenci değişiklik listesinden): kriter = `aktif=False` VE (pasif_tarihi 3+ yıl önce VEYA pasif_tarihi boşsa kayıt_tarihi 3+ yıl önce). Onayda transaction içinde `ArsivBatch` + `ArsivOgrenci` + `ArsivOdunc` oluşturulur, JSON paket kaydedilir, **canlı öğrenci ve ödünç kayıtları silinir**.
-- **Personel**: şifre belirleme/sıfırlama; `save_model` otomatik eşleşen Django `User` oluşturur (`is_staff=True`).
+- **Üye** (`ImportExportModelAdmin`): CSV/JSON içe-dışa aktarma (`uye_no,ad,soyad,sinif,rol`; UTF-8; başlık satırı zorunlu; virgül ayraçlı, tırnaksız). CSV'de olmayan üyeleri pasife çekmek **varsayılan olarak kapalıdır**; yalnızca "tam yoklama senkronu" bilinçli yapılırken `UyeResource.pasiflestir=True` ile açılır (kısmi CSV yüklerken sınıf listesi dışındakiler silinmesin diye).
+- **Arşivleme** (Öğrenci değişiklik listesinden): kriter = `aktif=False` VE (pasif_tarihi 3+ yıl önce VEYA pasif_tarihi boşsa kayıt_tarihi 3+ yıl önce). Onayda transaction içinde `ArsivBatch` + `ArsivUye` + `ArsivOdunc` oluşturulur, JSON paket kaydedilir, **canlı öğrenci ve ödünç kayıtları silinir**.
+- **Kullanıcılar (User)**: Personel/operatör hesapları standart Django **Users** admin'inden yönetilir; admin = `is_superuser`. `Personel` tablosu kaldırılmıştır.
 - **Sayım Oturumu**: kalemleri salt-okunur inline.
 - **LoanPolicy / RoleLoanPolicy / NotificationSettings**: listelenir, sistem ayarları olmayan alanlar düzenlenebilir.
 
@@ -58,12 +58,12 @@ Detaylı rehber: `kutuphane/django_deployment_checklist.md` ve `kutuphane/SERVER
 ## 3. Güvenlik
 
 - **API**: Tüm uçlar JWT korumalı; yalnızca `health` açık. Öğrenci bilgileri yetkisiz erişime kapalı (masaüstü/mobil istemciler token ile konuşur).
-- **Admin**: Django session kimliği; Personel↔User eşleşmesi otomatik.
+- **Admin**: Django session kimliği; admin = `is_superuser`; operatör/giriş hesapları Django `User`'dır.
 - **Restore**: `EVET` + dinamik 6 haneli kod — yanlışlıkla veri kaybını önler; kullanılmış/geçersiz kodlar reddedilir; dosya seçimi `backups/` ile sınırlıdır. Yine de **yıkıcıdır** (flush sonrası load).
 - **Header temizliği**: `SafeHeaderMiddleware` ASCII olmayan/çok satırlı header değerlerini temizler (masaüstü `requests` istemcisinin RecursionError vermemesi için).
-- **Şifreler**: Django `make_password`/`check_password`; Personel'de de ayrıca `sifre_hash` tutulur, değişiklikte eşzamanlanır.
+- **Şifreler**: Django `make_password`/`check_password` (tek kaynak: `User.password`).
 - **Yedekleme**: Disk ve indirilen dosya **şifrelidir** (`.json.enc`); şifreleme anahtarı `.env`'de sağlanır. Eski düz metin `.json` yedekler restore'da hâlâ kabul edilir.
-- **Personel API**: yazma (create/update/delete) yalnızca süper kullanıcı/staff veya `rol=admin` personel; liste okunabilir.
+- **Yetki**: Admin = `is_superuser`; operatör = Uye bağı olmayan `User`; editör = `Uye.rol="Editör"` (kitap düzenleme). Üye uçları salt-okunur ve kendine ait.
 
 ## 4. Veritabanı (PostgreSQL) Kurulumu
 ```sql

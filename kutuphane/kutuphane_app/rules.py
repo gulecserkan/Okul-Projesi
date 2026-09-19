@@ -37,30 +37,30 @@ def validate_transition(loan, yeni_durum, *, teslim_tarihi=None):
 
 
 # --- Öğrenci aktif/pasif (K2) ---
-def apply_student_status(ogrenci, aktif: bool) -> list:
+def apply_student_status(uye, aktif: bool) -> list:
     """K2.1-K2.4: aktif/pasif geçişi; pasif_tarihi otomatik; uyarı döner."""
     aktif = bool(aktif)
     warnings = []
     if aktif:
-        ogrenci.pasif_tarihi = None
+        uye.pasif_tarihi = None
     else:
-        ogrenci.pasif_tarihi = timezone.now()
+        uye.pasif_tarihi = timezone.now()
         aktif_sayi = OduncKaydi.objects.filter(
-            ogrenci=ogrenci, durum__in=["oduncte", "gecikmis"]
+            uye=uye, durum__in=["oduncte", "gecikmis"]
         ).count()
         if aktif_sayi:
             warnings.append(
                 f"Bu öğrencinin {aktif_sayi} aktif ödüncü var; kitapları toplayın."
             )
-    ogrenci.aktif = aktif
-    ogrenci.save(update_fields=["aktif", "pasif_tarihi"])
+    uye.aktif = aktif
+    uye.save(update_fields=["aktif", "pasif_tarihi"])
     return warnings
 
 
 # --- Silme kuralları (K2.7, K4.3, K4.4) ---
-def can_delete_ogrenci(ogrenci) -> bool:
+def can_delete_uye(uye) -> bool:
     """Etkileşim (ödünç kaydı) yoksa silinebilir; aksi halde pasife alınır."""
-    return not OduncKaydi.objects.filter(ogrenci=ogrenci).exists()
+    return not OduncKaydi.objects.filter(uye=uye).exists()
 
 
 def can_delete_nusha(nusha) -> bool:

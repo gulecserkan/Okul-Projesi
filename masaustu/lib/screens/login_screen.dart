@@ -88,7 +88,13 @@ class _LoginScreenState extends State<LoginScreen> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Icon(Icons.menu_book, size: 64, color: Theme.of(context).colorScheme.primary),
+                Image.asset(
+                  'assets/library.png',
+                  height: 96,
+                  fit: BoxFit.contain,
+                  errorBuilder: (_, _, _) => Icon(Icons.menu_book,
+                      size: 64, color: Theme.of(context).colorScheme.primary),
+                ),
                 const SizedBox(height: 8),
                 Text(
                   'Kütüphane Yönetim Sistemi',

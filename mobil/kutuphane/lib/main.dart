@@ -199,7 +199,8 @@ class _KutuphaneAppState extends State<KutuphaneApp> {
       );
     }
 
-    if (_tokens!.isUye) {
+    // Editör hem düzenler hem ödünç alır → yönetim ekranı (BookListScreen).
+    if (_tokens!.isUye && !_tokens!.isEditor) {
       return UyeHomeScreen(
         baseUrl: _baseUrl!,
         tokens: _tokens!,

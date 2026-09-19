@@ -4,12 +4,12 @@ import '../api/kutuphane_api.dart';
 import '../models.dart';
 import '../theme.dart';
 
-/// Yeni öğrenci oluşturmak / mevcut öğrenciyi düzenlemek için form diyaloğu.
-/// Kaydedilen öğrenciyi `Navigator.pop` ile döndürür; iptalde null.
+/// Yeni üye oluşturmak / mevcut üyeyi düzenlemek için form diyaloğu.
+/// Kaydedilen üyeyi `Navigator.pop` ile döndürür; iptalde null.
 class StudentFormDialog extends StatefulWidget {
-  final Ogrenci? ogrenci;
+  final Uye? uye;
 
-  const StudentFormDialog({super.key, this.ogrenci});
+  const StudentFormDialog({super.key, this.uye});
 
   @override
   State<StudentFormDialog> createState() => _StudentFormDialogState();
@@ -28,15 +28,15 @@ class _StudentFormDialogState extends State<StudentFormDialog> {
   int? _sinifId;
   bool _busy = false;
 
-  bool get _editing => widget.ogrenci != null;
+  bool get _editing => widget.uye != null;
 
   @override
   void initState() {
     super.initState();
-    final o = widget.ogrenci;
+    final o = widget.uye;
     _ad = TextEditingController(text: o?.ad ?? '');
     _soyad = TextEditingController(text: o?.soyad ?? '');
-    _no = TextEditingController(text: o?.ogrenciNo ?? '');
+    _no = TextEditingController(text: o?.uyeNo ?? '');
     _telefon = TextEditingController(text: o?.telefon ?? '');
     _eposta = TextEditingController(text: o?.eposta ?? '');
     _sinifId = o?.sinif?.id;
@@ -73,18 +73,18 @@ class _StudentFormDialogState extends State<StudentFormDialog> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _busy = true);
     final res = await _api.saveStudent(
-      id: widget.ogrenci?.id,
+      id: widget.uye?.id,
       ad: _ad.text,
       soyad: _soyad.text,
-      ogrenciNo: _no.text,
+      uyeNo: _no.text,
       sinifId: _sinifId,
       telefon: _telefon.text,
       eposta: _eposta.text,
       sifre: _sifre.text,
     );
     if (!mounted) return;
-    if (res.ogrenci != null) {
-      Navigator.of(context).pop(res.ogrenci);
+    if (res.uye != null) {
+      Navigator.of(context).pop(res.uye);
     } else {
       setState(() => _busy = false);
       showAppSnack(context, res.error ?? 'Kayıt yapılamadı.', error: true);
@@ -94,7 +94,7 @@ class _StudentFormDialogState extends State<StudentFormDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: Text(_editing ? 'Öğrenci Düzenle' : 'Yeni Öğrenci'),
+      title: Text(_editing ? 'Üye Düzenle' : 'Yeni Üye'),
       content: SizedBox(
         width: 420,
         child: SingleChildScrollView(
@@ -129,12 +129,12 @@ class _StudentFormDialogState extends State<StudentFormDialog> {
                 TextFormField(
                   controller: _no,
                   decoration: const InputDecoration(
-                    labelText: 'Öğrenci No',
+                    labelText: 'Üye No',
                     border: OutlineInputBorder(),
                     isDense: true,
                   ),
                   validator: (v) => (v == null || v.trim().isEmpty)
-                      ? 'Öğrenci no gerekli.'
+                      ? 'Üye no gerekli.'
                       : null,
                 ),
                 const SizedBox(height: 12),

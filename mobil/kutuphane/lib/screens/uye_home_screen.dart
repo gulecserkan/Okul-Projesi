@@ -4,7 +4,7 @@ import '../api/library_api.dart';
 import '../models/auth.dart';
 import '../models/book.dart';
 
-/// K9: Üye (öğrenci/öğretmen) ekranı — salt-okunur.
+/// K9: Üye (üye/öğretmen) ekranı — salt-okunur.
 /// Kitaplarda gezinti/arama + kendi ödünç geçmişi. Düzenleme yoktur.
 class UyeHomeScreen extends StatefulWidget {
   const UyeHomeScreen({
@@ -72,7 +72,7 @@ class _UyeHomeScreenState extends State<UyeHomeScreen> {
   }
 
   Future<void> _loadLoans() async {
-    final no = widget.tokens.ogrenciNo;
+    final no = widget.tokens.uyeNo;
     if (no == null || no.isEmpty) {
       setState(() => _loadingLoans = false);
       return;
@@ -82,7 +82,7 @@ class _UyeHomeScreenState extends State<UyeHomeScreen> {
       _loansError = null;
     });
     try {
-      final list = await _api.fetchStudentHistory(no);
+      final list = await _api.fetchUyeGecmis(no);
       if (!mounted) return;
       setState(() {
         _loans = list;
@@ -249,7 +249,7 @@ class _UyeHomeScreenState extends State<UyeHomeScreen> {
   }
 
   Widget _buildLoansTab() {
-    if (widget.tokens.ogrenciNo == null || widget.tokens.ogrenciNo!.isEmpty) {
+    if (widget.tokens.uyeNo == null || widget.tokens.uyeNo!.isEmpty) {
       return const Center(child: Text('Ödünç bilgisi için hesabınızda numara yok.'));
     }
     if (_loadingLoans) {

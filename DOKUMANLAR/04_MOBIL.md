@@ -4,9 +4,10 @@ Tek Flutter uygulaması: `mobil/kutuphane/`. Django API'sine bağlanır ve **rol
 giriş yapan hesabın `tip`'ine göre farklı bölümler gösterir.
 
 > **Güncel (K9):** İki ayrı uygulama (öğretmen + öğrenci mock) **tek uygulamaya** indirildi.
-> - `tip=personel` → kitap yönetimi (ekle/düzenle, resim, barkod tarama).
+> - `tip=personel` → kitap yönetimi (operatör/admin).
+> - `role=editor` (üye + Editör rolü) → kitap **düzenleme** + menüde **Ödünçlerim**.
 > - `tip=uye` (öğrenci/öğretmen) → salt-okunur **gezinti/arama + ödünçlerim**.
-> - Üye girişi: kullanıcı adı = `ogrenci_no` + başlangıç şifresi; **ilk girişte şifre değiştirme zorunlu**.
+> - Üye girişi: kullanıcı adı = `uye_no` + başlangıç şifresi; **ilk girişte şifre değiştirme zorunlu**.
 > Eski `mobil/ogrenci/` mock uygulaması kaldırıldı (geçmişte git tarihinde).
 
 ```
@@ -65,8 +66,8 @@ mobil/
 | GET | `/api/kitaplar/` | `fetchBooks()` — `q, kategori, yazar, page, min/max_image_count, aciklama_var, raf_query, raf_prefix, isbn, barkod` |
 | GET | `/api/kitaplar/<id>/` | `fetchBookDetail()` |
 | PATCH | `/api/kitaplar/<id>/` | `updateBook()` — yalnız personel (üye 403 alır) |
-| GET | `/api/student-history/<no>/` | `fetchStudentHistory()` — üye yalnız kendi numarası |
-| GET | `/api/student-penalties/<no>/` | `fetchStudentPenalties()` — üye yalnız kendi numarası |
+| GET | `/api/uye-gecmis/<no>/` | `fetchStudentHistory()` — üye yalnız kendi numarası |
+| GET | `/api/uye-ceza/<no>/` | `fetchStudentPenalties()` — üye yalnız kendi numarası |
 
 ---
 

@@ -5,7 +5,7 @@ class AuthTokens {
     this.fullName,
     this.role,
     this.tip = 'personel',
-    this.ogrenciNo,
+    this.uyeNo,
     this.parolaDegistirilsin = false,
   });
 
@@ -14,16 +14,19 @@ class AuthTokens {
   final String? fullName;
   final String? role;
 
-  /// K9: hesap tipi — 'personel' (personel/editör) veya 'uye' (üye: öğrenci/öğretmen).
+  /// K9: hesap tipi — 'personel' (operatör/admin) veya 'uye' (öğrenci/öğretmen/editör).
   final String tip;
 
-  /// Üye hesabında öğrenci numarası (kendi ödünçleri için).
-  final String? ogrenciNo;
+  /// Üye hesabında üye numarası (kendi ödünçleri için).
+  final String? uyeNo;
 
   /// İlk girişte şifre değiştirme zorunluluğu.
   final bool parolaDegistirilsin;
 
   bool get isUye => tip == 'uye';
+
+  /// K9: editör — hem ödünç alır hem kitap düzenleyebilir.
+  bool get isEditor => role == 'editor';
 
   AuthTokens copyWith({
     String? accessToken,
@@ -31,7 +34,7 @@ class AuthTokens {
     String? fullName,
     String? role,
     String? tip,
-    String? ogrenciNo,
+    String? uyeNo,
     bool? parolaDegistirilsin,
   }) {
     return AuthTokens(
@@ -40,7 +43,7 @@ class AuthTokens {
       fullName: fullName ?? this.fullName,
       role: role ?? this.role,
       tip: tip ?? this.tip,
-      ogrenciNo: ogrenciNo ?? this.ogrenciNo,
+      uyeNo: uyeNo ?? this.uyeNo,
       parolaDegistirilsin: parolaDegistirilsin ?? this.parolaDegistirilsin,
     );
   }
@@ -52,7 +55,7 @@ class AuthTokens {
       fullName: json["full_name"]?.toString(),
       role: json["role"]?.toString(),
       tip: (json["tip"] ?? "personel").toString(),
-      ogrenciNo: json["ogrenci_no"]?.toString(),
+      uyeNo: json["uye_no"]?.toString(),
       parolaDegistirilsin: json["parola_degistirilsin"] == true,
     );
   }
@@ -64,7 +67,7 @@ class AuthTokens {
       "full_name": fullName,
       "role": role,
       "tip": tip,
-      "ogrenci_no": ogrenciNo,
+      "uye_no": uyeNo,
       "parola_degistirilsin": parolaDegistirilsin,
     };
   }

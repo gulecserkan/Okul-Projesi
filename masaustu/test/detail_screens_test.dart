@@ -6,20 +6,20 @@ import 'package:masaustu/screens/student_detail_screen.dart';
 import 'package:masaustu/screens/book_detail_screen.dart';
 
 void main() {
-  final ogrenci = Ogrenci(
+  final uye = Uye(
     id: 1,
     ad: 'Arpağ',
     soyad: 'Seven',
-    ogrenciNo: '5A01',
+    uyeNo: '5A01',
     sinif: const Sinif(id: 1, ad: '5-A'),
     telefon: '+90 555 111 22 33',
     eposta: 'a@b.c',
     aktif: true,
   );
 
-  testWidgets('Öğrenci detay ekranı başlık bilgilerini gösterir', (tester) async {
+  testWidgets('Üye detay ekranı başlık bilgilerini gösterir', (tester) async {
     await tester.pumpWidget(
-      MaterialApp(home: StudentDetailScreen(ogrenci: ogrenci)),
+      MaterialApp(home: StudentDetailScreen(uye: uye)),
     );
     await tester.pump();
 

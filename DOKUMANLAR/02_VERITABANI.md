@@ -6,7 +6,7 @@ Tek uygulama: `kutuphane_app`. Tüm tablolar tek PostgreSQL veritabanında. Trig
 
 ```
 ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-│    Sinif     │◄────│   Ogrenci   │────►│     Rol      │
+│    Sinif     │◄────│   Uye   │────►│     Rol      │
 │  (Sınıflar)  │     │ (Öğrenciler)│     │  (Roller)    │
 └─────────────┘     └─────────────┘     └──────┬───────┘
                                                 │ 1:1
@@ -30,15 +30,15 @@ Tek uygulama: `kutuphane_app`. Tüm tablolar tek PostgreSQL veritabanında. Trig
                     │(Ödünç Kayıtları)│
                     └─────────────┘
 
-┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-│ Inventory   │────►│ Inventory   │     │  Personel   │
-│  Session    │     │    Item     │     │(↔DjangoUser)│
-│(Sayım Oturumu)│     │(Sayım Kalemi)│     └─────────────┘
+┌─────────────┐     ┌─────────────┐
+│ Inventory   │────►│ Inventory   │
+│  Session    │     │    Item     │
+│(Sayım Oturumu)│     │(Sayım Kalemi)│
 └─────────────┘     └─────────────┘
 
 ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-│ ArsivBatch  │────►│ ArsivOgrenci│     │ ArsivOdunc  │
-│(Arşiv Partisi)│     │(Arşiv Öğr.)│     │(Arşiv Ödünç)│
+│ ArsivBatch  │────►│ ArsivUye    │     │ ArsivOdunc  │
+│(Arşiv Partisi)│   │(Arşiv Üye)  │     │(Arşiv Ödünç)│
 └─────────────┘     └─────────────┘     └─────────────┘
 
 ┌─────────────┐     ┌──────────────────┐
@@ -84,13 +84,13 @@ Tek uygulama: `kutuphane_app`. Tüm tablolar tek PostgreSQL veritabanında. Trig
 
 ---
 
-## Öğrenci (Ogrenci)
+## Öğrenci (Uye)
 | Alan | Tip | Açıklama |
 |---|---|---|
 | `id` | PK | Otomatik |
 | `ad` | CharField(50) | |
 | `soyad` | CharField(50) | |
-| `ogrenci_no` | CharField(20, unique) | |
+| `uye_no` | CharField(20, unique) | |
 | `sinif` | FK → Sinif(SET_NULL, null=True) | |
 | `rol` | FK → Rol(SET_NULL, null=True) | |
 | `telefon` | EncryptedCharField(512, blank) | **Şifreli** (FerNet/aes) — DB'de `gAAAA...` token |
@@ -132,7 +132,7 @@ Tek uygulama: `kutuphane_app`. Tüm tablolar tek PostgreSQL veritabanında. Trig
 | Alan | Tip | Açıklama |
 |---|---|---|
 | `id` | PK | Otomatik |
-| `ogrenci` | FK → Ogrenci(CASCADE) | |
+| `ogrenci` | FK → Uye(CASCADE) | |
 | `kitap_nusha` | FK → KitapNusha(CASCADE) | |
 | `odunc_tarihi` | DateTimeField(auto_now_add) | |
 | `iade_tarihi` | DateTimeField | Hesaplanan son iade tarihi (rol süresi + hafta sonu kaydırma) |
@@ -188,18 +188,18 @@ Tek uygulama: `kutuphane_app`. Tüm tablolar tek PostgreSQL veritabanında. Trig
 | `olusturma_tarihi` | DateTimeField | |
 | `json_dosya` | FileField(upload_to="arsiv/") | JSON yedek dosyası |
 
-### ArsivOgrenci
+### ArsivUye
 | Alan | Açıklama |
 |---|---|
 | `batch` | FK → ArsivBatch |
-| `ogrenci_no`, `ad`, `soyad`, `sinif_ad`, `rol_ad`, `telefon`, `eposta` | Snapshot alanları (denormalize) |
+| `uye_no`, `ad`, `soyad`, `sinif_ad`, `rol_ad`, `telefon`, `eposta` | Snapshot alanları (denormalize) |
 | `kayit_tarihi`, `pasif_tarihi` | |
 
 ### ArsivOdunc
 | Alan | Açıklama |
 |---|---|
 | `batch` | FK → ArsivBatch |
-| `ogrenci_no`, `kitap_baslik`, `barkod`, `odunc_tarihi`, `iade_tarihi`, `teslim_tarihi` | |
+| `uye_no`, `kitap_baslik`, `barkod`, `odunc_tarihi`, `iade_tarihi`, `teslim_tarihi` | |
 | `durum`, `gecikme_cezasi` | |
 
 ---
@@ -251,14 +251,22 @@ Tek uygulama: `kutuphane_app`. Tüm tablolar tek PostgreSQL veritabanında. Trig
 
 ---
 
-## Personel
+## Kimlik: User + Uye
+`Personel` tablosu kaldırılmıştır. İki tablo:
+
+**User (Django auth)** — giriş yapan herkes (operatör, admin, giriş yapan üye). Admin = `is_superuser`.
+
+**Uye** (eski `Ogrenci`)
 | Alan | Tip | Açıklama |
 |---|---|---|
-| `ad_soyad` | CharField(100) | |
-| `kullanici_adi` | CharField(50, unique) | API'de okunur; update'de kilitli |
-| `sifre_hash` | CharField | Django `make_password` / `check_password`; API ile **dışarı verilmez** |
-| `user` | OneToOne → AUTH_USER_MODEL(null=True) | Otomatik oluşturulur: `is_staff=True` |
-| `rol` | `admin` / `personel` | API'de okunur; update'de kilitli |
+| `ad` / `soyad` | CharField(50) | |
+| `uye_no` | CharField(20, unique, null) | Öğrencide zorunlu; personel/editörde opsiyonel |
+| `sinif` | FK → Sinif(null) | |
+| `rol` | FK → Rol(null) | Öğrenci / Öğretmen / **Editör** (ödünç grubu) |
+| `telefon` / `eposta` | Şifreli alan | |
+| `user` | OneToOne → AUTH_USER_MODEL(null) | Opsiyonel; şifre verilince bağlanır |
+| `parola_degistirilsin` | Boolean | İlk girişte şifre değiştirme zorunluluğu |
+| `aktif` / `pasif_tarihi` | | Durum |
 
 ---
 

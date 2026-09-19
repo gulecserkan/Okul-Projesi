@@ -1,4 +1,4 @@
-package com.example.ogretmen
+package com.example.kutuphane
 
 import io.flutter.embedding.android.FlutterActivity
 

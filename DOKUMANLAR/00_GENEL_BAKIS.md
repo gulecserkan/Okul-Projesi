@@ -42,7 +42,7 @@ Okul-Projesi/
 | **Masaüstü (eski, PyQt5)** `kutuphane_desktop/` | PyQt5 5.15, requests | Kasiyer terminali (referans): hızlı arama, ödünç/iade, etiket ve fiş yazdırma |
 | **Masaüstü (Flutter)** `masaustu/` | Flutter | Kütüphane personeli: kitap/öğrenci/ödünç/katalog yönetimi, etiket/işlem ekranları |
 | **Mobil (tek uygulama)** `mobil/kutuphane/` | Flutter, http, shared_preferences, image_picker, mobile_scanner | Rol bazlı: `personel` → kitap yönetimi; `üye` → gezinti + ödünçlerim |
-| **VBA** `e-okul...bas` | LibreOffice Basic | e-okul sınıf listesi raporunu `ogrenci_no,ad,soyad,sinif` CSV'sine dönüştürür |
+| **VBA** `e-okul...bas` | LibreOffice Basic | e-okul sınıf listesi raporunu `uye_no,ad,soyad,sinif` CSV'sine dönüştürür |
 
 ## Kimlik Doğrulama
 
@@ -50,7 +50,7 @@ Okul-Projesi/
 - `POST /api/token/` → access + refresh token; yanıta ve token claim'lerine `full_name`, `role` ve `tip` (`personel`/`uye`) eklenir.
 - `POST /api/token/refresh/` ile yenilenir.
 - Tek açık uç: `GET /api/health/`.
-- Kişiler: `Personel` kaydı ↔ Django `User` (OneToOne). `Personel` kendi şifre hash'iyle de doğrulama yapabilir.
+- Kişiler: **iki tablo** — `User` (kimlik; operatör/admin/giriş yapan üye) ve `Uye` (kütüphane kişisi: öğrenci/öğretmen/editör). `Uye.user` opsiyonel 1:1 bağlantıdır. `Personel` tablosu kaldırılmıştır; admin = `is_superuser`.
 - Admin paneli Django içi oturum (session) kimliği kullanır.
 
 ## Zamanlanmış İşler (Cron)
@@ -66,7 +66,7 @@ Okul-Projesi/
 1. Masaüstü/mobil kullanıcı barkod veya no okutur → `GET /api/fast-query/?barkod=...`
 2. Sunucu sırasıyla **barkod → ISBN → kitap başlığı → öğrenci no** tanır; öğrencinin aktif ödünçleri, ceza özeti ve rol politikası ile yanıt döner.
 3. Masaüstü iletişim bilgisi eksikse kullanıcıyı uyarır, sayım limiti kontrol eder (`max_items_for_role`).
-4. `POST /api/checkout/` `{ogrenci_no, barkod}` → sunucu doğrular, `iade_tarihi` hesaplar (rol süresi + hafta sonu kaydırma), kaydı açıp nüshayı `oduncte` yapar.
+4. `POST /api/checkout/` `{uye_no, barkod}` → sunucu doğrular, `iade_tarihi` hesaplar (rol süresi + hafta sonu kaydırma), kaydı açıp nüshayı `oduncte` yapar.
 5. İade/acil: `PATCH /api/oduncler/<id>/` durumu `teslim|kayip|hasarli|iptal`; kayıp/hasarlıda kalan ceza nüshaya işlenir.
 
 ## Yedekleme / Swiss Army Knife

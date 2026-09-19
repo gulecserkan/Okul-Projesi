@@ -28,22 +28,22 @@ class Kategori {
       Kategori(id: json['id'] as int, ad: json['ad'] as String? ?? '');
 }
 
-class Ogrenci {
+class Uye {
   final int id;
   final String ad;
   final String soyad;
-  final String ogrenciNo;
+  final String uyeNo;
   final Sinif? sinif;
   final String? telefon;
   final String? eposta;
   final bool aktif;
   final String? kayitTarihi;
 
-  const Ogrenci({
+  const Uye({
     required this.id,
     required this.ad,
     required this.soyad,
-    required this.ogrenciNo,
+    required this.uyeNo,
     this.sinif,
     this.telefon,
     this.eposta,
@@ -53,11 +53,11 @@ class Ogrenci {
 
   String get adSoyad => '$ad $soyad';
 
-  factory Ogrenci.fromJson(Map<String, dynamic> json) => Ogrenci(
+  factory Uye.fromJson(Map<String, dynamic> json) => Uye(
         id: json['id'] as int,
         ad: json['ad'] as String? ?? '',
         soyad: json['soyad'] as String? ?? '',
-        ogrenciNo: json['ogrenci_no'] as String? ?? '',
+        uyeNo: json['uye_no'] as String? ?? '',
         sinif: json['sinif'] is Map<String, dynamic>
             ? Sinif.fromJson(json['sinif'] as Map<String, dynamic>)
             : null,
@@ -151,7 +151,7 @@ class Nusha {
       );
 }
 
-/// Ödünç kaydı (öğrenci geçmişi / tarihçe satırı).
+/// Ödünç kaydı (üye geçmişi / tarihçe satırı).
 class OduncKaydi {
   final int id;
   final String kitapBaslik;
@@ -249,8 +249,8 @@ class FastLoan {
   final String? barkod;
   final String? rafKodu;
   final String? kitapBaslik;
-  final String? ogrenciNo;
-  final String? ogrenciAdSoyad;
+  final String? uyeNo;
+  final String? uyeAdSoyad;
 
   const FastLoan({
     required this.id,
@@ -265,8 +265,8 @@ class FastLoan {
     this.barkod,
     this.rafKodu,
     this.kitapBaslik,
-    this.ogrenciNo,
-    this.ogrenciAdSoyad,
+    this.uyeNo,
+    this.uyeAdSoyad,
   });
 
   FastLoan copyWith({int? copyId}) => FastLoan(
@@ -282,14 +282,14 @@ class FastLoan {
         barkod: barkod,
         rafKodu: rafKodu,
         kitapBaslik: kitapBaslik,
-        ogrenciNo: ogrenciNo,
-        ogrenciAdSoyad: ogrenciAdSoyad,
+        uyeNo: uyeNo,
+        uyeAdSoyad: uyeAdSoyad,
       );
 
   factory FastLoan.fromJson(Map<String, dynamic> json) {
     final nusha = json['kitap_nusha'];
     final kitap = nusha is Map<String, dynamic> ? nusha['kitap'] : null;
-    final ogr = json['ogrenci'];
+    final ogr = json['uye'];
     final fullNushaId =
         nusha is Map<String, dynamic> ? nusha['id'] as int? : null;
     return FastLoan(
@@ -309,15 +309,15 @@ class FastLoan {
       kitapBaslik: kitap is Map<String, dynamic>
           ? kitap['baslik'] as String? ?? ''
           : json['kitap'] as String?,
-      ogrenciNo: ogr is Map<String, dynamic> ? ogr['ogrenci_no'] as String? : null,
-      ogrenciAdSoyad: (ogr is Map<String, dynamic>)
+      uyeNo: ogr is Map<String, dynamic> ? ogr['uye_no'] as String? : null,
+      uyeAdSoyad: (ogr is Map<String, dynamic>)
           ? '${ogr['ad'] ?? ''} ${ogr['soyad'] ?? ''}'.trim()
           : null,
     );
   }
 }
 
-/// fast-query "student" sonucundaki öğrenci özeti.
+/// fast-query "student" sonucundaki üye özeti.
 class FastStudent {
   final int id;
   final String ad;
@@ -343,7 +343,7 @@ class FastStudent {
         id: json['id'] as int,
         ad: json['ad'] as String? ?? '',
         soyad: json['soyad'] as String? ?? '',
-        no: json['no'] as String? ?? json['ogrenci_no'] as String? ?? '',
+        no: json['no'] as String? ?? json['uye_no'] as String? ?? '',
         sinif: json['sinif'] as String?,
         rol: json['rol'] as String?,
         aktif: json['aktif'] as bool? ?? true,

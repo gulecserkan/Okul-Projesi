@@ -9,7 +9,7 @@ import '../models.dart';
 import '../theme.dart';
 import '../widgets/row_table.dart';
 
-/// Ödünç / İade ekranı — barkod / öğrenci no / ISBN taramaya dayalı akış.
+/// Ödünç / İade ekranı — barkod / üye no / ISBN taramaya dayalı akış.
 class LoanScreen extends StatefulWidget {
   const LoanScreen({super.key});
 
@@ -130,7 +130,7 @@ class _LoanScreenState extends State<LoanScreen> {
                   autofocus: true,
                   onSubmitted: (_) => _search(_searchController.text),
                   decoration: const InputDecoration(
-                    hintText: 'Barkod, öğrenci no, ISBN veya kitap adı...',
+                    hintText: 'Barkod, üye no, ISBN veya kitap adı...',
                     prefixIcon: Icon(Icons.qr_code_scanner),
                     border: OutlineInputBorder(),
                     isDense: true,
@@ -175,7 +175,7 @@ class _LoanScreenState extends State<LoanScreen> {
       case 'book_availability':
         return 'Kitap bulundu — nüshalarını aşağıda görün.';
       case 'student':
-        return 'Öğrenci bulundu — aktif ödünçleri aşağıda.';
+        return 'Üye bulundu — aktif ödünçleri aşağıda.';
       case 'not_found':
         return 'Eşleşen kayıt yok.';
       default:
@@ -212,7 +212,7 @@ class _LoanScreenState extends State<LoanScreen> {
             Icon(Icons.qr_code_scanner,
                 size: 64, color: Theme.of(context).colorScheme.outline),
             const SizedBox(height: 12),
-            const Text('Yukarıdaki kutuya barkod veya öğrenci numarası okutun.'),
+            const Text('Yukarıdaki kutuya barkod veya üye numarası okutun.'),
           ],
         ),
       );
@@ -342,7 +342,7 @@ class _DurumChip extends StatelessWidget {
   }
 }
 
-/// Öğrenci durumu çipi: Aktif / Pasif.
+/// Üye durumu çipi: Aktif / Pasif.
 class _AktifChip extends StatelessWidget {
   final bool aktif;
 
@@ -503,7 +503,7 @@ class _BookCopyResultState extends State<_BookCopyResult> {
                         children: [
                           Expanded(
                             child: Text(
-                              h.ogrenciAdSoyad ?? '—',
+                              h.uyeAdSoyad ?? '—',
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
@@ -555,9 +555,9 @@ class _LoanBanner extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(loan.ogrenciAdSoyad ?? '—',
+                Text(loan.uyeAdSoyad ?? '—',
                     style: const TextStyle(fontWeight: FontWeight.w600)),
-                Text('No: ${loan.ogrenciNo ?? '—'}  •  İade: ${formatDate(loan.iadeTarihi)}'),
+                Text('No: ${loan.uyeNo ?? '—'}  •  İade: ${formatDate(loan.iadeTarihi)}'),
                 if (overdue)
                   Text(
                     'Gecikme: ${loan.overdueDays} gün'
@@ -653,7 +653,7 @@ class _BookAvailabilityResult extends StatelessWidget {
             RowTableColumn('Barkod', flex: 2),
             RowTableColumn('Raf', flex: 1),
             RowTableColumn('Durum', flex: 1),
-            RowTableColumn('Öğrenci', flex: 3),
+            RowTableColumn('Üye', flex: 3),
             RowTableColumn('', flex: 0),
           ],
           rows: [
@@ -667,7 +667,7 @@ class _BookAvailabilityResult extends StatelessWidget {
                       style: const TextStyle(fontWeight: FontWeight.w600)),
                   Text(c.rafKodu ?? '—'),
                   _DurumChip(c.durum),
-                  Text(c.loan?.ogrenciAdSoyad ?? '—',
+                  Text(c.loan?.uyeAdSoyad ?? '—',
                       overflow: TextOverflow.ellipsis),
                   if (c.loan != null)
                     IconButton(
@@ -735,7 +735,7 @@ class _SummaryChip extends StatelessWidget {
   }
 }
 
-/// Öğrenci sonucu — aktif ödünçler + geçmiş.
+/// Üye sonucu — aktif ödünçler + geçmiş.
 class _StudentResult extends StatelessWidget {
   final Map<String, dynamic> data;
   final bool busy;
@@ -822,9 +822,9 @@ class _StudentResult extends StatelessWidget {
                         Expanded(
                           child: Text(
                             active.isEmpty
-                                ? 'Bu öğrenci pasif (mezun / nakil / tasdikname). '
+                                ? 'Bu üye pasif (mezun / nakil / tasdikname). '
                                     'Bu durumda ödünç alması kapalıdır.'
-                                : 'Bu öğrenci pasif (mezun / nakil / tasdikname) ama '
+                                : 'Bu üye pasif (mezun / nakil / tasdikname) ama '
                                     '${active.length} kitabı hâlâ ödünçte — mutlaka toplayın.',
                             style: TextStyle(
                                 color: warningColor(context),
@@ -980,7 +980,7 @@ if (loan.isOverdue)
   }
 }
 
-/// Ödünç verecek öğrenciyi arayıp seçtiren diyalog.
+/// Ödünç verecek üyeyi arayıp seçtiren diyalog.
 class _StudentPickerDialog extends StatefulWidget {
   final String barkod;
 
@@ -993,7 +993,7 @@ class _StudentPickerDialog extends StatefulWidget {
 class _StudentPickerDialogState extends State<_StudentPickerDialog> {
   final _api = KutuphaneApi();
   final _controller = TextEditingController();
-  List<Ogrenci> _results = [];
+  List<Uye> _results = [];
   bool _loading = false;
   Timer? _debounce;
 
@@ -1025,8 +1025,8 @@ class _StudentPickerDialogState extends State<_StudentPickerDialog> {
     });
   }
 
-  void _pick(Ogrenci o) {
-    Navigator.of(context).pop(o.ogrenciNo);
+  void _pick(Uye o) {
+    Navigator.of(context).pop(o.uyeNo);
   }
 
   @override
@@ -1044,7 +1044,7 @@ class _StudentPickerDialogState extends State<_StudentPickerDialog> {
               child: Row(
                 children: [
                   Expanded(
-                    child: Text('Ödünç verilecek öğrenci',
+                    child: Text('Ödünç verilecek üye',
                         style: theme.textTheme.titleMedium),
                   ),
                   IconButton(
@@ -1080,7 +1080,7 @@ class _StudentPickerDialogState extends State<_StudentPickerDialog> {
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Text(
                 _results.isEmpty && _controller.text.trim().length >= 2
-                    ? 'Eşleşen öğrenci yok.'
+                    ? 'Eşleşen üye yok.'
                     : 'Aramak için en az 2 karakter girin.',
                 style: theme.textTheme.bodySmall,
               ),
@@ -1102,7 +1102,7 @@ class _StudentPickerDialogState extends State<_StudentPickerDialog> {
                           ),
                           title: Text(o.adSoyad),
                           subtitle: Text(
-                            '${o.ogrenciNo}  •  ${o.sinif?.ad ?? '—'}'
+                            '${o.uyeNo}  •  ${o.sinif?.ad ?? '—'}'
                             '${o.aktif ? '' : '  •  Pasif'}'),
                           onTap: () => _pick(o),
                         );
@@ -1185,7 +1185,7 @@ class _ReturnDialogState extends State<_ReturnDialog> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Öğrenci: ${loan.ogrenciAdSoyad ?? '—'} (${loan.ogrenciNo ?? '—'})\n'
+              'Üye: ${loan.uyeAdSoyad ?? '—'} (${loan.uyeNo ?? '—'})\n'
               'İade: ${formatDate(loan.iadeTarihi)}',
               style: theme.textTheme.bodySmall,
             ),

@@ -8,7 +8,7 @@ import '../models.dart';
 /// Kayıt bloklandığında (K8.1) dönen mevcut eşleşme satırı.
 typedef BenzerKitapDetay = ({int id, String baslik, int nushaSayisi});
 
-/// Liste ve arama uç noktaları (öğrenci / kitap / sınıf).
+/// Liste ve arama uç noktaları (üye / kitap / sınıf).
 class KutuphaneApi {
   final ApiClient _client;
 
@@ -56,14 +56,14 @@ class KutuphaneApi {
     );
   }
 
-  Future<Page<Ogrenci>> studentsPage({
+  Future<Page<Uye>> studentsPage({
     int page = 1,
     int pageSize = 50,
     String? q,
   }) async {
-    final res = await _page('ogrenciler', page: page, pageSize: pageSize, q: q);
+    final res = await _page('uyeler', page: page, pageSize: pageSize, q: q);
     return Page(
-      items: res.items.map(Ogrenci.fromJson).toList(),
+      items: res.items.map(Uye.fromJson).toList(),
       total: res.total,
       nextPage: res.nextPage,
     );
@@ -108,11 +108,11 @@ class KutuphaneApi {
   /// Kamuya açık sayfalama-sız liste (yazar/kategori/raf vb.).
   Future<List<dynamic>> fetchAllPages(String path) => _fetchAllPages(path);
 
-  Future<List<Ogrenci>> students() async {
-    final data = await _fetchAllPages('ogrenciler/');
+  Future<List<Uye>> students() async {
+    final data = await _fetchAllPages('uyeler/');
     return data
         .whereType<Map<String, dynamic>>()
-        .map(Ogrenci.fromJson)
+        .map(Uye.fromJson)
         .toList();
   }
 
@@ -142,9 +142,9 @@ class KutuphaneApi {
         .toList();
   }
 
-  Future<List<OduncKaydi>> studentHistory(String ogrenciNo) async {
+  Future<List<OduncKaydi>> studentHistory(String uyeNo) async {
     final resp = await _client
-        .request('GET', 'student-history/$ogrenciNo/', auth: true);
+        .request('GET', 'uye-gecmis/$uyeNo/', auth: true);
     if (resp.statusCode != 200) return const [];
     return _extractList(resp)
         .whereType<Map<String, dynamic>>()
@@ -152,9 +152,9 @@ class KutuphaneApi {
         .toList();
   }
 
-  Future<PenaltySummary> studentPenalties(String ogrenciNo) async {
+  Future<PenaltySummary> studentPenalties(String uyeNo) async {
     final resp = await _client
-        .request('GET', 'student-penalties/$ogrenciNo/', auth: true);
+        .request('GET', 'uye-ceza/$uyeNo/', auth: true);
     if (resp.statusCode != 200) return const PenaltySummary();
     try {
       return PenaltySummary.fromJson(
@@ -164,7 +164,7 @@ class KutuphaneApi {
     }
   }
 
-  /// Hızlı tarama: barkod / öğrenci no / ISBN / başlık. Ham JSON döner.
+  /// Hızlı tarama: barkod / üye no / ISBN / başlık. Ham JSON döner.
   Future<Map<String, dynamic>?> fastQuery(String q) async {
     final resp = await _client.request(
       'GET',
@@ -179,13 +179,13 @@ class KutuphaneApi {
     }
   }
 
-  /// Ödünç ver: POST /api/checkout/ {ogrenci_no, barkod}.
-  Future<http.Response> checkout(String ogrenciNo, String barkod) {
+  /// Ödünç ver: POST /api/checkout/ {uye_no, barkod}.
+  Future<http.Response> checkout(String uyeNo, String barkod) {
     return _client.request(
       'POST',
       'checkout/',
       auth: true,
-      body: {'ogrenci_no': ogrenciNo, 'barkod': barkod},
+      body: {'uye_no': uyeNo, 'barkod': barkod},
     );
   }
 
@@ -212,7 +212,7 @@ class KutuphaneApi {
     );
   }
 
-  /// Öğrenci aktif/pasif değişimi (yalnızca admin). Uyarıları döndürür.
+  /// Üye aktif/pasif değişimi (yalnızca admin). Uyarıları döndürür.
   Future<({bool ok, List<String> warnings, String error})> setStudentStatus(
     int studentId,
     bool aktif,
@@ -220,7 +220,7 @@ class KutuphaneApi {
     try {
       final resp = await _client.request(
         'POST',
-        'ogrenciler/$studentId/durum/',
+        'uyeler/$studentId/durum/',
         auth: true,
         body: {'aktif': aktif},
       );
@@ -237,13 +237,13 @@ class KutuphaneApi {
     }
   }
 
-  /// Öğrenci oluşturur veya düzenler (id verilirse PATCH). Faz B.
+  /// Üye oluşturur veya düzenler (id verilirse PATCH). Faz B.
   /// Yalnızca profil alanları; aktif/pasif değişimi `setStudentStatus` ile yapılır.
-  Future<({Ogrenci? ogrenci, String? error})> saveStudent({
+  Future<({Uye? uye, String? error})> saveStudent({
     int? id,
     required String ad,
     required String soyad,
-    required String ogrenciNo,
+    required String uyeNo,
     int? sinifId,
     String? telefon,
     String? eposta,
@@ -255,7 +255,7 @@ class KutuphaneApi {
     final body = <String, dynamic>{
       'ad': ad.trim(),
       'soyad': soyad.trim(),
-      'ogrenci_no': ogrenciNo.trim(),
+      'uye_no': uyeNo.trim(),
       'sinif_id': ?sinifId,
       if (trimmedTel != null && trimmedTel.isNotEmpty) 'telefon': trimmedTel,
       if (trimmedEposta != null && trimmedEposta.isNotEmpty)
@@ -265,26 +265,26 @@ class KutuphaneApi {
     };
     try {
       final resp = id == null
-          ? await _client.request('POST', 'ogrenciler/', auth: true, body: body)
+          ? await _client.request('POST', 'uyeler/', auth: true, body: body)
           : await _client.request(
-              'PATCH', 'ogrenciler/$id/', auth: true, body: body);
+              'PATCH', 'uyeler/$id/', auth: true, body: body);
       if (resp.statusCode >= 200 && resp.statusCode < 300) {
         return (
-          ogrenci: Ogrenci.fromJson(jsonDecode(utf8.decode(resp.bodyBytes))),
+          uye: Uye.fromJson(jsonDecode(utf8.decode(resp.bodyBytes))),
           error: null,
         );
       }
-      return (ogrenci: null, error: extractError(resp));
+      return (uye: null, error: extractError(resp));
     } catch (_) {
-      return (ogrenci: null, error: 'İşlem yapılamadı.');
+      return (uye: null, error: 'İşlem yapılamadı.');
     }
   }
 
-  /// Öğrenci siler (yalnızca admin; ödünç geçmişi varsa backend reddeder). Faz B.
+  /// Üye siler (yalnızca admin; ödünç geçmişi varsa backend reddeder). Faz B.
   Future<({bool ok, String? error})> deleteStudent(int id) async {
     try {
       final resp =
-          await _client.request('DELETE', 'ogrenciler/$id/', auth: true);
+          await _client.request('DELETE', 'uyeler/$id/', auth: true);
       if (resp.statusCode == 204 || resp.statusCode == 200) {
         return (ok: true, error: null);
       }
@@ -292,6 +292,38 @@ class KutuphaneApi {
     } catch (_) {
       return (ok: false, error: 'Silme yapılamadı.');
     }
+  }
+
+  /// K9: giriş yapan kullanıcı kendisi için üye kaydı oluşturur (self-servis).
+  Future<({Uye? uye, String? error})> uyeBenEkle({
+    required String ad,
+    required String soyad,
+    int? rolId,
+    String? uyeNo,
+  }) async {
+    try {
+      final resp = await _client.request('POST', 'uyeler/ben-ekle/', auth: true, body: {
+        'ad': ad.trim(),
+        'soyad': soyad.trim(),
+        'rol_id': ?rolId,
+        if (uyeNo != null && uyeNo.trim().isNotEmpty) 'uye_no': uyeNo.trim(),
+      });
+      if (resp.statusCode >= 200 && resp.statusCode < 300) {
+        return (
+          uye: Uye.fromJson(jsonDecode(utf8.decode(resp.bodyBytes))),
+          error: null,
+        );
+      }
+      return (uye: null, error: extractError(resp));
+    } catch (_) {
+      return (uye: null, error: 'İşlem yapılamadı.');
+    }
+  }
+
+  /// Üye rolleri (Editör/Öğretmen/Öğrenci).
+  Future<List<Map<String, dynamic>>> roller() async {
+    final data = await _fetchAllPages('roller/');
+    return data.whereType<Map<String, dynamic>>().toList();
   }
 
   /// Kayıp/hasarlı ceza önerisi dahil ödünç politikasını getirir.

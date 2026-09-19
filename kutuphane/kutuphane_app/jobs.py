@@ -25,8 +25,8 @@ def iter_open_loans(lock=False):
     qs = (
         OduncKaydi.objects
         .filter(durum__in=["oduncte", "gecikmis"], teslim_tarihi__isnull=True)
-        .select_related("ogrenci", "ogrenci__rol", "ogrenci__rol__loan_policy", "kitap_nusha", "kitap_nusha__kitap")
-        .prefetch_related("ogrenci__rol")
+        .select_related("uye", "uye__rol", "uye__rol__loan_policy", "kitap_nusha", "kitap_nusha__kitap")
+        .prefetch_related("uye__rol")
     )
     if lock:
         qs = qs.select_for_update()
@@ -49,7 +49,7 @@ def update_overdue_loans(now=None, *, use_lock=False):
     with transaction.atomic():
         for loan in iter_open_loans(lock=use_lock):
             due = loan.iade_tarihi
-            role = getattr(loan.ogrenci, "rol", None)
+            role = getattr(loan.uye, "rol", None)
             effective_due = compute_effective_due(due, snapshot, role)
             if not effective_due:
                 continue
@@ -69,7 +69,7 @@ def update_overdue_loans(now=None, *, use_lock=False):
                     other_total = (
                         OduncKaydi.objects
                         .filter(
-                            ogrenci=loan.ogrenci,
+                            uye=loan.uye,
                             gecikme_cezasi__gt=0,
                             gecikme_cezasi_odendi=False,
                         )

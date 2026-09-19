@@ -116,8 +116,8 @@ class LibraryApiClient {
   }
 
   /// K9: üyenin kendi ödünç geçmişi (salt-okunur).
-  Future<List<Map<String, dynamic>>> fetchStudentHistory(String ogrenciNo) async {
-    final response = await _authorizedGet("/api/student-history/$ogrenciNo/");
+  Future<List<Map<String, dynamic>>> fetchUyeGecmis(String uyeNo) async {
+    final response = await _authorizedGet("/api/uye-gecmis/$uyeNo/");
     final decoded = jsonDecode(response.body);
     if (decoded is List) {
       return decoded.whereType<Map<String, dynamic>>().toList();
@@ -129,8 +129,8 @@ class LibraryApiClient {
   }
 
   /// K9: üyenin ceza özeti (salt-okunur).
-  Future<Map<String, dynamic>> fetchStudentPenalties(String ogrenciNo) async {
-    final response = await _authorizedGet("/api/student-penalties/$ogrenciNo/");
+  Future<Map<String, dynamic>> fetchUyeCeza(String uyeNo) async {
+    final response = await _authorizedGet("/api/uye-ceza/$uyeNo/");
     final decoded = jsonDecode(response.body);
     return decoded is Map<String, dynamic> ? decoded : <String, dynamic>{};
   }

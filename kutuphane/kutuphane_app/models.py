@@ -3,8 +3,6 @@ from django.contrib.postgres.indexes import GinIndex
 from datetime import time
 from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
-from django.contrib.auth import get_user_model
-from django.contrib.auth.hashers import make_password, check_password
 from django.conf import settings
 from django.core.validators import EmailValidator
 from django.utils import timezone
@@ -50,11 +48,12 @@ def ensure_role_policy(sender, instance, created, **kwargs):
         RoleLoanPolicy.objects.get_or_create(role=instance)
 
 
-# --- Öğrenciler ---
-class Ogrenci(models.Model):
+# --- Üyeler (öğrenci / öğretmen / editör) ---
+class Uye(models.Model):
     ad = models.CharField(max_length=50)
     soyad = models.CharField(max_length=50)
-    ogrenci_no = models.CharField(max_length=20, unique=True)
+    # Personel/editör için zorunlu değil; öğrencide doğrulama ile zorunlu.
+    uye_no = models.CharField(max_length=20, unique=True, null=True, blank=True)
     sinif = models.ForeignKey('Sinif', on_delete=models.SET_NULL, null=True)
     rol = models.ForeignKey('Rol', on_delete=models.SET_NULL, null=True)
     telefon = EncryptedCharField(max_length=512, blank=True, null=True)
@@ -68,13 +67,13 @@ class Ogrenci(models.Model):
     # 🔹 yeni alanlar:
     aktif = models.BooleanField(default=True)
     pasif_tarihi = models.DateTimeField(blank=True, null=True)
-    # Borçlu mobil girişi (öğrenci/öğretmen). Personel'den ayrı hesap tipi.
+    # Üye mobil girişi (öğrenci/öğretmen/editör). Opsiyonel bağlantı.
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name="ogrenci",
+        related_name="uye",
     )
     # İlk girişte şifre değiştirme zorunluluğu (basit başlangıç şifresi).
     parola_degistirilsin = models.BooleanField(default=False)
@@ -86,7 +85,7 @@ class Ogrenci(models.Model):
         super().save(*args, **kwargs)
 
     def _build_arama(self):
-        parts = [self.ad or "", self.soyad or "", self.ogrenci_no or ""]
+        parts = [self.ad or "", self.soyad or "", self.uye_no or ""]
         if self.sinif_id:
             parts.append(self.sinif.ad or "")
         if self.rol_id:
@@ -94,18 +93,18 @@ class Ogrenci(models.Model):
         return fold(" ".join(parts))
 
     def __str__(self):
-        return f"{self.ad} {self.soyad} ({self.ogrenci_no})"
+        return f"{self.ad} {self.soyad} ({self.uye_no})"
 
 
 @receiver(post_save, sender=Sinif)
 def refresh_sinif_arama(sender, instance, **kwargs):
-    for o in Ogrenci.objects.filter(sinif=instance).only("id"):
+    for o in Uye.objects.filter(sinif=instance).only("id"):
         o.save(update_fields=["arama"])
 
 
 @receiver(post_save, sender=Rol)
 def refresh_rol_arama(sender, instance, **kwargs):
-    for o in Ogrenci.objects.filter(rol=instance).only("id"):
+    for o in Uye.objects.filter(rol=instance).only("id"):
         o.save(update_fields=["arama"])
 
 
@@ -120,9 +119,9 @@ class ArsivBatch(models.Model):
 
 
 # 🔹 Arşivde öğrenci fotoğrafı (snapshot)
-class ArsivOgrenci(models.Model):
-    batch = models.ForeignKey(ArsivBatch, on_delete=models.CASCADE, related_name='arsiv_ogrenciler')
-    ogrenci_no = models.CharField(max_length=20)
+class ArsivUye(models.Model):
+    batch = models.ForeignKey(ArsivBatch, on_delete=models.CASCADE, related_name='arsiv_uyeler')
+    uye_no = models.CharField(max_length=20)
     ad = models.CharField(max_length=50)
     soyad = models.CharField(max_length=50)
     sinif_ad = models.CharField(max_length=20, blank=True, null=True)
@@ -133,13 +132,13 @@ class ArsivOgrenci(models.Model):
     pasif_tarihi = models.DateTimeField(blank=True, null=True)
 
     def __str__(self):
-        return f"{self.ogrenci_no} - {self.ad} {self.soyad}"
+        return f"{self.uye_no} - {self.ad} {self.soyad}"
 
 
 # 🔹 Arşivde ödünç kayıtları (snapshot)
 class ArsivOdunc(models.Model):
     batch = models.ForeignKey(ArsivBatch, on_delete=models.CASCADE, related_name='arsiv_oduncler')
-    ogrenci_no = models.CharField(max_length=20)
+    uye_no = models.CharField(max_length=20)
     kitap_baslik = models.CharField(max_length=200)
     barkod = models.CharField(max_length=50)
     odunc_tarihi = models.DateTimeField()
@@ -149,7 +148,7 @@ class ArsivOdunc(models.Model):
     gecikme_cezasi = models.DecimalField(max_digits=8, decimal_places=2, blank=True, null=True)
 
     def __str__(self):
-        return f"{self.ogrenci_no} - {self.kitap_baslik} ({self.barkod})"
+        return f"{self.uye_no} - {self.kitap_baslik} ({self.barkod})"
 
 
 # --- Yazarlar ---
@@ -306,7 +305,7 @@ def refresh_kategori_arama(sender, instance, **kwargs):
 
 # --- Ödünç Kayıtları ---
 class OduncKaydi(models.Model):
-    ogrenci = models.ForeignKey(Ogrenci, on_delete=models.CASCADE)
+    uye = models.ForeignKey(Uye, on_delete=models.CASCADE)
     kitap_nusha = models.ForeignKey(KitapNusha, on_delete=models.CASCADE)
     odunc_tarihi = models.DateTimeField(auto_now_add=True)
     iade_tarihi = models.DateTimeField()  # beklenen tarih
@@ -326,38 +325,7 @@ class OduncKaydi(models.Model):
     gecikme_odeme_tutari = models.DecimalField(max_digits=6, decimal_places=2, blank=True, null=True)
 
     def __str__(self):
-        return f"{self.ogrenci} - {self.kitap_nusha}"
-
-
-# --- Kütüphane Personeli (opsiyonel) ---
-User = get_user_model()
-
-
-class Personel(models.Model):
-    ad_soyad = models.CharField(max_length=100)
-    kullanici_adi = models.CharField(max_length=50, unique=True)
-    sifre_hash = models.CharField(max_length=128, blank=True)
-    user = models.OneToOneField(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        null=True,
-        blank=True,
-        related_name="personel",
-    )
-    ROL_SECENEKLERI = [
-        ("admin", "Admin"),
-        ("personel", "Personel"),
-    ]
-    rol = models.CharField(max_length=20, choices=ROL_SECENEKLERI, default="personel")
-
-    def __str__(self):
-        return self.ad_soyad
-
-    def set_password(self, raw_password):
-        self.sifre_hash = make_password(raw_password)
-
-    def check_password(self, raw_password):
-        return check_password(raw_password, self.sifre_hash)
+        return f"{self.uye} - {self.kitap_nusha}"
 
 
 class InventorySession(models.Model):

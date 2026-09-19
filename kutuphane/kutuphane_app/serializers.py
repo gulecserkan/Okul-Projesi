@@ -1,3 +1,4 @@
+from django.contrib.auth.models import User
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import (
     TokenObtainPairSerializer as BaseTokenObtainPairSerializer,
@@ -5,7 +6,7 @@ from rest_framework_simplejwt.serializers import (
 )
 
 from .models import (
-    Ogrenci,
+    Uye,
     Sinif,
     Rol,
     Yazar,
@@ -14,7 +15,6 @@ from .models import (
     Kitap,
     KitapNusha,
     OduncKaydi,
-    Personel,
     LoanPolicy,
     RoleLoanPolicy,
     NotificationSettings,
@@ -36,7 +36,7 @@ class SinifSerializer(serializers.ModelSerializer):
         fields = "__all__"
 
 
-class OgrenciSerializer(serializers.ModelSerializer):
+class UyeSerializer(serializers.ModelSerializer):
     sinif = SinifSerializer(read_only=True)
     sinif_id = serializers.PrimaryKeyRelatedField(
         source="sinif", queryset=Sinif.objects.all(), write_only=True, required=False, allow_null=True
@@ -46,43 +46,60 @@ class OgrenciSerializer(serializers.ModelSerializer):
     )
     # K9: personel, üye (öğrenci/öğretmen) için başlangıç/yeni şifre belirler.
     sifre = serializers.CharField(write_only=True, required=False, allow_blank=True)
+    # K9: mevcut bir User hesabına bağlama (ör. personel/öğretmen kendini üye yapar).
+    user_id = serializers.PrimaryKeyRelatedField(
+        source="user",
+        queryset=User.objects.all(),
+        write_only=True,
+        required=False,
+        allow_null=True,
+    )
 
     class Meta:
-        model = Ogrenci
+        model = Uye
         exclude = ("arama", "user")
         extra_kwargs = {
             # K2.6: aktif/pasif değişimi yalnızca durum action (admin); düz PATCH kilili.
             "aktif": {"read_only": True},
             "pasif_tarihi": {"read_only": True},
+            # Personel/editör için numara zorunlu değil (öğrencide doğrulama).
+            "uye_no": {"required": False, "allow_null": True},
         }
+
+    def validate(self, attrs):
+        rol = attrs.get("rol", getattr(self.instance, "rol", None))
+        uye_no = attrs.get("uye_no", getattr(self.instance, "uye_no", None))
+        if rol is not None and rol.ad == "Öğrenci" and not uye_no:
+            raise serializers.ValidationError(
+                {"uye_no": "Öğrenci için numara zorunludur."}
+            )
+        return attrs
 
     def create(self, validated_data):
         sifre = (validated_data.pop("sifre", "") or "").strip()
-        ogrenci = super().create(validated_data)
+        uye = super().create(validated_data)
         if sifre:
-            self._set_borrower_password(ogrenci, sifre)
-        return ogrenci
+            self._set_borrower_password(uye, sifre)
+        return uye
 
     def update(self, instance, validated_data):
         sifre = (validated_data.pop("sifre", "") or "").strip()
-        ogrenci = super().update(instance, validated_data)
+        uye = super().update(instance, validated_data)
         if sifre:
-            self._set_borrower_password(ogrenci, sifre)
-        return ogrenci
+            self._set_borrower_password(uye, sifre)
+        return uye
 
-    def _set_borrower_password(self, ogrenci, raw_password):
-        """Üye girişi: kullanıcı adı = ogrenci_no; ilk girişte değiştirme zorunlu."""
-        from django.contrib.auth.models import User
-
-        user = ogrenci.user
+    def _set_borrower_password(self, uye, raw_password):
+        """Üye girişi: kullanıcı adı = uye_no; ilk girişte değiştirme zorunlu."""
+        user = uye.user
         if user is None:
-            user, _ = User.objects.get_or_create(username=ogrenci.ogrenci_no)
+            user, _ = User.objects.get_or_create(username=uye.uye_no)
         user.set_password(raw_password)
         user.is_staff = False
         user.save()
-        ogrenci.user = user
-        ogrenci.parola_degistirilsin = True
-        ogrenci.save(update_fields=["user", "parola_degistirilsin"])
+        uye.user = user
+        uye.parola_degistirilsin = True
+        uye.save(update_fields=["user", "parola_degistirilsin"])
 
 
 class YazarSerializer(serializers.ModelSerializer):
@@ -250,7 +267,7 @@ class KitapNushaSerializer(serializers.ModelSerializer):
 
 
 class OduncKaydiSerializer(serializers.ModelSerializer):
-    ogrenci = OgrenciSerializer(read_only=True)
+    uye = UyeSerializer(read_only=True)
     kitap_nusha = KitapNushaSerializer(read_only=True)
 
     class Meta:
@@ -269,20 +286,6 @@ class OduncKaydiSerializer(serializers.ModelSerializer):
             "gecikme_odeme_tutari",
         ):
             fields[name].read_only = True
-        return fields
-
-
-class PersonelSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Personel
-        fields = ["id", "ad_soyad", "kullanici_adi", "rol"]
-
-    def get_fields(self):
-        fields = super().get_fields()
-        if self.instance is not None:
-            # Güncellemede kullanici_adi/rol kilitli; oluşturmada serbest.
-            fields["kullanici_adi"].read_only = True
-            fields["rol"].read_only = True
         return fields
 
 
@@ -439,33 +442,31 @@ class AuditLogSerializer(serializers.ModelSerializer):
 class TokenObtainPairSerializer(BaseTokenObtainPairSerializer):
     @classmethod
     def _claims(cls, user):
-        """K9: hesap tipi + rol. Personel yoksa superuser/staff admin sayılır.
+        """K9: hesap tipi + rol.
 
-        `tip`: 'personel' (kütüphane görevlisi) | 'uye' (üye: öğrenci/öğretmen).
+        - `is_superuser` → tip=personel, role=admin
+        - `Uye` bağlı → tip=uye, role=Uye.rol.ad (editör ise 'editor')
+        - aksi halde → tip=personel, role=personel (operatör)
         """
-        personel = getattr(user, "personel", None)
-        ogrenci = getattr(user, "ogrenci", None)
+        uye = getattr(user, "uye", None)
         claims = {}
-        if personel:
-            claims["tip"] = "personel"
-            claims["full_name"] = personel.ad_soyad
-            claims["role"] = personel.rol
-        elif ogrenci:
-            claims["tip"] = "uye"
-            claims["full_name"] = f"{ogrenci.ad} {ogrenci.soyad}".strip()
-            claims["role"] = ogrenci.rol.ad if ogrenci.rol else "Öğrenci"
-        elif user.is_superuser or user.is_staff:
+        if user.is_superuser:
             claims["tip"] = "personel"
             claims["full_name"] = user.get_full_name() or user.username
             claims["role"] = "admin"
+        elif uye is not None:
+            claims["tip"] = "uye"
+            claims["full_name"] = f"{uye.ad} {uye.soyad}".strip()
+            rol_ad = uye.rol.ad if uye.rol else "Öğrenci"
+            claims["role"] = "editor" if rol_ad == "Editör" else rol_ad
         else:
             claims["tip"] = "personel"
             claims["full_name"] = user.get_full_name() or user.username
-            claims["role"] = ""
-        if ogrenci is not None:
-            claims["ogrenci_id"] = ogrenci.id
-            claims["ogrenci_no"] = ogrenci.ogrenci_no
-            claims["parola_degistirilsin"] = bool(ogrenci.parola_degistirilsin)
+            claims["role"] = "personel"
+        if uye is not None:
+            claims["uye_id"] = uye.id
+            claims["uye_no"] = uye.uye_no
+            claims["parola_degistirilsin"] = bool(uye.parola_degistirilsin)
         else:
             claims["parola_degistirilsin"] = False
         return claims
@@ -480,7 +481,7 @@ class TokenObtainPairSerializer(BaseTokenObtainPairSerializer):
     def validate(self, attrs):
         data = super().validate(attrs)
         token = self.get_token(self.user)
-        for key in ("full_name", "role", "tip", "ogrenci_id", "ogrenci_no", "parola_degistirilsin"):
+        for key in ("full_name", "role", "tip", "uye_id", "uye_no", "parola_degistirilsin"):
             if key in token:
                 data[key] = token[key]
         return data
@@ -490,7 +491,7 @@ class TokenRefreshSerializer(BaseTokenRefreshSerializer):
     def validate(self, attrs):
         data = super().validate(attrs)
         refresh = self.token_class(attrs["refresh"])
-        for key in ("full_name", "role", "tip", "ogrenci_id", "ogrenci_no", "parola_degistirilsin"):
+        for key in ("full_name", "role", "tip", "uye_id", "uye_no", "parola_degistirilsin"):
             if key in refresh:
                 data[key] = refresh[key]
         return data

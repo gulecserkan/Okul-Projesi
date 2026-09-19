@@ -7,12 +7,12 @@ import '../models.dart';
 import '../theme.dart';
 import 'student_form_dialog.dart';
 
-const _deletedOgrenci = Ogrenci(id: -1, ad: '', soyad: '', ogrenciNo: '');
+const _deletedUye = Uye(id: -1, ad: '', soyad: '', uyeNo: '');
 
 class StudentDetailScreen extends StatefulWidget {
-  final Ogrenci ogrenci;
+  final Uye uye;
 
-  const StudentDetailScreen({super.key, required this.ogrenci});
+  const StudentDetailScreen({super.key, required this.uye});
 
   @override
   State<StudentDetailScreen> createState() => _StudentDetailScreenState();
@@ -22,7 +22,7 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
   final _api = KutuphaneApi();
   late Future<List<OduncKaydi>> _historyFuture;
   late Future<PenaltySummary> _penaltiesFuture;
-  late bool _aktif = widget.ogrenci.aktif;
+  late bool _aktif = widget.uye.aktif;
 
   bool get _isAdmin => AppConfig.session?.role == 'admin';
 
@@ -33,8 +33,8 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
   }
 
   void _load() {
-    _historyFuture = _api.studentHistory(widget.ogrenci.ogrenciNo);
-    _penaltiesFuture = _api.studentPenalties(widget.ogrenci.ogrenciNo);
+    _historyFuture = _api.studentHistory(widget.uye.uyeNo);
+    _penaltiesFuture = _api.studentPenalties(widget.uye.uyeNo);
   }
 
   void _snack(String msg, {bool error = false}) {
@@ -43,16 +43,16 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
   }
 
   Future<void> _toggleStatus() async {
-    final o = widget.ogrenci;
+    final o = widget.uye;
     final targetAktif = !_aktif;
     final confirm = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
         title:
-            Text(targetAktif ? 'Öğrenciyi aktifleştir' : 'Öğrenciyi pasife al'),
+            Text(targetAktif ? 'Üyeyi aktifleştir' : 'Üyeyi pasife al'),
         content: Text(targetAktif
-            ? '${o.adSoyad} (${o.ogrenciNo}) tekrar aktif olacak. Onaylıyor musunuz?'
-            : '${o.adSoyad} (${o.ogrenciNo}) pasife alınacak (mezun/nakil/tasdikname için). '
+            ? '${o.adSoyad} (${o.uyeNo}) tekrar aktif olacak. Onaylıyor musunuz?'
+            : '${o.adSoyad} (${o.uyeNo}) pasife alınacak (mezun/nakil/tasdikname için). '
                 'Geçmiş kayıtları korunur; yeni ödünç verilemez. Onaylıyor musunuz?'),
         actions: [
           TextButton(
@@ -71,21 +71,21 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
     if (res.ok) {
       setState(() => _aktif = targetAktif);
       final extra = res.warnings.isEmpty ? '' : ' Uyarı: ${res.warnings.join(' ')}';
-      _snack((targetAktif ? 'Öğrenci aktifleştirildi.' : 'Öğrenci pasife alındı.') + extra);
+      _snack((targetAktif ? 'Üye aktifleştirildi.' : 'Üye pasife alındı.') + extra);
     } else {
       _snack(res.error, error: true);
     }
   }
 
   Future<void> _delete() async {
-    final o = widget.ogrenci;
+    final o = widget.uye;
     final confirm = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('Öğrenciyi sil'),
+        title: const Text('Üyeyi sil'),
         content: Text(
-            '${o.adSoyad} (${o.ogrenciNo}) silinecek. Bu işlem kalıcıdır; '
-            'yalnızca ödünç geçmişi olmayan öğrenciler silinebilir. Onaylıyor musunuz?'),
+            '${o.adSoyad} (${o.uyeNo}) silinecek. Bu işlem kalıcıdır; '
+            'yalnızca ödünç geçmişi olmayan üyeler silinebilir. Onaylıyor musunuz?'),
         actions: [
           TextButton(
               onPressed: () => Navigator.of(context).pop(false),
@@ -101,16 +101,16 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
     final res = await _api.deleteStudent(o.id);
     if (!mounted) return;
     if (res.ok) {
-      Navigator.of(context).pop(_deletedOgrenci);
+      Navigator.of(context).pop(_deletedUye);
     } else {
       _snack(res.error ?? 'Silme yapılamadı.', error: true);
     }
   }
 
   Future<void> _edit() async {
-    final saved = await showDialog<Ogrenci>(
+    final saved = await showDialog<Uye>(
       context: context,
-      builder: (_) => StudentFormDialog(ogrenci: widget.ogrenci),
+      builder: (_) => StudentFormDialog(uye: widget.uye),
     );
     if (saved != null && mounted) {
       Navigator.of(context).pop(saved);
@@ -119,7 +119,7 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final o = widget.ogrenci;
+    final o = widget.uye;
     return Scaffold(
       appBar: AppBar(
         title: Text(o.adSoyad),
@@ -194,7 +194,7 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
                 return const Card(
                   child: Padding(
                     padding: EdgeInsets.all(24),
-                    child: Center(child: Text('Bu öğrencinin ödünç geçmişi yok.')),
+                    child: Center(child: Text('Bu üyenin ödünç geçmişi yok.')),
                   ),
                 );
               }
@@ -243,7 +243,7 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
     );
   }
 
-  Widget _header(Ogrenci o) {
+  Widget _header(Uye o) {
     final theme = Theme.of(context);
     return Card(
       child: Padding(
@@ -271,7 +271,7 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
                       Wrap(
                         spacing: 8,
                         children: [
-                          Chip(label: Text(o.ogrenciNo), visualDensity: VisualDensity.compact),
+                          Chip(label: Text(o.uyeNo), visualDensity: VisualDensity.compact),
                           if (o.sinif != null)
                             Chip(label: Text(o.sinif!.ad), visualDensity: VisualDensity.compact),
                           Chip(

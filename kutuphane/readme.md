@@ -17,7 +17,7 @@ Yazar, Kategori, Kitap, Kitap Nüsha
 
 Ödünç Kayıtları
 
-Personel
+Üye (öğrenci / öğretmen / editör)
 
 İstatistik API’leri:
 
@@ -45,7 +45,7 @@ Etiket / Barkod desteği (termal yazıcı entegrasyonu için backend hazır)
 
 📥 Öğrenci CSV içe aktarma formatı
 - Başlık satırı zorunlu, virgül ayraçlı, değerler yalın (tırnaksız) yazılabilir.
-- Kolonlar: `ogrenci_no,ad,soyad,sinif,rol` (sinif ve rol mevcut ad alanlarıyla eşleşir).
+- Kolonlar: `uye_no,ad,soyad,sinif,rol` (sinif ve rol mevcut ad alanlarıyla eşleşir).
 - Kodlama: UTF-8
 
 🛠️ Kurulum
@@ -99,7 +99,7 @@ Ana URL: http://127.0.0.1:8000/api/
 
 /siniflar/ → Sınıf CRUD
 
-/ogrenciler/ → Öğrenci CRUD
+/uyeler/ → Öğrenci CRUD
 
 /yazarlar/ → Yazar CRUD
 
@@ -111,7 +111,7 @@ Ana URL: http://127.0.0.1:8000/api/
 
 /oduncler/ → Ödünç kayıtları
 
-/personel/ → Personel CRUD
+/uyeler/ → Üye CRUD (+ /uyeler/ben-ekle/)
 
 /istatistik/ → İstatistik raporları
 
@@ -168,7 +168,7 @@ Admin üzerinden geçmiş arşivlere erişilebilir.
 - Checkout API akışı
 - Barkod otomatik üretimi (MAX + retry)
 - Alan şifrelemesi (KVKK)
-- Personel yetki sınırlamaları
+- Yetki sınırlamaları (K9: admin/operatör/editör/üye)
 
 Detaylı uç test planı: kutuphane_backend_test_plan.xlsx
 
