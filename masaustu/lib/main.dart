@@ -57,7 +57,14 @@ class _BootstrapHomeState extends State<_BootstrapHome> {
     final api = ApiClient();
     final ok = await api.tryRefresh();
     if (!mounted) return;
-    Navigator.of(context).pushReplacementNamed(ok ? '/home' : '/login');
+    final current = AppConfig.session;
+    // K9: eski token'larda `role` boş kalabilir; rol yoksa yeniden giriş zorunlu.
+    if (!ok || current == null || current.role.isEmpty) {
+      AppConfig.session = null;
+      Navigator.of(context).pushReplacementNamed('/login');
+      return;
+    }
+    Navigator.of(context).pushReplacementNamed('/home');
   }
 
   @override
