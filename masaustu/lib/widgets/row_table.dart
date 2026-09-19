@@ -168,7 +168,9 @@ class RowTable extends StatelessWidget {
     return GestureDetector(
       key: row.rowKey,
       behavior: HitTestBehavior.opaque,
-      onTapUp: (d) {
+      // Masaüstünde kaydırma tekerlekle yapıldığından basıldığı anda tetikle
+      // (çift-tık/zaman aşımı gecikmesi olmadan anında menü).
+      onTapDown: (d) {
         row.onSelected();
         row.onTap?.call(d.globalPosition);
       },
