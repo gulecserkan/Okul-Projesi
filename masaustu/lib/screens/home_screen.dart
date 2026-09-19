@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 
 import '../config.dart';
 import '../api/kutuphane_api.dart';
+import '../api_client.dart';
 import '../formatters.dart';
 import '../models.dart';
 import '../theme.dart';
+import '../widgets/return_dialog.dart';
 import 'book_list_screen.dart';
 import 'catalog_screen.dart';
 import 'loan_screen.dart';
@@ -191,6 +193,53 @@ class _OverviewState extends State<_Overview> {
 
   int get _gecikenSayisi => _loans.where((l) => l.durum == 'gecikmis').length;
 
+  /// Genel Bakış'tan hızlı iade: satıra çift tıklama.
+  Future<void> _iadeAl(OduncKaydi l) async {
+    final now = DateTime.now();
+    final bugun = DateTime(now.year, now.month, now.day);
+    final due = DateTime.tryParse(l.iadeTarihi ?? '');
+    final gecikmis = l.durum == 'gecikmis' ||
+        (due != null && DateTime(due.year, due.month, due.day).isBefore(bugun));
+    final overdueDays = (due != null && gecikmis)
+        ? bugun.difference(DateTime(due.year, due.month, due.day)).inDays
+        : 0;
+    final loan = FastLoan(
+      id: l.id,
+      durum: l.durum,
+      oduncTarihi: l.oduncTarihi,
+      iadeTarihi: l.iadeTarihi,
+      teslimTarihi: l.teslimTarihi,
+      isOverdue: gecikmis,
+      overdueDays: overdueDays,
+      barkod: l.barkod,
+      kitapBaslik: l.kitapBaslik,
+      uyeNo: l.uyeNo,
+      uyeAdSoyad: l.uyeAdSoyad,
+    );
+    final action = await showDialog<Map<String, String>>(
+      context: context,
+      builder: (_) => ReturnDialog(loan: loan, api: _api),
+    );
+    if (action == null) return;
+    final resp = await _api.closeLoan(
+      l.id,
+      durum: action['durum']!,
+      teslimTarihi: DateTime.now().toUtc().toIso8601String(),
+      gecikmeCezasi: action['penalty'],
+      odendi: action['odendi'] == 'true',
+    );
+    if (!mounted) return;
+    final ok = resp.statusCode >= 200 && resp.statusCode < 300;
+    showAppSnack(
+      context,
+      ok
+          ? 'İade alındı (${durumLabel(action['durum']!)}).'
+          : extractError(resp, fallback: 'İşlem başarısız oldu.'),
+      error: !ok,
+    );
+    if (ok) _load();
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -237,6 +286,9 @@ class _OverviewState extends State<_Overview> {
               icon: const Icon(Icons.refresh, size: 20),
               onPressed: _loading ? null : _load,
             ),
+            const SizedBox(width: 4),
+            Text('İade almak için satıra çift tıklayın.',
+                style: theme.textTheme.bodySmall),
           ],
         ),
         const SizedBox(height: 4),
@@ -282,6 +334,13 @@ class _OverviewState extends State<_Overview> {
     );
   }
 
+  /// Satır hücresini çift tıklamaya (iade) duyarlı hale getirir.
+  Widget _ciftTik(OduncKaydi l, Widget child) => GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onDoubleTap: () => _iadeAl(l),
+        child: child,
+      );
+
   Widget _aktifOdunclerBolumu(ThemeData theme) {
     if (_loading) {
       return const Padding(
@@ -322,20 +381,24 @@ class _OverviewState extends State<_Overview> {
                       .withValues(alpha: 0.14),
                 ),
                 cells: [
-                  DataCell(Text(l.kitapBaslik)),
-                  DataCell(Text([
-                    if ((l.uyeAdSoyad ?? '').isNotEmpty) l.uyeAdSoyad!,
-                    if ((l.uyeNo ?? '').isNotEmpty) '(${l.uyeNo})',
-                  ].join(' '))),
-                  DataCell(Text(formatDate(l.oduncTarihi))),
-                  DataCell(Text(formatDate(l.iadeTarihi))),
-                  DataCell(Text(
-                    durumLabel(l.durum),
-                    style: TextStyle(
-                      color: durumColor(l.durum, theme.brightness),
-                      fontWeight: FontWeight.w600,
-                    ),
-                  )),
+                  DataCell(_ciftTik(l, Text(l.kitapBaslik))),
+                  DataCell(_ciftTik(
+                      l,
+                      Text([
+                        if ((l.uyeAdSoyad ?? '').isNotEmpty) l.uyeAdSoyad!,
+                        if ((l.uyeNo ?? '').isNotEmpty) '(${l.uyeNo})',
+                      ].join(' ')))),
+                  DataCell(_ciftTik(l, Text(formatDate(l.oduncTarihi)))),
+                  DataCell(_ciftTik(l, Text(formatDate(l.iadeTarihi)))),
+                  DataCell(_ciftTik(
+                      l,
+                      Text(
+                        durumLabel(l.durum),
+                        style: TextStyle(
+                          color: durumColor(l.durum, theme.brightness),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ))),
                 ],
               ),
           ],
