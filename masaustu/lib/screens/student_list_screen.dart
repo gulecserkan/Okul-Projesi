@@ -6,6 +6,7 @@ import '../api/kutuphane_api.dart';
 import '../config.dart';
 import '../models.dart';
 import '../theme.dart';
+import '../widgets/horizontal_menu.dart';
 import '../widgets/radial_menu.dart';
 import '../widgets/row_table.dart';
 import 'student_detail_screen.dart';
@@ -366,7 +367,7 @@ void _snack(String msg, {bool error = false}) {
         const RadialMenuItem(
             icon: Icons.delete_outline, label: 'Sil', value: 'sil'),
     ];
-    final secim = await showRadialRowMenu(context, globalPos, items);
+    final secim = await showHorizontalRowMenu(context, globalPos, items);
     if (!mounted || secim == null) return;
     switch (secim) {
       case 'duzenle':
