@@ -156,6 +156,7 @@ class _OverviewState extends State<_Overview> {
   int _nushaCount = 0;
   int? _selectedLoanId;
   OverlayEntry? _menuEntry;
+  Offset? _sonTikPos;
 
   @override
   void initState() {
@@ -295,7 +296,10 @@ class _OverviewState extends State<_Overview> {
         return false;
       },
       child: Listener(
-        onPointerDown: (_) => _kapatMenu(),
+        onPointerDown: (e) {
+          _sonTikPos = e.position;
+          _kapatMenu();
+        },
         child: ListView(
       padding: const EdgeInsets.all(24),
       children: [
@@ -389,18 +393,9 @@ class _OverviewState extends State<_Overview> {
     );
   }
 
-  /// Satır hücresi: basıldığı anda işlem menüsü (İade / Kitap / Üye).
-  Widget _hucre(OduncKaydi l, Widget child) => GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTapDown: (d) {
-          setState(() => _selectedLoanId = l.id);
-          _satirMenu(l, d.globalPosition);
-        },
-        child: child,
-      );
-
   /// Satıra tıklanınca imlecin altında yatay işlem menüsü (modal değil).
   void _satirMenu(OduncKaydi l, Offset globalPos) {
+    if (mounted) setState(() => _selectedLoanId = l.id);
     _kapatMenu();
     final items = const [
       RadialMenuItem(icon: Icons.login, label: 'İade', value: 'iade'),
@@ -480,6 +475,7 @@ class _OverviewState extends State<_Overview> {
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: DataTable(
+          showCheckboxColumn: false,
           columns: const [
             DataColumn(label: Text('Kitap')),
             DataColumn(label: Text('Üye')),
@@ -491,6 +487,8 @@ class _OverviewState extends State<_Overview> {
             for (final l in _loans)
               DataRow(
                 selected: _selectedLoanId == l.id,
+                onSelectChanged: (_) =>
+                    _satirMenu(l, _sonTikPos ?? Offset.zero),
                 color: WidgetStatePropertyAll<Color?>(
                   _selectedLoanId == l.id
                       ? Color.alphaBlend(
@@ -503,24 +501,20 @@ class _OverviewState extends State<_Overview> {
                           .withValues(alpha: 0.14),
                 ),
                 cells: [
-                  DataCell(_hucre(l, Text(l.kitapBaslik))),
-                  DataCell(_hucre(
-                      l,
-                      Text([
-                        if ((l.uyeAdSoyad ?? '').isNotEmpty) l.uyeAdSoyad!,
-                        if ((l.uyeNo ?? '').isNotEmpty) '(${l.uyeNo})',
-                      ].join(' ')))),
-                  DataCell(_hucre(l, Text(formatDate(l.oduncTarihi)))),
-                  DataCell(_hucre(l, Text(formatDate(l.iadeTarihi)))),
-                  DataCell(_hucre(
-                      l,
-                      Text(
-                        durumLabel(l.durum),
-                        style: TextStyle(
-                          color: durumColor(l.durum, theme.brightness),
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ))),
+                  DataCell(Text(l.kitapBaslik)),
+                  DataCell(Text([
+                    if ((l.uyeAdSoyad ?? '').isNotEmpty) l.uyeAdSoyad!,
+                    if ((l.uyeNo ?? '').isNotEmpty) '(${l.uyeNo})',
+                  ].join(' '))),
+                  DataCell(Text(formatDate(l.oduncTarihi))),
+                  DataCell(Text(formatDate(l.iadeTarihi))),
+                  DataCell(Text(
+                    durumLabel(l.durum),
+                    style: TextStyle(
+                      color: durumColor(l.durum, theme.brightness),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  )),
                 ],
               ),
           ],
