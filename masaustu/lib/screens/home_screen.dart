@@ -150,6 +150,7 @@ class _OverviewState extends State<_Overview> {
   List<OduncKaydi> _loans = const [];
   int _uyeCount = 0;
   int _nushaCount = 0;
+  int? _selectedLoanId;
 
   @override
   void initState() {
@@ -197,6 +198,7 @@ class _OverviewState extends State<_Overview> {
 
   /// Genel Bakış'tan hızlı iade: satıra çift tıklama.
   Future<void> _iadeAl(OduncKaydi l) async {
+    if (mounted) setState(() => _selectedLoanId = l.id);
     final now = DateTime.now();
     final bugun = DateTime(now.year, now.month, now.day);
     final due = DateTime.tryParse(l.iadeTarihi ?? '');
@@ -362,10 +364,13 @@ class _OverviewState extends State<_Overview> {
     );
   }
 
-  /// Satır hücresi: tek tık → işlem menüsü (imleç yanında), çift tık → iade.
+  /// Satır hücresi: tek tık → seç + işlem menüsü, çift tık → iade.
   Widget _hucre(OduncKaydi l, Widget child) => GestureDetector(
         behavior: HitTestBehavior.opaque,
-        onTapUp: (d) => _satirMenu(l, d.globalPosition),
+        onTapUp: (d) {
+          setState(() => _selectedLoanId = l.id);
+          _satirMenu(l, d.globalPosition);
+        },
         onDoubleTap: () => _iadeAl(l),
         child: child,
       );
@@ -479,9 +484,17 @@ class _OverviewState extends State<_Overview> {
           rows: [
             for (final l in _loans)
               DataRow(
+                selected: _selectedLoanId == l.id,
                 color: WidgetStatePropertyAll<Color?>(
-                  iadeTone(l.iadeTarihi, theme.brightness, durum: l.durum)
-                      .withValues(alpha: 0.14),
+                  _selectedLoanId == l.id
+                      ? Color.alphaBlend(
+                          theme.colorScheme.primary.withValues(alpha: 0.24),
+                          iadeTone(l.iadeTarihi, theme.brightness,
+                                  durum: l.durum)
+                              .withValues(alpha: 0.14),
+                        )
+                      : iadeTone(l.iadeTarihi, theme.brightness, durum: l.durum)
+                          .withValues(alpha: 0.14),
                 ),
                 cells: [
                   DataCell(_hucre(l, Text(l.kitapBaslik))),
