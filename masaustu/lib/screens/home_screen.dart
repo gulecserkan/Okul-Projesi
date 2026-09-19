@@ -7,6 +7,8 @@ import '../formatters.dart';
 import '../models.dart';
 import '../theme.dart';
 import '../widgets/return_dialog.dart';
+import 'book_detail_screen.dart';
+import 'student_detail_screen.dart';
 import 'book_list_screen.dart';
 import 'catalog_screen.dart';
 import 'loan_screen.dart';
@@ -360,12 +362,87 @@ class _OverviewState extends State<_Overview> {
     );
   }
 
-  /// Satır hücresini çift tıklamaya (iade) duyarlı hale getirir.
-  Widget _ciftTik(OduncKaydi l, Widget child) => GestureDetector(
+  /// Satır hücresi: tek tık → işlem menüsü (imleç yanında), çift tık → iade.
+  Widget _hucre(OduncKaydi l, Widget child) => GestureDetector(
         behavior: HitTestBehavior.opaque,
+        onTapUp: (d) => _satirMenu(l, d.globalPosition),
         onDoubleTap: () => _iadeAl(l),
         child: child,
       );
+
+  /// Satıra tıklanınca imlecin yanında işlem menüsü (İade / Kitap / Üye).
+  Future<void> _satirMenu(OduncKaydi l, Offset globalPos) async {
+    final overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
+    final secim = await showMenu<String>(
+      context: context,
+      position: RelativeRect.fromLTRB(
+        globalPos.dx,
+        globalPos.dy,
+        overlay.size.width - globalPos.dx,
+        overlay.size.height - globalPos.dy,
+      ),
+      items: const [
+        PopupMenuItem(
+          value: 'iade',
+          child: ListTile(
+            dense: true,
+            contentPadding: EdgeInsets.zero,
+            leading: Icon(Icons.login),
+            title: Text('İade'),
+          ),
+        ),
+        PopupMenuItem(
+          value: 'kitap',
+          child: ListTile(
+            dense: true,
+            contentPadding: EdgeInsets.zero,
+            leading: Icon(Icons.menu_book_outlined),
+            title: Text('Kitap'),
+          ),
+        ),
+        PopupMenuItem(
+          value: 'uye',
+          child: ListTile(
+            dense: true,
+            contentPadding: EdgeInsets.zero,
+            leading: Icon(Icons.person_outline),
+            title: Text('Üye'),
+          ),
+        ),
+      ],
+    );
+    if (!mounted || secim == null) return;
+    switch (secim) {
+      case 'iade':
+        await _iadeAl(l);
+      case 'kitap':
+        _kitapAc(l);
+      case 'uye':
+        _uyeAc(l);
+    }
+  }
+
+  void _kitapAc(OduncKaydi l) {
+    final kitap = l.kitap;
+    if (kitap == null) {
+      showAppSnack(context, 'Kitap bilgisi bulunamadı.', error: true);
+      return;
+    }
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => BookDetailScreen(kitap: kitap)),
+    );
+  }
+
+  void _uyeAc(OduncKaydi l) {
+    final uye = l.uye;
+    if (uye == null) {
+      showAppSnack(context, 'Üye bilgisi bulunamadı.', error: true);
+      return;
+    }
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => StudentDetailScreen(uye: uye)),
+    );
+  }
 
   Widget _aktifOdunclerBolumu(ThemeData theme) {
     if (_loading) {
@@ -407,16 +484,16 @@ class _OverviewState extends State<_Overview> {
                       .withValues(alpha: 0.14),
                 ),
                 cells: [
-                  DataCell(_ciftTik(l, Text(l.kitapBaslik))),
-                  DataCell(_ciftTik(
+                  DataCell(_hucre(l, Text(l.kitapBaslik))),
+                  DataCell(_hucre(
                       l,
                       Text([
                         if ((l.uyeAdSoyad ?? '').isNotEmpty) l.uyeAdSoyad!,
                         if ((l.uyeNo ?? '').isNotEmpty) '(${l.uyeNo})',
                       ].join(' ')))),
-                  DataCell(_ciftTik(l, Text(formatDate(l.oduncTarihi)))),
-                  DataCell(_ciftTik(l, Text(formatDate(l.iadeTarihi)))),
-                  DataCell(_ciftTik(
+                  DataCell(_hucre(l, Text(formatDate(l.oduncTarihi)))),
+                  DataCell(_hucre(l, Text(formatDate(l.iadeTarihi)))),
+                  DataCell(_hucre(
                       l,
                       Text(
                         durumLabel(l.durum),

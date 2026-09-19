@@ -164,6 +164,10 @@ class OduncKaydi {
   final String? uyeNo;
   final String? uyeAdSoyad;
 
+  /// Detay ekranlarına gitmek için nested nesneler (ödünç yanıtında gelir).
+  final Kitap? kitap;
+  final Uye? uye;
+
   const OduncKaydi({
     required this.id,
     required this.kitapBaslik,
@@ -175,6 +179,8 @@ class OduncKaydi {
     this.gecikmeCezasi,
     this.uyeNo,
     this.uyeAdSoyad,
+    this.kitap,
+    this.uye,
   });
 
   factory OduncKaydi.fromJson(Map<String, dynamic> json) {
@@ -194,6 +200,8 @@ class OduncKaydi {
       uyeAdSoyad: (uye is Map<String, dynamic>)
           ? '${uye['ad'] ?? ''} ${uye['soyad'] ?? ''}'.trim()
           : null,
+      kitap: kitap is Map<String, dynamic> ? Kitap.fromJson(kitap) : null,
+      uye: uye is Map<String, dynamic> ? Uye.fromJson(uye) : null,
     );
   }
 }
