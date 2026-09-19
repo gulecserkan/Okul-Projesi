@@ -47,6 +47,11 @@ class OgrenciSerializer(serializers.ModelSerializer):
     class Meta:
         model = Ogrenci
         exclude = ("arama",)
+        extra_kwargs = {
+            # K2.6: aktif/pasif değişimi yalnızca durum action (admin); düz PATCH kilili.
+            "aktif": {"read_only": True},
+            "pasif_tarihi": {"read_only": True},
+        }
 
 
 class YazarSerializer(serializers.ModelSerializer):

@@ -231,6 +231,59 @@ class KutuphaneApi {
     }
   }
 
+  /// Öğrenci oluşturur veya düzenler (id verilirse PATCH). Faz B.
+  /// Yalnızca profil alanları; aktif/pasif değişimi `setStudentStatus` ile yapılır.
+  Future<({Ogrenci? ogrenci, String? error})> saveStudent({
+    int? id,
+    required String ad,
+    required String soyad,
+    required String ogrenciNo,
+    int? sinifId,
+    String? telefon,
+    String? eposta,
+  }) async {
+    final trimmedTel = telefon?.trim();
+    final trimmedEposta = eposta?.trim();
+    final body = <String, dynamic>{
+      'ad': ad.trim(),
+      'soyad': soyad.trim(),
+      'ogrenci_no': ogrenciNo.trim(),
+      'sinif_id': ?sinifId,
+      if (trimmedTel != null && trimmedTel.isNotEmpty) 'telefon': trimmedTel,
+      if (trimmedEposta != null && trimmedEposta.isNotEmpty)
+        'eposta': trimmedEposta,
+    };
+    try {
+      final resp = id == null
+          ? await _client.request('POST', 'ogrenciler/', auth: true, body: body)
+          : await _client.request(
+              'PATCH', 'ogrenciler/$id/', auth: true, body: body);
+      if (resp.statusCode >= 200 && resp.statusCode < 300) {
+        return (
+          ogrenci: Ogrenci.fromJson(jsonDecode(utf8.decode(resp.bodyBytes))),
+          error: null,
+        );
+      }
+      return (ogrenci: null, error: extractError(resp));
+    } catch (_) {
+      return (ogrenci: null, error: 'İşlem yapılamadı.');
+    }
+  }
+
+  /// Öğrenci siler (yalnızca admin; ödünç geçmişi varsa backend reddeder). Faz B.
+  Future<({bool ok, String? error})> deleteStudent(int id) async {
+    try {
+      final resp =
+          await _client.request('DELETE', 'ogrenciler/$id/', auth: true);
+      if (resp.statusCode == 204 || resp.statusCode == 200) {
+        return (ok: true, error: null);
+      }
+      return (ok: false, error: extractError(resp));
+    } catch (_) {
+      return (ok: false, error: 'Silme yapılamadı.');
+    }
+  }
+
   /// Kayıp/hasarlı ceza önerisi dahil ödünç politikasını getirir.
   Future<(String? kayipHasarCezasi, String? error)> fetchLoanPolicy() async {
     try {

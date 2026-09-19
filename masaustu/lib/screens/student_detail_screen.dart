@@ -4,6 +4,9 @@ import '../api/kutuphane_api.dart';
 import '../config.dart';
 import '../formatters.dart';
 import '../models.dart';
+import 'student_form_dialog.dart';
+
+const _deletedOgrenci = Ogrenci(id: -1, ad: '', soyad: '', ogrenciNo: '');
 
 class StudentDetailScreen extends StatefulWidget {
   final Ogrenci ogrenci;
@@ -78,6 +81,46 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
     }
   }
 
+  Future<void> _delete() async {
+    final o = widget.ogrenci;
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Öğrenciyi sil'),
+        content: Text(
+            '${o.adSoyad} (${o.ogrenciNo}) silinecek. Bu işlem kalıcıdır; '
+            'yalnızca ödünç geçmişi olmayan öğrenciler silinebilir. Onaylıyor musunuz?'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Vazgeç')),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Sil'),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+    final res = await _api.deleteStudent(o.id);
+    if (!mounted) return;
+    if (res.ok) {
+      Navigator.of(context).pop(_deletedOgrenci);
+    } else {
+      _snack(res.error ?? 'Silme yapılamadı.', error: true);
+    }
+  }
+
+  Future<void> _edit() async {
+    final saved = await showDialog<Ogrenci>(
+      context: context,
+      builder: (_) => StudentFormDialog(ogrenci: widget.ogrenci),
+    );
+    if (saved != null && mounted) {
+      Navigator.of(context).pop(saved);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final o = widget.ogrenci;
@@ -85,7 +128,12 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
       appBar: AppBar(
         title: Text(o.adSoyad),
         actions: [
-          if (_isAdmin)
+          IconButton(
+            tooltip: 'Düzenle',
+            icon: const Icon(Icons.edit_outlined),
+            onPressed: _edit,
+          ),
+          if (_isAdmin) ...[
             IconButton(
               tooltip: _aktif ? 'Pasife al' : 'Aktifleştir',
               icon: Icon(
@@ -93,6 +141,12 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
               ),
               onPressed: _toggleStatus,
             ),
+            IconButton(
+              tooltip: 'Sil',
+              icon: const Icon(Icons.delete_outline),
+              onPressed: _delete,
+            ),
+          ],
         ],
       ),
       body: ListView(

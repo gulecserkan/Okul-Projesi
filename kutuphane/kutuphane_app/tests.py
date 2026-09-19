@@ -607,3 +607,77 @@ class OgrenciDurumAPITests(APITestCase):
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
         warnings = resp.data.get("warnings", [])
         self.assertTrue(any("aktif ödüncü var" in w for w in warnings))
+
+class OgrenciCRUDAPITests(APITestCase):
+    """Faz B: öğrenci oluşturma/düzenleme herkese, silme admin'e; aktif/pasif PATCH'e kapalı."""
+
+    def setUp(self):
+        self.admin_user = User.objects.create_user(username="admin", password="a1!", is_staff=True)
+        self.personel_user = User.objects.create_user(username="person", password="p1!")
+        self.client.force_authenticate(self.personel_user)
+
+    def test_personel_can_create_student(self):
+        resp = self.client.post(
+            "/api/ogrenciler/",
+            {"ad": "Yeni", "soyad": "Öğrenci", "ogrenci_no": "998877"},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, status.HTTP_201_CREATED, resp.content)
+        self.assertTrue(resp.data["aktif"])
+        self.assertIsNone(resp.data["pasif_tarihi"])
+
+    def test_create_duplicate_no_rejected(self):
+        self.client.post(
+            "/api/ogrenciler/",
+            {"ad": "İlk", "soyad": "Öğrenci", "ogrenci_no": "998877"},
+            format="json",
+        )
+        resp = self.client.post(
+            "/api/ogrenciler/",
+            {"ad": "İkinci", "soyad": "Öğrenci", "ogrenci_no": "998877"},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_personel_can_edit_profile_fields(self):
+        ogrenci = Ogrenci.objects.create(ad="Eski", soyad="Ad", ogrenci_no="998877")
+        resp = self.client.patch(
+            f"/api/ogrenciler/{ogrenci.id}/",
+            {"ad": "Yeni", "telefon": "0555 111 22 33"},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, status.HTTP_200_OK, resp.content)
+        self.assertEqual(resp.data["ad"], "Yeni")
+
+    def test_patch_aktif_locked_read_only(self):
+        ogrenci = Ogrenci.objects.create(ad="A", soyad="B", ogrenci_no="998877")
+        resp = self.client.patch(f"/api/ogrenciler/{ogrenci.id}/", {"aktif": False}, format="json")
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        ogrenci.refresh_from_db()
+        self.assertTrue(ogrenci.aktif)
+
+    def test_personel_cannot_delete(self):
+        ogrenci = Ogrenci.objects.create(ad="A", soyad="B", ogrenci_no="998877")
+        resp = self.client.delete(f"/api/ogrenciler/{ogrenci.id}/")
+        self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertTrue(Ogrenci.objects.filter(pk=ogrenci.pk).exists())
+
+    def test_admin_can_delete_if_no_history(self):
+        self.client.force_authenticate(self.admin_user)
+        ogrenci = Ogrenci.objects.create(ad="A", soyad="B", ogrenci_no="998877")
+        resp = self.client.delete(f"/api/ogrenciler/{ogrenci.id}/")
+        self.assertEqual(resp.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(Ogrenci.objects.filter(pk=ogrenci.pk).exists())
+
+    def test_admin_cannot_delete_student_with_history(self):
+        self.client.force_authenticate(self.admin_user)
+        ogrenci = Ogrenci.objects.create(ad="A", soyad="B", ogrenci_no="60126")
+        kitap, nusha = make_book_and_copy(barkod="KIT0000777")
+        resp = self.client.post(
+            "/api/checkout/", {"ogrenci_no": "60126", "barkod": nusha.barkod}, format="json"
+        )
+        self.assertEqual(resp.status_code, status.HTTP_201_CREATED, resp.content)
+        resp = self.client.delete(f"/api/ogrenciler/{ogrenci.id}/")
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST, resp.content)
+        self.assertTrue(Ogrenci.objects.filter(pk=ogrenci.pk).exists())
+        _ = kitap

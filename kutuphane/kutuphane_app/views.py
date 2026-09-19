@@ -37,7 +37,12 @@ from .models import (
     InventoryItem,
 )
 from .turkish import fold
-from .rules import apply_student_status, validate_transition, NUSHA_KAPANIS_MAP
+from .rules import (
+    NUSHA_KAPANIS_MAP,
+    apply_student_status,
+    can_delete_ogrenci,
+    validate_transition,
+)
 from .serializers import (
     OgrenciSerializer,
     SinifSerializer,
@@ -217,12 +222,32 @@ class OgrenciViewSet(viewsets.ModelViewSet):
     serializer_class = OgrenciSerializer
     pagination_class = ConditionalPageNumberPagination
 
+    def get_permissions(self):
+        # Faz B: düzenleme (create/update/liste/detay) tüm personel; silme yalnızca admin.
+        if self.action == "durum":
+            return [IsAuthenticated(), IsAdminPersonel()]
+        if self.action == "destroy":
+            return [IsAdminPersonel()]
+        return [IsAuthenticated()]
+
     def get_queryset(self):
         qs = super().get_queryset()
         arama = self.request.query_params.get("q")
         if arama:
             qs = qs.filter(arama__icontains=fold(arama))
         return qs
+
+    def destroy(self, request, *args, **kwargs):
+        # K2.7: ödünç geçmişi olan öğrenci silinemez; veri kaybını önle, pasife alınır.
+        ogrenci = self.get_object()
+        if not can_delete_ogrenci(ogrenci):
+            return Response(
+                {"error": "Bu öğrencinin ödünç geçmişi var; veri kaybını önlemek için "
+                          "silinemez. Bunun yerine öğrenciyi pasife alabilirsiniz."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        self.perform_destroy(ogrenci)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(detail=True, methods=["post"], permission_classes=[IsAuthenticated, IsAdminPersonel])
     def durum(self, request, pk=None):

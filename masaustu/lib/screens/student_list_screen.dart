@@ -7,6 +7,7 @@ import '../config.dart';
 import '../models.dart';
 import '../widgets/row_table.dart';
 import 'student_detail_screen.dart';
+import 'student_form_dialog.dart';
 
 class StudentListScreen extends StatefulWidget {
   const StudentListScreen({super.key});
@@ -111,10 +112,21 @@ class _StudentListScreenState extends State<StudentListScreen> {
     });
   }
 
-  void _openDetail(Ogrenci o) {
-    Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => StudentDetailScreen(ogrenci: o),
-    ));
+  void _openDetail(Ogrenci o) async {
+    final result = await Navigator.of(context).push<Ogrenci>(
+      MaterialPageRoute(
+        builder: (_) => StudentDetailScreen(ogrenci: o),
+      ),
+    );
+    if (result != null && mounted) _load(reset: true);
+  }
+
+  Future<void> _newStudent() async {
+    final saved = await showDialog<Ogrenci>(
+      context: context,
+      builder: (_) => const StudentFormDialog(),
+    );
+    if (saved != null && mounted) _load(reset: true);
   }
 
   bool get _isAdmin => AppConfig.session?.role == 'admin';
@@ -189,6 +201,12 @@ class _StudentListScreenState extends State<StudentListScreen> {
                 tooltip: 'Yenile',
                 icon: const Icon(Icons.refresh),
                 onPressed: _initialLoading ? null : () => _load(reset: true),
+              ),
+              const SizedBox(width: 8),
+              FilledButton.icon(
+                onPressed: _newStudent,
+                icon: const Icon(Icons.person_add),
+                label: const Text('Yeni Öğrenci'),
               ),
             ],
           ),
