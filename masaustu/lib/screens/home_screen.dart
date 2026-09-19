@@ -21,6 +21,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
+  bool _menuAcik = AppConfig.menuAcik;
 
   bool get _isAdmin => widget.session.role == 'admin';
 
@@ -74,6 +75,14 @@ class _HomeScreenState extends State<HomeScreen> {
     ];
     return Scaffold(
       appBar: AppBar(
+        leading: IconButton(
+          tooltip: _menuAcik ? 'Menüyü gizle' : 'Menüyü göster',
+          icon: Icon(_menuAcik ? Icons.menu_open : Icons.menu),
+          onPressed: () => setState(() {
+            _menuAcik = !_menuAcik;
+            AppConfig.menuAcik = _menuAcik;
+          }),
+        ),
         title: const Text('Kütüphane Yönetim Sistemi'),
         actions: [
           Padding(
@@ -99,16 +108,18 @@ class _HomeScreenState extends State<HomeScreen> {
       body: SafeArea(
         child: Row(
           children: [
-            SizedBox(
-              width: 220,
-              child: NavigationRail(
-                selectedIndex: _selectedIndex,
-                onDestinationSelected: (i) => setState(() => _selectedIndex = i),
-                labelType: NavigationRailLabelType.all,
-                destinations: destinations,
+            if (_menuAcik) ...[
+              SizedBox(
+                width: 220,
+                child: NavigationRail(
+                  selectedIndex: _selectedIndex,
+                  onDestinationSelected: (i) => setState(() => _selectedIndex = i),
+                  labelType: NavigationRailLabelType.all,
+                  destinations: destinations,
+                ),
               ),
-            ),
-            const VerticalDivider(thickness: 1, width: 1),
+              const VerticalDivider(thickness: 1, width: 1),
+            ],
             Expanded(
               child: screens[_selectedIndex.clamp(0, screens.length - 1)],
             ),

@@ -52,6 +52,18 @@ class AppConfig {
     _write(data);
   }
 
+  /// Sol menü açık mı? (varsayılan: açık)
+  static bool get menuAcik {
+    final data = _read();
+    return data['menu_acik'] as bool? ?? true;
+  }
+
+  static set menuAcik(bool value) {
+    final data = _read();
+    data['menu_acik'] = value;
+    _write(data);
+  }
+
   static Session? get session {
     final data = _read();
     final s = data['session'];
