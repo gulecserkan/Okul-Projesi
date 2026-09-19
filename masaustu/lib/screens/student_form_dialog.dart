@@ -23,6 +23,7 @@ class _StudentFormDialogState extends State<StudentFormDialog> {
   late final TextEditingController _no;
   late final TextEditingController _telefon;
   late final TextEditingController _eposta;
+  final _sifre = TextEditingController();
   late Future<List<Sinif>> _siniflarFuture;
   int? _sinifId;
   bool _busy = false;
@@ -64,6 +65,7 @@ class _StudentFormDialogState extends State<StudentFormDialog> {
     _no.dispose();
     _telefon.dispose();
     _eposta.dispose();
+    _sifre.dispose();
     super.dispose();
   }
 
@@ -78,6 +80,7 @@ class _StudentFormDialogState extends State<StudentFormDialog> {
       sinifId: _sinifId,
       telefon: _telefon.text,
       eposta: _eposta.text,
+      sifre: _sifre.text,
     );
     if (!mounted) return;
     if (res.ogrenci != null) {
@@ -185,6 +188,20 @@ class _StudentFormDialogState extends State<StudentFormDialog> {
                     isDense: true,
                   ),
                   keyboardType: TextInputType.emailAddress,
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _sifre,
+                  obscureText: true,
+                  decoration: InputDecoration(
+                    labelText: 'Giriş şifresi (borçlu uygulaması)',
+                    helperText: _editing
+                        ? 'Boş bırakılırsa mevcut şifre değişmez.'
+                        : 'Boş bırakılırsa giriş hesabı oluşturulmaz.',
+                    helperMaxLines: 2,
+                    border: const OutlineInputBorder(),
+                    isDense: true,
+                  ),
                 ),
               ],
             ),
