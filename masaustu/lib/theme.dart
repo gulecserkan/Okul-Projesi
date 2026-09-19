@@ -129,17 +129,38 @@ ColorScheme _cocukScheme() {
 ///
 /// Arka plan ve metin rengi aynı şemanın eşleşen rollerinden seçilir
 /// (error => onErrorContainer, normal => onSecondaryContainer), böylece
-/// koyu/pastel temalarda da metin okunaklı kalır.
+/// koyu/pastel temalarda da metin okunaklı kalır. Bilgilendirme daha belirgin
+/// olsun diye ikon + kalın metin kullanılır ve süre uzun tutulur.
 void showAppSnack(BuildContext context, String message, {bool error = false}) {
   final scheme = Theme.of(context).colorScheme;
+  final bg = error ? scheme.errorContainer : scheme.secondaryContainer;
+  final fg = error ? scheme.onErrorContainer : scheme.onSecondaryContainer;
   ScaffoldMessenger.of(context)
     ..clearSnackBars()
     ..showSnackBar(SnackBar(
-      content: Text(
-        message,
-        style: TextStyle(color: error ? scheme.onErrorContainer : scheme.onSecondaryContainer),
+      behavior: SnackBarBehavior.floating,
+      margin: const EdgeInsets.all(16),
+      shape:
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      duration: const Duration(seconds: 6),
+      backgroundColor: bg,
+      content: Row(
+        children: [
+          Icon(error ? Icons.error_outline : Icons.check_circle_outline,
+              color: fg, size: 22),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              message,
+              style: TextStyle(
+                color: fg,
+                fontWeight: FontWeight.w600,
+                fontSize: 14.5,
+              ),
+            ),
+          ),
+        ],
       ),
-      backgroundColor: error ? scheme.errorContainer : scheme.secondaryContainer,
     ));
 }
 
