@@ -6,6 +6,7 @@ import '../api_client.dart';
 import '../formatters.dart';
 import '../models.dart';
 import '../theme.dart';
+import '../widgets/radial_menu.dart';
 import '../widgets/return_dialog.dart';
 import 'book_detail_screen.dart';
 import 'student_detail_screen.dart';
@@ -375,47 +376,15 @@ class _OverviewState extends State<_Overview> {
         child: child,
       );
 
-  /// Satıra tıklanınca imlecin yanında işlem menüsü (İade / Kitap / Üye).
+  /// Satıra tıklanınca imlecin yanında yuvarlak (dilimli) işlem menüsü.
   Future<void> _satirMenu(OduncKaydi l, Offset globalPos) async {
-    final overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
-    final secim = await showMenu<String>(
-      context: context,
-      position: RelativeRect.fromLTRB(
-        globalPos.dx,
-        globalPos.dy,
-        overlay.size.width - globalPos.dx,
-        overlay.size.height - globalPos.dy,
-      ),
-      items: const [
-        PopupMenuItem(
-          value: 'iade',
-          child: ListTile(
-            dense: true,
-            contentPadding: EdgeInsets.zero,
-            leading: Icon(Icons.login),
-            title: Text('İade'),
-          ),
-        ),
-        PopupMenuItem(
-          value: 'kitap',
-          child: ListTile(
-            dense: true,
-            contentPadding: EdgeInsets.zero,
-            leading: Icon(Icons.menu_book_outlined),
-            title: Text('Kitap'),
-          ),
-        ),
-        PopupMenuItem(
-          value: 'uye',
-          child: ListTile(
-            dense: true,
-            contentPadding: EdgeInsets.zero,
-            leading: Icon(Icons.person_outline),
-            title: Text('Üye'),
-          ),
-        ),
-      ],
-    );
+    final secim = await showRadialRowMenu(context, globalPos, const [
+      RadialMenuItem(icon: Icons.login, label: 'İade', value: 'iade'),
+      RadialMenuItem(
+          icon: Icons.menu_book_outlined, label: 'Kitap', value: 'kitap'),
+      RadialMenuItem(
+          icon: Icons.person_outline, label: 'Üye', value: 'uye'),
+    ]);
     if (!mounted || secim == null) return;
     switch (secim) {
       case 'iade':
