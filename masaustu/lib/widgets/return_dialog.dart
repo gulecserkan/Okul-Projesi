@@ -90,7 +90,7 @@ class _ReturnDialogState extends State<ReturnDialog> {
                 ),
                 child: Text(
                   'Gecikme: ${loan.overdueDays} gün'
-                  '${loan.penaltyPreview != null ? ' • Günlük ceza öngörüsü: ₺${loan.penaltyPreview}' : ''}',
+                  '${loan.penaltyPreview != null ? ' • Ceza öngörüsü: ₺${loan.penaltyPreview}' : ''}',
                   style: TextStyle(color: dangerColor(context)),
                 ),
               ),

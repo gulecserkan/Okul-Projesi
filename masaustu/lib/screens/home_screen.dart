@@ -198,11 +198,36 @@ class _OverviewState extends State<_Overview> {
     final now = DateTime.now();
     final bugun = DateTime(now.year, now.month, now.day);
     final due = DateTime.tryParse(l.iadeTarihi ?? '');
-    final gecikmis = l.durum == 'gecikmis' ||
+    var gecikmis = l.durum == 'gecikmis' ||
         (due != null && DateTime(due.year, due.month, due.day).isBefore(bugun));
-    final overdueDays = (due != null && gecikmis)
+    var overdueDays = (due != null && gecikmis)
         ? bugun.difference(DateTime(due.year, due.month, due.day)).inDays
         : 0;
+    String? penaltyPreview;
+
+    // Ceza öngörüsünü backend'den (fast-query) al — politika/tolerans/rol dahil.
+    final no = l.uyeNo ?? '';
+    if (no.isNotEmpty) {
+      try {
+        final data = await _api.fastQuery(no);
+        final active = (data?['active_loans'] as List<dynamic>? ?? const [])
+            .whereType<Map<String, dynamic>>();
+        for (final m in active) {
+          if (m['id'] == l.id) {
+            penaltyPreview = m['penalty_preview'] as String?;
+            if (m['overdue_days'] is int) {
+              overdueDays = m['overdue_days'] as int;
+            }
+            if (m['is_overdue'] is bool) {
+              gecikmis = m['is_overdue'] as bool;
+            }
+            break;
+          }
+        }
+      } catch (_) {}
+    }
+    if (!mounted) return;
+
     final loan = FastLoan(
       id: l.id,
       durum: l.durum,
@@ -211,6 +236,7 @@ class _OverviewState extends State<_Overview> {
       teslimTarihi: l.teslimTarihi,
       isOverdue: gecikmis,
       overdueDays: overdueDays,
+      penaltyPreview: penaltyPreview,
       barkod: l.barkod,
       kitapBaslik: l.kitapBaslik,
       uyeNo: l.uyeNo,
