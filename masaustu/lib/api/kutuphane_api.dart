@@ -77,8 +77,10 @@ class KutuphaneApi {
     int page = 1,
     int pageSize = 50,
     String? q,
+    String? ordering,
   }) async {
-    final res = await _page('kitaplar', page: page, pageSize: pageSize, q: q);
+    final res = await _page('kitaplar',
+        page: page, pageSize: pageSize, q: q, ordering: ordering);
     return Page(
       items: res.items.map(Kitap.fromJson).toList(),
       total: res.total,

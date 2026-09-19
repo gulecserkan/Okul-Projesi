@@ -436,6 +436,16 @@ class KitapViewSet(viewsets.ModelViewSet):
     serializer_class = KitapSerializer
     pagination_class = ConditionalPageNumberPagination
 
+    # Sıralanabilir başlıklar → ORM alanları
+    ORDERING_FIELDS = {
+        "baslik": ("baslik",),
+        "yazar": ("yazar__ad_soyad",),
+        "kategori": ("kategori__ad",),
+        "isbn": ("isbn",),
+        "yayin_yili": ("yayin_yili",),
+        "nusha_sayisi": ("nusha_sayisi",),
+    }
+
     def get_permissions(self):
         # Faz C + K9: kitap ekleme/düzenleme personel; silme/birleştirme admin;
         # liste/detay (gezinti) tüm kimliği doğrulanmış kullanıcılar.
@@ -632,6 +642,13 @@ class KitapViewSet(viewsets.ModelViewSet):
             falsy = normalized in ("0", "false", "hayir", "hayır", "no")
             if truthy or falsy:
                 qs = qs.filter(aciklama_var=truthy)
+
+        ordering = (self.request.query_params.get("ordering") or "").strip()
+        if ordering:
+            desc = ordering.startswith("-")
+            mapped = self.ORDERING_FIELDS.get(ordering.lstrip("-"))
+            if mapped:
+                qs = qs.order_by(*[("-" if desc else "") + f for f in mapped])
 
         return qs.distinct()
 

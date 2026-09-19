@@ -32,6 +32,8 @@ class _BookListScreenState extends State<BookListScreen> {
   String? _error;
   int? _selectedId;
   String _query = '';
+  String _sortKey = 'baslik';
+  bool _sortAsc = true;
   Timer? _debounce;
   final Map<int, GlobalKey> _rowKeys = {};
   final _stackKey = GlobalKey();
@@ -74,7 +76,12 @@ class _BookListScreenState extends State<BookListScreen> {
 
     final page = reset ? 1 : _loadedPage + 1;
     try {
-      final res = await _api.booksPage(page: page, pageSize: 50, q: _query);
+      final res = await _api.booksPage(
+        page: page,
+        pageSize: 50,
+        q: _query,
+        ordering: '${_sortAsc ? '' : '-'}$_sortKey',
+      );
       if (!mounted) return;
       setState(() {
         _loadedPage = page;
@@ -119,6 +126,19 @@ class _BookListScreenState extends State<BookListScreen> {
       _query = text.trim();
       _load(reset: true);
     });
+  }
+
+  /// Başlığa tıklayınca sıralama (aynı başlık → yön değiştir).
+  void _onSort(String key) {
+    setState(() {
+      if (_sortKey == key) {
+        _sortAsc = !_sortAsc;
+      } else {
+        _sortKey = key;
+        _sortAsc = true;
+      }
+    });
+    _load(reset: true);
   }
 
   void _openDetail(Kitap k) async {
@@ -273,12 +293,15 @@ class _BookListScreenState extends State<BookListScreen> {
               controller: _scrollController,
               footer: _footer(),
               minWidth: 1050,
+              sortKey: _sortKey,
+              sortAscending: _sortAsc,
+              onSort: _onSort,
               columns: const [
-                RowTableColumn('Kitap', flex: 4),
-                RowTableColumn('Yazar', flex: 3),
-                RowTableColumn('Kategori', flex: 2),
-                RowTableColumn('Yıl', flex: 1),
-                RowTableColumn('Nüsha', flex: 1),
+                RowTableColumn('Kitap', flex: 4, sortKey: 'baslik'),
+                RowTableColumn('Yazar', flex: 3, sortKey: 'yazar'),
+                RowTableColumn('Kategori', flex: 2, sortKey: 'kategori'),
+                RowTableColumn('Yıl', flex: 1, sortKey: 'yayin_yili'),
+                RowTableColumn('Nüsha', flex: 1, sortKey: 'nusha_sayisi'),
                 RowTableColumn('Raf', flex: 2),
               ],
               rows: [
