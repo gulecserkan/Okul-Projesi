@@ -150,7 +150,7 @@ class IsAdminPersonel(BasePermission):
 
 
 class IsPersonel(BasePermission):
-    """K9: personel uçları için. Borçlu (Ogrenci bağlantılı, Personel olmayan)
+    """K9: personel uçları için. Üye (Ogrenci bağlantılı, Personel olmayan)
     hesaplar erişemez; superuser/staff ve Personel kayıtlı kullanıcılar erişir.
     """
 
@@ -165,12 +165,12 @@ class IsPersonel(BasePermission):
         personel = getattr(user, "personel", None)
         ogrenci = getattr(user, "ogrenci", None)
         if personel is None and ogrenci is not None:
-            return False  # yalnız borçlu hesabı
+            return False  # yalnız üye hesabı
         return True
 
 
 def requester_ogrenci(user):
-    """K9: istek sahibi borçlu (öğrenci/öğretmen) ise Ogrenci kaydını döner.
+    """K9: istek sahibi üye (öğrenci/öğretmen) ise Ogrenci kaydını döner.
 
     Personel/superuser/staff için None döner (kısıt yok).
     """
@@ -1590,7 +1590,7 @@ class ChangePasswordView(APIView):
             personel.sifre_hash = user.password
             personel.save(update_fields=["sifre_hash"])
 
-        # K9: borçlu ilk giriş şifresini değiştirdiyse zorunluluk kalkar.
+        # K9: üye ilk giriş şifresini değiştirdiyse zorunluluk kalkar.
         ogrenci = getattr(user, "ogrenci", None)
         if ogrenci is not None and ogrenci.parola_degistirilsin:
             ogrenci.parola_degistirilsin = False

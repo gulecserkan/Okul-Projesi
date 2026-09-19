@@ -260,7 +260,7 @@ class KutuphaneApi {
       if (trimmedTel != null && trimmedTel.isNotEmpty) 'telefon': trimmedTel,
       if (trimmedEposta != null && trimmedEposta.isNotEmpty)
         'eposta': trimmedEposta,
-      // K9: borçlu mobil girişi için başlangıç/yeni şifre (boşsa değişmez).
+      // K9: üye mobil girişi için başlangıç/yeni şifre (boşsa değişmez).
       if (trimmedSifre != null && trimmedSifre.isNotEmpty) 'sifre': trimmedSifre,
     };
     try {

@@ -1152,7 +1152,7 @@ class BookLookupTests(TestCase):
 
 
 class BorrowerAccountTests(APITestCase):
-    """K9: borçlu (öğrenci/öğretmen) hesabı, token tipi, kapsam ve şifre akışı."""
+    """K9: üye (öğrenci/öğretmen) hesabı, token tipi, kapsam ve şifre akışı."""
 
     def setUp(self):
         self.sinif = Sinif.objects.create(ad="9-A")
@@ -1189,13 +1189,13 @@ class BorrowerAccountTests(APITestCase):
         self.assertEqual(resp.data["tip"], "personel")
         self.assertEqual(resp.data["role"], "admin")
 
-    def test_borrower_login_and_scope(self):
+    def test_uye_login_and_scope(self):
         resp = self._set_password(self.ogrenci, "ilk1234")
         self.assertEqual(resp.status_code, status.HTTP_200_OK, resp.content)
 
         login = self._login("9001", "ilk1234")
         self.assertEqual(login.status_code, status.HTTP_200_OK, login.content)
-        self.assertEqual(login.data["tip"], "ogrenci")
+        self.assertEqual(login.data["tip"], "uye")
         self.assertEqual(login.data["role"], "Öğrenci")
         self.assertEqual(login.data["ogrenci_no"], "9001")
         self.assertTrue(login.data["parola_degistirilsin"])
@@ -1227,7 +1227,7 @@ class BorrowerAccountTests(APITestCase):
             status.HTTP_403_FORBIDDEN,
         )
 
-    def test_borrower_change_password_clears_flag(self):
+    def test_uye_change_password_clears_flag(self):
         self._set_password(self.ogrenci, "ilk1234")
         login = self._login("9001", "ilk1234")
         self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {login.data['access']}")

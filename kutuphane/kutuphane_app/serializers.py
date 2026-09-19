@@ -44,7 +44,7 @@ class OgrenciSerializer(serializers.ModelSerializer):
     rol_id = serializers.PrimaryKeyRelatedField(
         source="rol", queryset=Rol.objects.all(), write_only=True, required=False, allow_null=True
     )
-    # K9: personel, borçlu (öğrenci/öğretmen) için başlangıç/yeni şifre belirler.
+    # K9: personel, üye (öğrenci/öğretmen) için başlangıç/yeni şifre belirler.
     sifre = serializers.CharField(write_only=True, required=False, allow_blank=True)
 
     class Meta:
@@ -71,7 +71,7 @@ class OgrenciSerializer(serializers.ModelSerializer):
         return ogrenci
 
     def _set_borrower_password(self, ogrenci, raw_password):
-        """Borçlu girişi: kullanıcı adı = ogrenci_no; ilk girişte değiştirme zorunlu."""
+        """Üye girişi: kullanıcı adı = ogrenci_no; ilk girişte değiştirme zorunlu."""
         from django.contrib.auth.models import User
 
         user = ogrenci.user
@@ -439,7 +439,10 @@ class AuditLogSerializer(serializers.ModelSerializer):
 class TokenObtainPairSerializer(BaseTokenObtainPairSerializer):
     @classmethod
     def _claims(cls, user):
-        """K9: hesap tipi + rol. Personel yoksa superuser/staff admin sayılır."""
+        """K9: hesap tipi + rol. Personel yoksa superuser/staff admin sayılır.
+
+        `tip`: 'personel' (kütüphane görevlisi) | 'uye' (üye: öğrenci/öğretmen).
+        """
         personel = getattr(user, "personel", None)
         ogrenci = getattr(user, "ogrenci", None)
         claims = {}
@@ -448,7 +451,7 @@ class TokenObtainPairSerializer(BaseTokenObtainPairSerializer):
             claims["full_name"] = personel.ad_soyad
             claims["role"] = personel.rol
         elif ogrenci:
-            claims["tip"] = "ogrenci"
+            claims["tip"] = "uye"
             claims["full_name"] = f"{ogrenci.ad} {ogrenci.soyad}".strip()
             claims["role"] = ogrenci.rol.ad if ogrenci.rol else "Öğrenci"
         elif user.is_superuser or user.is_staff:

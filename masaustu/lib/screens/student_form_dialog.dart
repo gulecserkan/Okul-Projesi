@@ -194,7 +194,7 @@ class _StudentFormDialogState extends State<StudentFormDialog> {
                   controller: _sifre,
                   obscureText: true,
                   decoration: InputDecoration(
-                    labelText: 'Giriş şifresi (borçlu uygulaması)',
+                    labelText: 'Giriş şifresi (üye uygulaması)',
                     helperText: _editing
                         ? 'Boş bırakılırsa mevcut şifre değişmez.'
                         : 'Boş bırakılırsa giriş hesabı oluşturulmaz.',

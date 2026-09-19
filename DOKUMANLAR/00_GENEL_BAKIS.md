@@ -9,9 +9,9 @@ Tek merkezî REST API (Django) üzerinden dört farklı istemci tarafından kull
 Okul-Projesi/
 ├── kutuphane/                  # Django backend (REST API + admin paneli)
 ├── kutuphane_desktop/          # PyQt5 masaüstü istemcisi (kasiyer terminali)
+├── masaustu/                   # Flutter masaüstü istemcisi (personel/admin)
 ├── mobil/
-│   ├── ogrenci/                # Flutter öğrenci uygulaması (PROTOTİP — backend bağlantısı yok)
-│   └── ogretmen/               # Flutter öğretmen/admin uygulaması (tam işlevsel)
+│   └── kutuphane/              # Flutter mobil uygulama (personel + üye, rol bazlı)
 └── e-okulöğrenciListesiToKutuphaneCSV.bas  # LibreOffice Basic: e-okul raporu → CSV
 ```
 
@@ -39,15 +39,15 @@ Okul-Projesi/
 | Katman | Teknoloji | Sorumlu olduğu iş |
 |---|---|---|
 | **Backend** `kutuphane/` | Django 5.2, DRF 3.16, simplejwt, PostgreSQL, WhiteNoise, import-export | Tüm iş mantığı: ödünç, ceza politikası, sayım, arşiv, istatistik, backup/restore |
-| **Masaüstü** `kutuphane_desktop/` | PyQt5 5.15, requests | Kasiyer terminali: hızlı arama, ödünç/iade, etiket ve fiş yazdırma, sayım, toplu öğrenci işlemleri |
-| **Mobil — Öğretmen** `mobil/ogretmen/` | Flutter, http, shared_preferences, image_picker, mobile_scanner | Kitap arama/filtre, barkod tarama, kitap açıklaması ve 5 resim yönetimi, şifre değiştirme |
-| **Mobil — Öğrenci** `mobil/ogrenci/` | Flutter (yalnız UI) | Şu an ekran tasarımı; gerçek veri yok, ağ bağlantısı yok (prototip) |
+| **Masaüstü (eski, PyQt5)** `kutuphane_desktop/` | PyQt5 5.15, requests | Kasiyer terminali (referans): hızlı arama, ödünç/iade, etiket ve fiş yazdırma |
+| **Masaüstü (Flutter)** `masaustu/` | Flutter | Kütüphane personeli: kitap/öğrenci/ödünç/katalog yönetimi, etiket/işlem ekranları |
+| **Mobil (tek uygulama)** `mobil/kutuphane/` | Flutter, http, shared_preferences, image_picker, mobile_scanner | Rol bazlı: `personel` → kitap yönetimi; `üye` → gezinti + ödünçlerim |
 | **VBA** `e-okul...bas` | LibreOffice Basic | e-okul sınıf listesi raporunu `ogrenci_no,ad,soyad,sinif` CSV'sine dönüştürür |
 
 ## Kimlik Doğrulama
 
 - API tamamen **JWT** korumalıdır (`rest_framework_simplejwt`).
-- `POST /api/token/` → access + refresh token; yanıta ve token claim'lerine `full_name` ve `role` eklenir.
+- `POST /api/token/` → access + refresh token; yanıta ve token claim'lerine `full_name`, `role` ve `tip` (`personel`/`uye`) eklenir.
 - `POST /api/token/refresh/` ile yenilenir.
 - Tek açık uç: `GET /api/health/`.
 - Kişiler: `Personel` kaydı ↔ Django `User` (OneToOne). `Personel` kendi şifre hash'iyle de doğrulama yapabilir.
