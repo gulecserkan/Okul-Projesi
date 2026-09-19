@@ -159,6 +159,18 @@ class Kategori(models.Model):
 
 
 # --- Kitaplar (Eser Bilgisi) ---
+# --- Raflar (Katalog: admin yönetir; nüsha > Raf FK) ---
+class Raf(models.Model):
+    ad = models.CharField(max_length=50, unique=True)
+    aciklama = models.CharField(max_length=200, blank=True, null=True)
+
+    def __str__(self):
+        return self.ad
+
+    class Meta:
+        ordering = ("ad",)
+
+
 class Kitap(models.Model):
     baslik = models.CharField(max_length=200)
     yazar = models.ForeignKey(Yazar, on_delete=models.SET_NULL, null=True)
@@ -166,6 +178,8 @@ class Kitap(models.Model):
     yayin_yili = models.IntegerField(blank=True, null=True)
     isbn = models.CharField(max_length=20, blank=True, null=True)
     aciklama = models.TextField(blank=True)
+    # İnternetten çekilen kapak görseli (Google Books vb.) — açık URL.
+    kapak_url = models.CharField(max_length=500, blank=True, null=True)
     resim1 = models.ImageField(upload_to="kitap_resimleri/", blank=True, null=True)
     resim2 = models.ImageField(upload_to="kitap_resimleri/", blank=True, null=True)
     resim3 = models.ImageField(upload_to="kitap_resimleri/", blank=True, null=True)
@@ -190,6 +204,10 @@ class Kitap(models.Model):
             "raf_kodu", flat=True
         )
         parts.extend(r for r in raf_kodlari if r)
+        raf_adlari = KitapNusha.objects.filter(
+            kitap_id=self.pk, raf__isnull=False
+        ).values_list("raf__ad", flat=True)
+        parts.extend(r for r in raf_adlari if r)
         return fold(" ".join(parts))
 
     def __str__(self):
@@ -237,6 +255,14 @@ class KitapNusha(models.Model):
     ]
     durum = models.CharField(max_length=20, choices=DURUM_SECENEKLERI, default="mevcut")
     raf_kodu = models.CharField(max_length=20, blank=True, null=True)
+    raf = models.ForeignKey(
+        "Raf", on_delete=models.SET_NULL, null=True, blank=True, related_name="nushalar"
+    )
+
+    def save(self, *args, **kwargs):
+        if self.raf_id and not self.raf_kodu:
+            self.raf_kodu = self.raf.ad
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.kitap.baslik} - {self.barkod}"
@@ -252,7 +278,7 @@ def refresh_kitap_arama(sender, instance, **kwargs):
     except KitapNusha.DoesNotExist:
         instance.kitap.save(update_fields=["arama"])
         return
-    if old.raf_kodu != instance.raf_kodu:
+    if old.raf_kodu != instance.raf_kodu or old.raf_id != instance.raf_id:
         instance.kitap.save(update_fields=["arama"])
 
 

@@ -12,6 +12,8 @@ from kutuphane_app.views import (
     KategoriViewSet,
     KitapViewSet,
     KitapNushaViewSet,
+    RafViewSet,
+    GoogleBooksView,
     OduncKaydiViewSet,
     OduncKapatView,
     PersonelViewSet,
@@ -52,6 +54,7 @@ router.register(r'siniflar', SinifViewSet)
 router.register(r'ogrenciler', OgrenciViewSet)
 router.register(r'yazarlar', YazarViewSet)
 router.register(r'kategoriler', KategoriViewSet)
+router.register(r'raflar', RafViewSet)
 router.register(r'kitaplar', KitapViewSet)
 router.register(r'nushalar', KitapNushaViewSet)
 router.register(r'oduncler', OduncKaydiViewSet)
@@ -64,6 +67,7 @@ urlpatterns = [
     path('admin/', admin_site.urls),
     path('api/', include(router.urls)),
     path('api/fast-query/', FastQueryView.as_view(), name="fast-query"),
+    path('api/kitap-google/', GoogleBooksView.as_view(), name="kitap-google"),
     path('api/book-history/<str:barkod>/', BookHistoryView.as_view(), name="book-history"),
     path('api/student-history/<str:ogrenci_no>/', StudentHistoryView.as_view(), name="student-history"),
     path('api/student-penalties/<str:ogrenci_no>/', StudentPenaltySummaryView.as_view(), name="student-penalties"),

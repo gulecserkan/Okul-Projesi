@@ -39,6 +39,19 @@ class AppConfig {
     _write(data);
   }
 
+  /// Seçili tema adı (AppTheme.name). Varsayılan: 'standart'.
+  static String get themeName {
+    final data = _read();
+    final name = data['theme'] as String?;
+    return (name == null || name.isEmpty) ? 'standart' : name;
+  }
+
+  static set themeName(String value) {
+    final data = _read();
+    data['theme'] = value;
+    _write(data);
+  }
+
   static Session? get session {
     final data = _read();
     final s = data['session'];

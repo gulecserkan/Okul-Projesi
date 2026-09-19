@@ -19,12 +19,15 @@ from django.utils.dateparse import parse_datetime
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 
+from .book_lookup import google_books_lookup
+
 from .models import (
     Ogrenci,
     Sinif,
     Rol,
     Yazar,
     Kategori,
+    Raf,
     Kitap,
     KitapNusha,
     OduncKaydi,
@@ -40,7 +43,12 @@ from .turkish import fold
 from .rules import (
     NUSHA_KAPANIS_MAP,
     apply_student_status,
+    can_delete_kitap,
+    can_delete_nusha,
     can_delete_ogrenci,
+    can_duzelt_nusha,
+    merge_referential,
+    similar_kitap,
     validate_transition,
 )
 from .serializers import (
@@ -49,6 +57,7 @@ from .serializers import (
     RolSerializer,
     YazarSerializer,
     KategoriSerializer,
+    RafSerializer,
     KitapSerializer,
     KitapDetailSerializer,
     KitapNushaSerializer,
@@ -269,14 +278,174 @@ class YazarViewSet(viewsets.ModelViewSet):
     queryset = Yazar.objects.all()
     serializer_class = YazarSerializer
 
+    def get_permissions(self):
+        # Faz C: katalog yönetimi (yaz/kategori/raf CRUD + birleştirme) admin'e; görüntüleme herkese.
+        if self.action in ("create", "update", "partial_update", "destroy", "birles"):
+            return [IsAdminPersonel()]
+        return [IsAuthenticated()]
+
+    @action(detail=True, methods=["post"])
+    def birles(self, request, pk=None):
+        """K6.2: kaynak yazarı hedef yazarla birleştirir."""
+        kaynak = self.get_object()
+        hedef_id = request.data.get("hedef_id")
+        if not hedef_id or int(hedef_id) == kaynak.pk:
+            return Response(
+                {"error": "hedef_id gerekli ve kaynaktan farklı olmalı."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        hedef = get_object_or_404(Yazar, pk=hedef_id)
+        merge_referential(Yazar, hedef, kaynak)
+        return Response(YazarSerializer(hedef).data)
+
+
 class KategoriViewSet(viewsets.ModelViewSet):
     queryset = Kategori.objects.all()
     serializer_class = KategoriSerializer
+
+    def get_permissions(self):
+        if self.action in ("create", "update", "partial_update", "destroy", "birles"):
+            return [IsAdminPersonel()]
+        return [IsAuthenticated()]
+
+    @action(detail=True, methods=["post"])
+    def birles(self, request, pk=None):
+        """K6.2: kaynak kategoriyi hedef kategoriyle birleştirir."""
+        kaynak = self.get_object()
+        hedef_id = request.data.get("hedef_id")
+        if not hedef_id or int(hedef_id) == kaynak.pk:
+            return Response(
+                {"error": "hedef_id gerekli ve kaynaktan farklı olmalı."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        hedef = get_object_or_404(Kategori, pk=hedef_id)
+        merge_referential(Kategori, hedef, kaynak)
+        return Response(KategoriSerializer(hedef).data)
+
+
+class RafViewSet(viewsets.ModelViewSet):
+    queryset = Raf.objects.all()
+    serializer_class = RafSerializer
+    pagination_class = ConditionalPageNumberPagination
+
+    def get_permissions(self):
+        if self.action in ("create", "update", "partial_update", "destroy", "birles"):
+            return [IsAdminPersonel()]
+        return [IsAuthenticated()]
+
+    @action(detail=True, methods=["post"])
+    def birles(self, request, pk=None):
+        """K6.2: kaynak rafı hedef rafa birleştirir."""
+        kaynak = self.get_object()
+        hedef_id = request.data.get("hedef_id")
+        if not hedef_id or int(hedef_id) == kaynak.pk:
+            return Response(
+                {"error": "hedef_id gerekli ve kaynaktan farklı olmalı."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        hedef = get_object_or_404(Raf, pk=hedef_id)
+        merge_referential(Raf, hedef, kaynak)
+        return Response(RafSerializer(hedef).data)
 
 class KitapViewSet(viewsets.ModelViewSet):
     queryset = Kitap.objects.all()
     serializer_class = KitapSerializer
     pagination_class = ConditionalPageNumberPagination
+
+    def get_permissions(self):
+        # Faz C: kitap ekleme/düzenleme tüm personel; silme/birleştirme yalnızca admin.
+        if self.action in ("destroy", "birles"):
+            return [IsAdminPersonel()]
+        return [IsAuthenticated()]
+
+    def create(self, request, *args, **kwargs):
+        """K8.1: mevcut ISBN/fold(başlık) eşleşmesi yoksa (veya force=1 ise) kaydeder."""
+        baslik = (request.data.get("baslik") or "").strip()
+        isbn = (request.data.get("isbn") or "").strip() or None
+        benzerler, isbn_eslesme = similar_kitap(baslik, isbn)
+        force = str(request.data.get("force") or "").strip().lower() in (
+            "1",
+            "true",
+            "yes",
+            "on",
+        )
+        if benzerler and not force:
+            return Response(
+                {
+                    "detail": "Bu kitapla eşleşen bir kayıt zaten var.",
+                    "benzerler": [
+                        {
+                            "id": k.id,
+                            "baslik": k.baslik,
+                            "nusha_sayisi": k.nushalar.count(),
+                        }
+                        for k in benzerler
+                    ],
+                    "isbn_eslesme": isbn_eslesme,
+                },
+                status=status.HTTP_409_CONFLICT,
+            )
+        return super().create(request, *args, **kwargs)
+
+    @action(detail=False, methods=["get"])
+    def cift(self, request):
+        """K6.1: fold(normalize) edilmiş başlıkta çift kayıt olan kitapları listeler."""
+        qs = Kitap.objects.only("id", "baslik")
+        arama = request.query_params.get("q")
+        if arama:
+            qs = qs.filter(arama__icontains=fold(arama))
+        grouped = {}
+        for k in qs:
+            key = fold(k.baslik or "").strip()
+            if not key:
+                continue
+            grouped.setdefault(key, []).append(k)
+        rows = [ks for ks in grouped.values() if len(ks) > 1]
+        rows.sort(key=lambda ks: ks[0].baslik or "")
+        out = []
+        for ks in rows:
+            out.append(
+                {
+                    "anahtar": fold(ks[0].baslik or "").strip(),
+                    "baslik": ks[0].baslik,
+                    "kitaplar": [
+                        {
+                            "id": k.id,
+                            "baslik": k.baslik,
+                        }
+                        for k in sorted(ks, key=lambda x: x.id)
+                    ],
+                }
+            )
+        return Response(out)
+
+    @action(detail=True, methods=["post"])
+    def birles(self, request, pk=None):
+        """K6.2: kaynak kitabın nüshalarını hedefe taşı, kaynağı sil (geçmiş korunur)."""
+        kaynak = self.get_object()
+        hedef_id = request.data.get("hedef_id")
+        if not hedef_id or int(hedef_id) == kaynak.pk:
+            return Response(
+                {"error": "hedef_id gerekli ve kaynaktan farklı olmalı."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        hedef = get_object_or_404(Kitap, pk=hedef_id)
+        with transaction.atomic():
+            KitapNusha.objects.filter(kitap=kaynak).update(kitap=hedef)
+        kaynak.delete()
+        return Response(KitapSerializer(hedef).data)
+
+    def destroy(self, request, *args, **kwargs):
+        # K4.4: ödünç geçmişi olan kitap silinemez; veri kaybını önle.
+        kitap = self.get_object()
+        if not can_delete_kitap(kitap):
+            return Response(
+                {"error": "Bu kitabın ödünç geçmişi var; silinemez. "
+                          "Nüsha bazında durum düzeltmesi/birleştirme kullanabilirsiniz."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        self.perform_destroy(kitap)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
     def get_serializer_class(self):
         if self.action in ("list",):
@@ -398,6 +567,36 @@ class KitapNushaViewSet(viewsets.ModelViewSet):
     serializer_class = KitapNushaSerializer
     pagination_class = ConditionalPageNumberPagination
 
+    def get_permissions(self):
+        # Faz C: nüsha ekle/raf düzenle tüm personel; silme + durum düzeltme admin.
+        if self.action in ("destroy", "durum_duzelt"):
+            return [IsAdminPersonel()]
+        return [IsAuthenticated()]
+
+    def destroy(self, request, *args, **kwargs):
+        # K4.3: ödünç kaydı olan nüsha silinemez (geçmiş kaybı).
+        nusha = self.get_object()
+        if not can_delete_nusha(nusha):
+            return Response(
+                {"error": "Bu nüshanın ödünç geçmişi var; silinemez. "
+                          "Durum düzeltmesi veya kayıp/hasarlı işareti kullanabilirsiniz."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        self.perform_destroy(nusha)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=True, methods=["post"])
+    def durum_duzelt(self, request, pk=None):
+        """K4.8: nüsha durum düzeltmesi (mevcut/kayıp/hasarlı) — yalnızca admin."""
+        nusha = self.get_object()
+        yeni_durum = request.data.get("durum")
+        ok, hata = can_duzelt_nusha(nusha, yeni_durum)
+        if not ok:
+            return Response({"error": hata}, status=status.HTTP_400_BAD_REQUEST)
+        nusha.durum = yeni_durum
+        nusha.save(update_fields=["durum"])
+        return Response(KitapNushaSerializer(nusha, context={"request": request}).data)
+
     def get_queryset(self):
         qs = super().get_queryset()
         kitap = self.request.query_params.get('kitap') or self.request.query_params.get('kitap_id')
@@ -414,6 +613,41 @@ class KitapNushaViewSet(viewsets.ModelViewSet):
         if isbn:
             qs = qs.filter(kitap__isbn=isbn)
         return qs
+
+class GoogleBooksView(APIView):
+    """Faz C: internetten kitap verisi + kapak önerisi (manuel giriş birincil).
+
+    K7.5: arama `.env`'deki API anahtarıyla yapılır; sonuçlar 7 gün önbelleklenir.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        q = (request.data.get("q") or "").strip()
+        if len(q) < 3:
+            return Response(
+                {"error": "Arama için en az 3 karakter girin."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        results, err = google_books_lookup(q)
+        if err == "429":
+            return Response(
+                {"error": "Google Books geçici olarak çok sayıda istek aldı (429); "
+                          "kısa süre sonra tekrar deneyin. Manuel girişe devam edebilirsiniz."},
+                status=status.HTTP_429_TOO_MANY_REQUESTS,
+            )
+        if err == "bad_gateway":
+            return Response(
+                {"error": "İnternet/Google Books'a erişilemedi. Manuel girişi kullanın."},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+        if err == "not_found":
+            return Response(
+                {"error": "Google Books'ta sonuç bulunamadı."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        return Response({"results": results})
+
 
 class OduncKaydiViewSet(viewsets.ModelViewSet):
     queryset = OduncKaydi.objects.select_related(

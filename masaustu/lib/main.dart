@@ -4,6 +4,7 @@ import 'api_client.dart';
 import 'config.dart';
 import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
+import 'theme.dart';
 
 void main() {
   runApp(const KutuphaneApp());
@@ -14,22 +15,19 @@ class KutuphaneApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Kütüphane Yönetim Sistemi',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF6750A4),
-          brightness: Brightness.light,
-        ),
-        useMaterial3: true,
+    return ValueListenableBuilder<AppTheme>(
+      valueListenable: appThemeController,
+      builder: (context, theme, _) => MaterialApp(
+        title: 'Kütüphane Yönetim Sistemi',
+        debugShowCheckedModeBanner: false,
+        theme: buildAppTheme(theme),
+        initialRoute: '/',
+        routes: {
+          '/': (_) => const _BootstrapHome(),
+          '/login': (_) => const LoginScreen(),
+          '/home': (_) => const _RequireSession(),
+        },
       ),
-      initialRoute: '/',
-      routes: {
-        '/': (_) => const _BootstrapHome(),
-        '/login': (_) => const LoginScreen(),
-        '/home': (_) => const _RequireSession(),
-      },
     );
   }
 }

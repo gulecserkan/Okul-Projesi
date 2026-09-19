@@ -68,11 +68,24 @@ class Ogrenci {
       );
 }
 
+class Raf {
+  final int id;
+  final String ad;
+  final String? aciklama;
+
+  const Raf({required this.id, required this.ad, this.aciklama});
+
+  factory Raf.fromJson(Map<String, dynamic> json) =>
+      Raf(id: json['id'] as int, ad: json['ad'] as String? ?? '', aciklama: json['aciklama'] as String?);
+}
+
 class Kitap {
   final int id;
   final String baslik;
   final int? yayinYili;
   final String isbn;
+  final String aciklama;
+  final String? kapakUrl;
   final Yazar? yazar;
   final Kategori? kategori;
   final int nushaSayisi;
@@ -83,6 +96,8 @@ class Kitap {
     required this.baslik,
     this.yayinYili,
     this.isbn = '',
+    this.aciklama = '',
+    this.kapakUrl,
     this.yazar,
     this.kategori,
     this.nushaSayisi = 0,
@@ -94,6 +109,8 @@ class Kitap {
         baslik: json['baslik'] as String? ?? '',
         yayinYili: json['yayin_yili'] as int?,
         isbn: json['isbn'] as String? ?? '',
+        aciklama: json['aciklama'] as String? ?? '',
+        kapakUrl: json['kapak_url'] as String?,
         yazar: json['yazar'] is Map<String, dynamic>
             ? Yazar.fromJson(json['yazar'] as Map<String, dynamic>)
             : null,
@@ -113,12 +130,14 @@ class Nusha {
   final String barkod;
   final String durum;
   final String? rafKodu;
+  final Raf? raf;
 
   const Nusha({
     required this.id,
     required this.barkod,
     required this.durum,
     this.rafKodu,
+    this.raf,
   });
 
   factory Nusha.fromJson(Map<String, dynamic> json) => Nusha(
@@ -126,6 +145,9 @@ class Nusha {
         barkod: json['barkod'] as String? ?? '',
         durum: json['durum'] as String? ?? '',
         rafKodu: json['raf_kodu'] as String?,
+        raf: json['raf'] is Map<String, dynamic>
+            ? Raf.fromJson(json['raf'] as Map<String, dynamic>)
+            : null,
       );
 }
 

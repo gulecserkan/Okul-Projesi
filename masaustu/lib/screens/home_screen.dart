@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../config.dart';
+import '../theme.dart';
 import 'book_list_screen.dart';
+import 'catalog_screen.dart';
 import 'loan_screen.dart';
 import 'student_list_screen.dart';
 
@@ -17,6 +19,8 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
 
+  bool get _isAdmin => widget.session.role == 'admin';
+
   void _logout() {
     AppConfig.session = null;
     Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
@@ -24,6 +28,47 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final screens = <Widget>[
+      _Overview(session: widget.session),
+      const LoanScreen(),
+      const StudentListScreen(),
+      const BookListScreen(),
+      if (_isAdmin) const CatalogScreen(),
+      const SettingsScreen(),
+    ];
+    final destinations = <NavigationRailDestination>[
+      const NavigationRailDestination(
+        icon: Icon(Icons.dashboard_outlined),
+        selectedIcon: Icon(Icons.dashboard),
+        label: Text('Genel Bakış'),
+      ),
+      const NavigationRailDestination(
+        icon: Icon(Icons.swap_horiz_outlined),
+        selectedIcon: Icon(Icons.swap_horiz),
+        label: Text('Ödünç / İade'),
+      ),
+      const NavigationRailDestination(
+        icon: Icon(Icons.inventory_2_outlined),
+        selectedIcon: Icon(Icons.inventory_2),
+        label: Text('Öğrenciler'),
+      ),
+      const NavigationRailDestination(
+        icon: Icon(Icons.book_outlined),
+        selectedIcon: Icon(Icons.book),
+        label: Text('Kitaplar'),
+      ),
+      if (_isAdmin)
+        const NavigationRailDestination(
+          icon: Icon(Icons.calendar_view_day_outlined),
+          selectedIcon: Icon(Icons.calendar_view_day),
+          label: Text('Katalog'),
+        ),
+      const NavigationRailDestination(
+        icon: Icon(Icons.settings_outlined),
+        selectedIcon: Icon(Icons.settings),
+        label: Text('Ayarlar'),
+      ),
+    ];
     return Scaffold(
       appBar: AppBar(
         title: const Text('Kütüphane Yönetim Sistemi'),
@@ -57,44 +102,12 @@ class _HomeScreenState extends State<HomeScreen> {
                 selectedIndex: _selectedIndex,
                 onDestinationSelected: (i) => setState(() => _selectedIndex = i),
                 labelType: NavigationRailLabelType.all,
-                destinations: const [
-                  NavigationRailDestination(
-                    icon: Icon(Icons.dashboard_outlined),
-                    selectedIcon: Icon(Icons.dashboard),
-                    label: Text('Genel Bakış'),
-                  ),
-                  NavigationRailDestination(
-                    icon: Icon(Icons.swap_horiz_outlined),
-                    selectedIcon: Icon(Icons.swap_horiz),
-                    label: Text('Ödünç / İade'),
-                  ),
-                  NavigationRailDestination(
-                    icon: Icon(Icons.inventory_2_outlined),
-                    selectedIcon: Icon(Icons.inventory_2),
-                    label: Text('Öğrenciler'),
-                  ),
-                  NavigationRailDestination(
-                    icon: Icon(Icons.book_outlined),
-                    selectedIcon: Icon(Icons.book),
-                    label: Text('Kitaplar'),
-                  ),
-                  NavigationRailDestination(
-                    icon: Icon(Icons.settings_outlined),
-                    selectedIcon: Icon(Icons.settings),
-                    label: Text('Ayarlar'),
-                  ),
-                ],
+                destinations: destinations,
               ),
             ),
             const VerticalDivider(thickness: 1, width: 1),
             Expanded(
-              child: switch (_selectedIndex) {
-                0 => _Overview(session: widget.session),
-                1 => const LoanScreen(),
-                2 => const StudentListScreen(),
-                3 => const BookListScreen(),
-                _ => const _Placeholder(index: 4),
-              },
+              child: screens[_selectedIndex.clamp(0, screens.length - 1)],
             ),
           ],
         ),
@@ -167,24 +180,62 @@ class _StatCard extends StatelessWidget {
   }
 }
 
-class _Placeholder extends StatelessWidget {
-  final int index;
-
-  const _Placeholder({required this.index});
+class SettingsScreen extends StatelessWidget {
+  const SettingsScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    const labels = ['', 'Ödünç / İade', 'Öğrenciler', 'Kitaplar', 'Ayarlar'];
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.construction, size: 48, color: Colors.grey.shade400),
-          const SizedBox(height: 12),
-          Text('${labels[index]} ekranı geliştirme aşamasında.',
-              style: Theme.of(context).textTheme.titleMedium),
-        ],
-      ),
+    final scheme = Theme.of(context).colorScheme;
+    return ListView(
+      padding: const EdgeInsets.all(24),
+      children: [
+        Text('Ayarlar', style: Theme.of(context).textTheme.headlineSmall),
+        const SizedBox(height: 4),
+        Text('Renk temasını seçin; değişiklik anında uygulanır ve kaydedilir.',
+            style: Theme.of(context).textTheme.bodyMedium),
+        const SizedBox(height: 16),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: ValueListenableBuilder<AppTheme>(
+              valueListenable: appThemeController,
+              builder: (context, current, _) => Column(
+                children: [
+                  for (final theme in AppTheme.values)
+                    ListTile(
+                      leading: CircleAvatar(
+                        backgroundColor: theme.seed,
+                        child: Icon(
+                          theme.isDark ? Icons.dark_mode : Icons.light_mode,
+                          color: theme.seed.computeLuminance() > 0.5
+                              ? Colors.black87
+                              : Colors.white,
+                        ),
+                      ),
+                      title: Text(theme.label),
+                      subtitle: Text(theme.description),
+                      selected: current == theme,
+                      trailing: current == theme
+                          ? Icon(Icons.check_circle,
+                              color: scheme.primary)
+                          : null,
+                      onTap: () => appThemeController.select(theme),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Bilgi: Tüm temalarda buton, snackbar ve kart gibi yüzeylerdeki '
+          'yazılar şema rolleriyle otomatik okunabilir kontrast alır.',
+          style: Theme.of(context)
+              .textTheme
+              .bodySmall
+              ?.copyWith(color: scheme.onSurfaceVariant),
+        ),
+      ],
     );
   }
 }

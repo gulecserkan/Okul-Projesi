@@ -21,7 +21,7 @@ from import_export.admin import ImportExportModelAdmin
 from .resources import OgrenciResource
 from .encryption import encrypt_blob, decrypt_blob
 from .models import (
-    Rol, Sinif, Ogrenci, Yazar, Kategori, Kitap, KitapNusha,
+    Rol, Sinif, Ogrenci, Yazar, Kategori, Raf, Kitap, KitapNusha,
     OduncKaydi, Personel, AuditLog,
     ArsivBatch, ArsivOgrenci, ArsivOdunc,
     LoanPolicy, RoleLoanPolicy, NotificationSettings,
@@ -188,6 +188,11 @@ class KitapAdmin(admin.ModelAdmin):
     list_filter = ("kategori", "yayin_yili")
     inlines = [KitapNushaInline]
 admin_site.register(Kitap, KitapAdmin)
+
+class RafAdmin(admin.ModelAdmin):
+    list_display = ("ad", "aciklama")
+    search_fields = ("ad",)
+admin_site.register(Raf, RafAdmin)
 
 class KitapNushaAdmin(admin.ModelAdmin):
     list_display = ("kitap", "barkod", "durum", "raf_kodu")

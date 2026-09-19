@@ -4,6 +4,7 @@ import '../api/kutuphane_api.dart';
 import '../config.dart';
 import '../formatters.dart';
 import '../models.dart';
+import '../theme.dart';
 import 'student_form_dialog.dart';
 
 const _deletedOgrenci = Ogrenci(id: -1, ad: '', soyad: '', ogrenciNo: '');
@@ -38,12 +39,7 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
 
   void _snack(String msg, {bool error = false}) {
     if (!mounted) return;
-    final color = error
-        ? Theme.of(context).colorScheme.errorContainer
-        : Theme.of(context).colorScheme.secondaryContainer;
-    ScaffoldMessenger.of(context)
-      ..clearSnackBars()
-      ..showSnackBar(SnackBar(content: Text(msg), backgroundColor: color));
+    showAppSnack(context, msg, error: error);
   }
 
   Future<void> _toggleStatus() async {
@@ -160,11 +156,14 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
               if (snap.hasData && snap.data!.outstandingCount > 0) {
                 final p = snap.data!;
                 return Card(
-                  color: Colors.red.shade50,
+                  color: layerColor(context, dangerColor(context), alpha: 0.12),
                   child: ListTile(
-                    leading: Icon(Icons.warning_amber_rounded, color: Colors.red.shade800),
+                    leading: Icon(Icons.warning_amber_rounded,
+                        color: dangerColor(context)),
                     title: Text('Ödenmemiş gecikme cezası: ${p.outstandingTotal} ₺',
-                        style: TextStyle(color: Colors.red.shade800, fontWeight: FontWeight.bold)),
+                        style: TextStyle(
+                            color: dangerColor(context),
+                            fontWeight: FontWeight.bold)),
                     subtitle: Text('${p.outstandingCount} kayıt'),
                   ),
                 );
@@ -186,8 +185,9 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
                 );
               }
               if (snap.hasError) {
-                return const Text('Sorgu alınamadı.',
-                    style: TextStyle(color: Colors.red));
+                return Text('Sorgu alınamadı.',
+                    style: TextStyle(
+                        color: Theme.of(context).colorScheme.error));
               }
               final rows = snap.data ?? const [];
               if (rows.isEmpty) {
@@ -228,7 +228,8 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
                           DataCell(Text(formatDate(h.teslimTarihi))),
                           DataCell(Text(durumLabel(h.durum),
                               style: TextStyle(
-                                  color: durumColor(h.durum), fontWeight: FontWeight.w500))),
+                                  color: durumColor(h.durum, Theme.of(context).brightness),
+                                  fontWeight: FontWeight.w500))),
                           DataCell(Text(h.gecikmeCezasi ?? '—')),
                         ],
                       ),
@@ -276,7 +277,9 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
                           Chip(
                             label: Text(_aktif ? 'Aktif' : 'Pasif',
                                 style: TextStyle(
-                                    color: _aktif ? Colors.green.shade700 : Colors.grey)),
+                                    color: _aktif
+                                        ? successColor(context)
+                                        : Theme.of(context).colorScheme.onSurfaceVariant)),
                             visualDensity: VisualDensity.compact,
                           ),
                         ],

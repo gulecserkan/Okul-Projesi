@@ -6,6 +6,7 @@ import '../api/kutuphane_api.dart';
 import '../api_client.dart';
 import '../formatters.dart';
 import '../models.dart';
+import '../theme.dart';
 import '../widgets/row_table.dart';
 
 /// Ödünç / İade ekranı — barkod / öğrenci no / ISBN taramaya dayalı akış.
@@ -65,10 +66,7 @@ class _LoanScreenState extends State<LoanScreen> {
 
   void _snack(String message, {bool error = false}) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(message),
-      backgroundColor: error ? Colors.red.shade700 : null,
-    ));
+    showAppSnack(context, message, error: error);
   }
 
   Future<void> _checkoutCopy(int copyId, String barkod) async {
@@ -194,7 +192,8 @@ class _LoanScreenState extends State<LoanScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('Arama yapılamadı.', style: TextStyle(color: Colors.red)),
+            Text('Arama yapılamadı.',
+                  style: TextStyle(color: Theme.of(context).colorScheme.error)),
             const SizedBox(height: 8),
             FilledButton.tonal(
               onPressed: () => _search(_lastQ),
@@ -329,7 +328,7 @@ class _DurumChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = durumColor(durum);
+    final color = durumColor(durum, Theme.of(context).brightness);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
@@ -351,7 +350,7 @@ class _AktifChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = aktif ? Colors.green.shade700 : Colors.grey.shade600;
+    final color = aktif ? successColor(context) : Theme.of(context).colorScheme.onSurfaceVariant;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
@@ -481,7 +480,8 @@ class _BookCopyResultState extends State<_BookCopyResult> {
                 else
                   Text(
                     'Bu nüsha ödünç verilemez (durum: ${durumLabel(copy['durum'] as String? ?? '')}).',
-                    style: TextStyle(color: Colors.grey.shade700),
+                    style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant),
                   ),
               ],
             ),
@@ -538,19 +538,18 @@ class _LoanBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final overdue = loan.isOverdue;
+    final accent =
+        overdue ? dangerColor(context) : Theme.of(context).colorScheme.onSurfaceVariant;
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: (overdue ? Colors.red : Colors.blueGrey).withValues(alpha: 0.06),
+        color: accent.withValues(alpha: 0.06),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: (overdue ? Colors.red : Colors.blueGrey).withValues(alpha: 0.4),
-        ),
+        border: Border.all(color: accent.withValues(alpha: 0.4)),
       ),
       child: Row(
         children: [
-          Icon(overdue ? Icons.warning_amber : Icons.person,
-              color: overdue ? Colors.red.shade700 : Colors.blueGrey),
+          Icon(overdue ? Icons.warning_amber : Icons.person, color: accent),
           const SizedBox(width: 10),
           Expanded(
             child: Column(
@@ -563,7 +562,7 @@ class _LoanBanner extends StatelessWidget {
                   Text(
                     'Gecikme: ${loan.overdueDays} gün'
                     '${loan.penaltyPreview != null ? '  •  Cezası: ₺${loan.penaltyPreview}' : ''}',
-                    style: TextStyle(color: Colors.red.shade700, fontWeight: FontWeight.w600),
+                    style: TextStyle(color: accent, fontWeight: FontWeight.w600),
                   ),
               ],
             ),
@@ -634,11 +633,11 @@ class _BookAvailabilityResult extends StatelessWidget {
                     _SummaryChip(
                         icon: Icons.check_circle,
                         label: '$available müsait',
-                        color: Colors.green.shade700),
+                        color: successColor(context)),
                     _SummaryChip(
                         icon: Icons.sync,
                         label: '$loaned ödünçte',
-                        color: Colors.amber.shade800),
+                        color: warningColor(context)),
                   ],
                 ),
               ],
@@ -674,14 +673,16 @@ class _BookAvailabilityResult extends StatelessWidget {
                     IconButton(
                       tooltip: 'İade Al',
                       visualDensity: VisualDensity.compact,
-                      icon: const Icon(Icons.login, color: Colors.blueGrey),
+                      icon: Icon(Icons.login,
+                          color:
+                              Theme.of(context).colorScheme.onSurfaceVariant),
                       onPressed: busy ? null : () => onReturn(c.loan!),
                     )
                   else if (c.durum == 'mevcut')
                     IconButton(
                       tooltip: 'Ödünç Ver',
                       visualDensity: VisualDensity.compact,
-                      icon: const Icon(Icons.outbox, color: Colors.green),
+                      icon: Icon(Icons.outbox, color: successColor(context)),
                       onPressed: busy ? null : () => onCheckout(c.id, c.barkod),
                     )
                   else
@@ -809,15 +810,14 @@ class _StudentResult extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Colors.orange.withValues(alpha: 0.10),
+                      color: layerColor(context, warningColor(context)),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                          color: Colors.orange.withValues(alpha: 0.5)),
+                          color: warningColor(context).withValues(alpha: 0.5)),
                     ),
                     child: Row(
                       children: [
-                        Icon(Icons.person_off,
-                            color: Colors.orange.shade800),
+                        Icon(Icons.person_off, color: warningColor(context)),
                         const SizedBox(width: 10),
                         Expanded(
                           child: Text(
@@ -827,7 +827,7 @@ class _StudentResult extends StatelessWidget {
                                 : 'Bu öğrenci pasif (mezun / nakil / tasdikname) ama '
                                     '${active.length} kitabı hâlâ ödünçte — mutlaka toplayın.',
                             style: TextStyle(
-                                color: Colors.orange.shade900,
+                                color: warningColor(context),
                                 fontWeight: FontWeight.w500),
                           ),
                         ),
@@ -854,20 +854,21 @@ class _StudentResult extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Colors.red.withValues(alpha: 0.06),
+              color: layerColor(context, dangerColor(context), alpha: 0.06),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.red.withValues(alpha: 0.4)),
+              border: Border.all(
+                  color: dangerColor(context).withValues(alpha: 0.4)),
             ),
             child: Row(
               children: [
-                Icon(Icons.report_gmailerrorred, color: Colors.red.shade700),
+                Icon(Icons.report_gmailerrorred, color: dangerColor(context)),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
                     'Ödenmemiş ceza: ₺${penalty.outstandingTotal} '
                     '(${penalty.outstandingCount} kayıt)',
                     style: TextStyle(
-                        color: Colors.red.shade700,
+                        color: dangerColor(context),
                         fontWeight: FontWeight.w600),
                   ),
                 ),
@@ -884,7 +885,8 @@ class _StudentResult extends StatelessWidget {
               padding: const EdgeInsets.all(20),
               child: Center(
                 child: Text('Aktif ödünç yok.',
-                    style: TextStyle(color: Colors.grey.shade700)),
+                    style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant)),
               ),
             ),
           )
@@ -916,25 +918,28 @@ class _StudentResult extends StatelessWidget {
                                 'İade: ${formatDate(loan.iadeTarihi)}',
                                 style: theme.textTheme.bodySmall,
                               ),
-                              if (loan.isOverdue)
+if (loan.isOverdue)
                                 Text(
                                   'Gecikme: ${loan.overdueDays} gün'
                                   '${loan.penaltyPreview != null ? ' • ₺${loan.penaltyPreview}' : ''}',
                                   style: TextStyle(
-                                      color: Colors.red.shade700,
+                                      color: dangerColor(context),
                                       fontWeight: FontWeight.w600,
                                       fontSize: 12),
                                 ),
-                            ],
+                              ],
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 12),
-                        FilledButton.tonalIcon(
-                          onPressed: busy ? null : () => onReturn(loan),
-                          icon: const Icon(Icons.login,
-                              size: 18, color: Colors.blueGrey),
-                          label: const Text('İade Al'),
-                        ),
+                          const SizedBox(width: 12),
+                          FilledButton.tonalIcon(
+                            onPressed: busy ? null : () => onReturn(loan),
+                            icon: Icon(Icons.login,
+                                size: 18,
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurfaceVariant),
+                            label: const Text('İade Al'),
+                          ),
                       ],
                     ),
                   ),
@@ -1091,7 +1096,9 @@ class _StudentPickerDialogState extends State<_StudentPickerDialog> {
                         return ListTile(
                           leading: Icon(
                             o.aktif ? Icons.person_outline : Icons.person_off,
-                            color: o.aktif ? null : Colors.grey.shade500,
+                            color: o.aktif
+                                ? null
+                                : Theme.of(context).colorScheme.outline,
                           ),
                           title: Text(o.adSoyad),
                           subtitle: Text(
@@ -1187,13 +1194,13 @@ class _ReturnDialogState extends State<_ReturnDialog> {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: Colors.red.withValues(alpha: 0.07),
+                  color: layerColor(context, dangerColor(context), alpha: 0.07),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Text(
                   'Gecikme: ${loan.overdueDays} gün'
                   '${loan.penaltyPreview != null ? ' • Günlük ceza öngörüsü: ₺${loan.penaltyPreview}' : ''}',
-                  style: TextStyle(color: Colors.red.shade700),
+                  style: TextStyle(color: dangerColor(context)),
                 ),
               ),
             ],

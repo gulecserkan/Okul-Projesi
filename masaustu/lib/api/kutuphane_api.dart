@@ -5,6 +5,9 @@ import 'package:http/http.dart' as http;
 import '../api_client.dart';
 import '../models.dart';
 
+/// Kayıt bloklandığında (K8.1) dönen mevcut eşleşme satırı.
+typedef BenzerKitapDetay = ({int id, String baslik, int nushaSayisi});
+
 /// Liste ve arama uç noktaları (öğrenci / kitap / sınıf).
 class KutuphaneApi {
   final ApiClient _client;
@@ -101,6 +104,9 @@ class KutuphaneApi {
     }
     return results;
   }
+
+  /// Kamuya açık sayfalama-sız liste (yazar/kategori/raf vb.).
+  Future<List<dynamic>> fetchAllPages(String path) => _fetchAllPages(path);
 
   Future<List<Ogrenci>> students() async {
     final data = await _fetchAllPages('ogrenciler/');
@@ -299,6 +305,305 @@ class KutuphaneApi {
       return (null, null);
     } catch (_) {
       return (null, 'Politika alınamadı');
+    }
+  }
+/// Kitap oluşturur/düzenler (id verilirse PATCH). Faz C.
+/// K8.1: eşleşen mevcut kayıt olursa `benzerler`/`isbnEslesme` ile 409 bildirilir.
+  Future<({
+    Kitap? kitap,
+    List<BenzerKitapDetay> benzerler,
+    bool isbnEslesme,
+    String? error,
+  })> saveBook({
+    int? id,
+    required String baslik,
+    int? yayinYili,
+    String isbn = '',
+    String aciklama = '',
+    String? kapakUrl,
+    int? yazarId,
+    int? kategoriId,
+    bool force = false,
+  }) async {
+    final trimmedIsbn = isbn.trim();
+    final body = <String, dynamic>{
+      'baslik': baslik.trim(),
+      'yayin_yili': ?yayinYili,
+      if (trimmedIsbn.isNotEmpty) 'isbn': trimmedIsbn,
+      if (aciklama.trim().isNotEmpty) 'aciklama': aciklama.trim(),
+      if (kapakUrl != null && kapakUrl.trim().isNotEmpty)
+        'kapak_url': kapakUrl.trim(),
+      'yazar_id': ?yazarId,
+      'kategori_id': ?kategoriId,
+      'force': force,
+    };
+    try {
+      final resp = id == null
+          ? await _client.request('POST', 'kitaplar/', auth: true, body: body)
+          : await _client.request(
+              'PATCH', 'kitaplar/$id/', auth: true, body: body);
+      if (resp.statusCode >= 200 && resp.statusCode < 300) {
+        return (
+          kitap: Kitap.fromJson(jsonDecode(utf8.decode(resp.bodyBytes))),
+          benzerler: const <BenzerKitapDetay>[],
+          isbnEslesme: false,
+          error: null,
+        );
+      }
+      if (resp.statusCode == 409) {
+        final benzerler = <BenzerKitapDetay>[];
+        var isbnEslesme = false;
+        try {
+          final data = jsonDecode(utf8.decode(resp.bodyBytes));
+          if (data is Map<String, dynamic>) {
+            isbnEslesme = data['isbn_eslesme'] == true;
+            final lst = data['benzerler'];
+            if (lst is List) {
+              for (final e in lst) {
+                if (e is Map<String, dynamic>) {
+                  benzerler.add((
+                    id: (e['id'] as num).toInt(),
+                    baslik: (e['baslik'] ?? '').toString(),
+                    nushaSayisi: (e['nusha_sayisi'] as num?)?.toInt() ?? 0,
+                  ));
+                }
+              }
+            }
+          }
+        } catch (_) {}
+        return (
+          kitap: null,
+          benzerler: benzerler,
+          isbnEslesme: isbnEslesme,
+          error: extractError(resp),
+        );
+      }
+      return (
+        kitap: null,
+        benzerler: const <BenzerKitapDetay>[],
+        isbnEslesme: false,
+        error: extractError(resp),
+      );
+    } catch (_) {
+      return (
+        kitap: null,
+        benzerler: const <BenzerKitapDetay>[],
+        isbnEslesme: false,
+        error: 'İşlem yapılamadı.',
+      );
+    }
+  }
+
+  /// Kitap siler (yalnızca admin; ödünç geçmişi varsa backend reddeder). Faz C.
+  Future<({bool ok, String? error})> deleteBook(int id) async {
+    try {
+      final resp = await _client.request('DELETE', 'kitaplar/$id/', auth: true);
+      if (resp.statusCode == 204 || resp.statusCode == 200) {
+        return (ok: true, error: null);
+      }
+      return (ok: false, error: extractError(resp));
+    } catch (_) {
+      return (ok: false, error: 'Silme yapılamadı.');
+    }
+  }
+
+  /// Nüsha ekler (barkod boşsa backend otomatik üretir). Faz C.
+  Future<({Nusha? nusha, String? error})> addCopy(
+    int kitapId, {
+    String? barkod,
+    int? rafId,
+  }) async {
+    try {
+      final resp = await _client.request(
+        'POST',
+        'nushalar/',
+        auth: true,
+        body: {
+          'kitap_id': kitapId,
+          if (barkod != null && barkod.trim().isNotEmpty)
+            'barkod': barkod.trim(),
+          'raf_id': ?rafId,
+        },
+      );
+      if (resp.statusCode >= 200 && resp.statusCode < 300) {
+        return (
+          nusha: Nusha.fromJson(jsonDecode(utf8.decode(resp.bodyBytes))),
+          error: null,
+        );
+      }
+      return (nusha: null, error: extractError(resp));
+    } catch (_) {
+      return (nusha: null, error: 'Nüsha eklenemedi.');
+    }
+  }
+
+  /// Nüsha rafını günceller (rafId null ile rafı kaldırır). Faz C.
+  Future<({bool ok, String? error})> updateCopyRaf(int nushaId, int? rafId) async {
+    try {
+      final resp = await _client.request(
+        'PATCH',
+        'nushalar/$nushaId/',
+        auth: true,
+        body: {'raf_id': rafId},
+      );
+      if (resp.statusCode >= 200 && resp.statusCode < 300) return (ok: true, error: null);
+      return (ok: false, error: extractError(resp));
+    } catch (_) {
+      return (ok: false, error: 'Raf güncellenemedi.');
+    }
+  }
+
+  /// Nüsha siler (yalnızca admin; ödünç kaydı varsa backend reddeder). Faz C.
+  Future<({bool ok, String? error})> deleteCopy(int nushaId) async {
+    try {
+      final resp = await _client.request('DELETE', 'nushalar/$nushaId/', auth: true);
+      if (resp.statusCode == 204 || resp.statusCode == 200) {
+        return (ok: true, error: null);
+      }
+      return (ok: false, error: extractError(resp));
+    } catch (_) {
+      return (ok: false, error: 'Nüsha silinemedi.');
+    }
+  }
+
+  /// Nüsha durum düzeltmesi (mevcut/kayıp/hasarlı — yalnızca admin). Faz C K4.8.
+  Future<({bool ok, String? error})> fixCopyDurum(int nushaId, String durum) async {
+    try {
+      final resp = await _client.request(
+        'POST',
+        'nushalar/$nushaId/durum_duzelt/',
+        auth: true,
+        body: {'durum': durum},
+      );
+      if (resp.statusCode >= 200 && resp.statusCode < 300) return (ok: true, error: null);
+      return (ok: false, error: extractError(resp));
+    } catch (_) {
+      return (ok: false, error: 'Durum güncellenemedi.');
+    }
+  }
+
+  // --- Merkezi Katalog (Faz C): yazar / kategori / raf ---
+
+  Future<List<Yazar>> yazarlar() async {
+    final data = await _fetchAllPages('yazarlar/');
+    return data.whereType<Map<String, dynamic>>().map(Yazar.fromJson).toList();
+  }
+
+  Future<List<Kategori>> kategoriler() async {
+    final data = await _fetchAllPages('kategoriler/');
+    return data.whereType<Map<String, dynamic>>().map(Kategori.fromJson).toList();
+  }
+
+  Future<List<Raf>> raflar() async {
+    final data = await _fetchAllPages('raflar/');
+    return data.whereType<Map<String, dynamic>>().map(Raf.fromJson).toList();
+  }
+
+  Future<({int? id, String? error})> saveCatalogItem(
+    String path, {
+    int? id,
+    required Map<String, dynamic> body,
+  }) async {
+    try {
+      final resp = id == null
+          ? await _client.request('POST', path, auth: true, body: body)
+          : await _client.request('PATCH', '$path$id/', auth: true, body: body);
+      if (resp.statusCode >= 200 && resp.statusCode < 300) {
+        final data = jsonDecode(utf8.decode(resp.bodyBytes));
+        return (id: data is Map && data['id'] is int ? data['id'] as int : null, error: null);
+      }
+      return (id: null, error: extractError(resp));
+    } catch (_) {
+      return (id: null, error: 'Kayıt yapılamadı.');
+    }
+  }
+
+  Future<({bool ok, String? error})> deleteCatalogItem(String path, int id) async {
+    try {
+      final resp = await _client.request('DELETE', '$path$id/', auth: true);
+      if (resp.statusCode == 204 || resp.statusCode == 200) return (ok: true, error: null);
+      return (ok: false, error: extractError(resp));
+    } catch (_) {
+      return (ok: false, error: 'Silme yapılamadı.');
+    }
+  }
+
+  /// K6.2: kaynak kaydı hedefle birleştirir (admin).
+  Future<({bool ok, String? error})> mergeCatalogItems(
+    String path,
+    int sourceId,
+    int targetId,
+  ) async {
+    try {
+      final resp = await _client.request(
+        'POST',
+        '$path$sourceId/birles/',
+        auth: true,
+        body: {'hedef_id': targetId},
+      );
+      if (resp.statusCode >= 200 && resp.statusCode < 300) return (ok: true, error: null);
+      return (ok: false, error: extractError(resp));
+    } catch (_) {
+      return (ok: false, error: 'Birleştirme yapılamadı.');
+    }
+  }
+
+  /// K6.2: kaynak kitabı hedefle birleştirir (nüshalar hedefe taşınır, admin).
+  Future<({bool ok, String? error})> mergeBooks(int sourceId, int targetId) async {
+    try {
+      final resp = await _client.request(
+        'POST',
+        'kitaplar/$sourceId/birles/',
+        auth: true,
+        body: {'hedef_id': targetId},
+      );
+      if (resp.statusCode >= 200 && resp.statusCode < 300) return (ok: true, error: null);
+      return (ok: false, error: extractError(resp));
+    } catch (_) {
+      return (ok: false, error: 'Birleştirme yapılamadı.');
+    }
+  }
+
+  /// K6.1: çift kayıt (fold-normalize başlık) listesi.
+  Future<List<Map<String, dynamic>>> bookDuplicates(String? q) async {
+    try {
+      final resp = await _client.request(
+        'GET',
+        'kitaplar/cift/${q == null || q.trim().isEmpty ? '' : '?q=${Uri.encodeQueryComponent(q)}'}',
+        auth: true,
+      );
+      if (resp.statusCode != 200) return const [];
+      final data = jsonDecode(utf8.decode(resp.bodyBytes));
+      return data is List ? data.whereType<Map<String, dynamic>>().toList() : const [];
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  /// Google Books otomatik doldurma önerisi (manuel giriş birincil). Faz C.
+  Future<({List<Map<String, dynamic>> results, String? error})> googleBook(
+    String q,
+  ) async {
+    try {
+      final resp = await _client.request(
+        'POST',
+        'kitap-google/',
+        auth: true,
+        body: {'q': q},
+      );
+      if (resp.statusCode >= 200 && resp.statusCode < 300) {
+        final data = jsonDecode(utf8.decode(resp.bodyBytes));
+        final list = data is Map && data['results'] is List
+            ? data['results'] as List
+            : const [];
+        return (
+          results: list.whereType<Map<String, dynamic>>().toList(),
+          error: null,
+        );
+      }
+      return (results: <Map<String, dynamic>>[], error: extractError(resp));
+    } catch (_) {
+      return (results: <Map<String, dynamic>>[], error: 'Arama yapılamadı.');
     }
   }
 }

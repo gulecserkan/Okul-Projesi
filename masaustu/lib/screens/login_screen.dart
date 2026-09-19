@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../api/auth_api.dart';
 import '../config.dart';
 import '../screens/home_screen.dart';
+import '../theme.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -71,9 +72,7 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _toast(String message) {
-    ScaffoldMessenger.of(context)
-      ..clearSnackBars()
-      ..showSnackBar(SnackBar(content: Text(message)));
+    showAppSnack(context, message);
   }
 
   @override
@@ -182,7 +181,8 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
       );
     }
-    final color = _serverOk ? Colors.green.shade700 : Colors.red.shade700;
+    final color =
+        _serverOk ? successColor(context) : dangerColor(context);
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [

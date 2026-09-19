@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../api/kutuphane_api.dart';
 import '../models.dart';
+import '../theme.dart';
 
 /// Yeni öğrenci oluşturmak / mevcut öğrenciyi düzenlemek için form diyaloğu.
 /// Kaydedilen öğrenciyi `Navigator.pop` ile döndürür; iptalde null.
@@ -83,13 +84,7 @@ class _StudentFormDialogState extends State<StudentFormDialog> {
       Navigator.of(context).pop(res.ogrenci);
     } else {
       setState(() => _busy = false);
-      ScaffoldMessenger.of(context)
-        ..clearSnackBars()
-        ..showSnackBar(SnackBar(
-          content: Text(res.error ?? 'Kayıt yapılamadı.',
-              style: const TextStyle(color: Colors.white)),
-          backgroundColor: Theme.of(context).colorScheme.error,
-        ));
+      showAppSnack(context, res.error ?? 'Kayıt yapılamadı.', error: true);
     }
   }
 

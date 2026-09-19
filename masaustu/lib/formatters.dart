@@ -34,23 +34,24 @@ String durumLabel(String durum) {
   }
 }
 
-/// Durum kodu → renk.
-Color durumColor(String durum) {
+/// Durum kodu → renk (açık/koyu duyarlı: koyuda daha açık ton kullanılır).
+Color durumColor(String durum, Brightness brightness) {
+  final dark = brightness == Brightness.dark;
   switch (durum) {
     case 'mevcut':
     case 'teslim':
-      return Colors.green.shade700;
+      return dark ? const Color(0xFF7BD88F) : Colors.green.shade700;
     case 'oduncte':
-      return Colors.amber.shade800;
+      return dark ? const Color(0xFFE8C05A) : Colors.amber.shade800;
     case 'gecikmis':
-      return Colors.red.shade700;
+      return dark ? const Color(0xFFF2B8B5) : Colors.red.shade700;
     case 'kayip':
-      return Colors.brown.shade700;
+      return dark ? const Color(0xFFD2A77E) : Colors.brown.shade700;
     case 'hasarli':
-      return Colors.orange.shade800;
+      return dark ? const Color(0xFFF2B98C) : Colors.orange.shade800;
     case 'iptal':
-      return Colors.grey.shade600;
+      return dark ? const Color(0xFFC5C6CE) : Colors.grey.shade600;
     default:
-      return Colors.grey.shade600;
+      return dark ? const Color(0xFFC5C6CE) : Colors.grey.shade600;
   }
 }

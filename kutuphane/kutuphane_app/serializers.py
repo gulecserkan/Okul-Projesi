@@ -10,6 +10,7 @@ from .models import (
     Rol,
     Yazar,
     Kategori,
+    Raf,
     Kitap,
     KitapNusha,
     OduncKaydi,
@@ -66,6 +67,12 @@ class KategoriSerializer(serializers.ModelSerializer):
         fields = "__all__"
 
 
+class RafSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Raf
+        fields = "__all__"
+
+
 class KitapBaseSerializer(serializers.ModelSerializer):
     kategori = KategoriSerializer(read_only=True)
     yazar = YazarSerializer(read_only=True)
@@ -87,6 +94,8 @@ class KitapBaseSerializer(serializers.ModelSerializer):
             "baslik",
             "yayin_yili",
             "isbn",
+            "aciklama",
+            "kapak_url",
             "yazar",
             "kategori",
             "yazar_id",
@@ -96,6 +105,10 @@ class KitapBaseSerializer(serializers.ModelSerializer):
             "aciklama_var",
             "raf_kodlari",
         ]
+        extra_kwargs = {
+            "baslik": {"required": True},
+            "kapak_url": {"required": False, "allow_blank": True},
+        }
 
 
 class KitapSerializer(KitapBaseSerializer):
@@ -107,7 +120,6 @@ class KitapSerializer(KitapBaseSerializer):
 class KitapDetailSerializer(KitapBaseSerializer):
     class Meta(KitapBaseSerializer.Meta):
         fields = KitapBaseSerializer.Meta.fields + [
-            "aciklama",
             "resim1",
             "resim2",
             "resim3",
@@ -122,10 +134,14 @@ class KitapNushaSerializer(serializers.ModelSerializer):
         source="kitap", queryset=Kitap.objects.all(), write_only=True
     )
     barkod = serializers.CharField(required=False, allow_blank=True)
+    raf = RafSerializer(read_only=True)
+    raf_id = serializers.PrimaryKeyRelatedField(
+        source="raf", queryset=Raf.objects.all(), write_only=True, required=False, allow_null=True
+    )
 
     class Meta:
         model = KitapNusha
-        fields = ["id", "kitap", "kitap_id", "barkod", "durum", "raf_kodu"]
+        fields = ["id", "kitap", "kitap_id", "barkod", "durum", "raf_kodu", "raf", "raf_id"]
 
     def get_fields(self):
         fields = super().get_fields()

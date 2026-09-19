@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import '../api/kutuphane_api.dart';
 import '../config.dart';
 import '../models.dart';
+import '../theme.dart';
+import '../widgets/floating_row_actions.dart';
 import '../widgets/row_table.dart';
 import 'student_detail_screen.dart';
 import 'student_form_dialog.dart';
@@ -31,6 +33,12 @@ class _StudentListScreenState extends State<StudentListScreen> {
   int? _selectedId;
   String _query = '';
   Timer? _debounce;
+  final Map<int, GlobalKey> _rowKeys = {};
+  final _stackKey = GlobalKey();
+  int _scrollTick = 0;
+
+  GlobalKey _rowKeyOf(Ogrenci o) =>
+      _rowKeys.putIfAbsent(o.id, () => GlobalObjectKey('ogrenci-${o.id}'));
 
   @override
   void initState() {
@@ -48,6 +56,7 @@ class _StudentListScreenState extends State<StudentListScreen> {
 
   void _onScroll() {
     if (!_scrollController.hasClients) return;
+    if (_selectedId != null) setState(() => _scrollTick++);
     final pos = _scrollController.position;
     if (pos.pixels >= pos.maxScrollExtent - 200) _load(reset: false);
   }
@@ -73,6 +82,7 @@ class _StudentListScreenState extends State<StudentListScreen> {
         _hasMore = res.nextPage != null;
         if (reset) {
           _items = res.items;
+          _scrollTick++;
         } else {
           _items.addAll(res.items);
         }
@@ -129,15 +139,49 @@ class _StudentListScreenState extends State<StudentListScreen> {
     if (saved != null && mounted) _load(reset: true);
   }
 
-  bool get _isAdmin => AppConfig.session?.role == 'admin';
+  Future<void> _editStudent(Ogrenci o) async {
+    final saved = await showDialog<Ogrenci>(
+      context: context,
+      builder: (_) => StudentFormDialog(ogrenci: o),
+    );
+    if (saved != null && mounted) _load(reset: true);
+  }
 
-  void _snack(String msg, {bool error = false}) {
+  Future<void> _deleteStudent(Ogrenci o) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Öğrenciyi sil'),
+        content: Text(
+            '${o.adSoyad} (${o.ogrenciNo}) silinecek. Bu işlem kalıcıdır; '
+            'yalnızca ödünç geçmişi olmayan öğrenciler silinebilir. Onaylıyor musunuz?'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Vazgeç')),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Sil'),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+    final res = await _api.deleteStudent(o.id);
     if (!mounted) return;
-    final color = error ? Theme.of(context).colorScheme.errorContainer
-        : Theme.of(context).colorScheme.secondaryContainer;
-    ScaffoldMessenger.of(context)
-      ..clearSnackBars()
-      ..showSnackBar(SnackBar(content: Text(msg), backgroundColor: color));
+    if (res.ok) {
+      setState(() => _selectedId = null);
+      _snack('Öğrenci silindi.');
+      _load(reset: true);
+    } else {
+      _snack(res.error ?? 'Silme yapılamadı.', error: true);
+    }
+  }
+
+  bool get _isAdmin => AppConfig.session?.role == 'admin';
+void _snack(String msg, {bool error = false}) {
+    if (!mounted) return;
+    showAppSnack(context, msg, error: error);
   }
 
   Future<void> _toggleStatus(Ogrenci o) async {
@@ -233,7 +277,7 @@ class _StudentListScreenState extends State<StudentListScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(_error!, style: const TextStyle(color: Colors.red)),
+            Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
             const SizedBox(height: 8),
             FilledButton.tonal(
                 onPressed: () => _load(reset: true),
@@ -249,54 +293,89 @@ class _StudentListScreenState extends State<StudentListScreen> {
             : 'Aranan kriterde öğrenci yok.'),
       );
     }
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
-      child: RowTable(
-        controller: _scrollController,
-        footer: _footer(),
-        minWidth: 900,
-        columns: const [
-          RowTableColumn('Öğrenci No', flex: 2),
-          RowTableColumn('Ad Soyad', flex: 3),
-          RowTableColumn('Sınıf', flex: 1),
-          RowTableColumn('Telefon', flex: 3),
-          RowTableColumn('Durum', flex: 1),
-          RowTableColumn('', flex: 0),
-        ],
-        rows: [
-          for (final o in _items)
-            RowTableRow(
-              selected: _selectedId == o.id,
-              onSelected: () {
-                if (_selectedId != o.id) setState(() => _selectedId = o.id);
-              },
-              onOpen: () => _openDetail(o),
-              cells: [
-                Text(o.ogrenciNo,
-                    style: const TextStyle(fontWeight: FontWeight.w600)),
-                Text(o.adSoyad, overflow: TextOverflow.ellipsis),
-                Text(o.sinif?.ad ?? '—'),
-                Text(o.telefon ?? '—'),
-                Text(o.aktif ? 'Aktif' : 'Pasif',
-                    style: TextStyle(
-                      color: o.aktif ? Colors.green.shade700 : Colors.grey,
-                      fontWeight: FontWeight.w500,
-                    )),
+    final selectedIdx = _selectedId == null
+        ? -1
+        : _items.indexWhere((o) => o.id == _selectedId);
+    final selected = selectedIdx >= 0 ? _items[selectedIdx] : null;
+    return LayoutBuilder(
+      builder: (context, constraints) => Stack(
+        key: _stackKey,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+            child: RowTable(
+              controller: _scrollController,
+              footer: _footer(),
+              minWidth: 900,
+              columns: const [
+                RowTableColumn('Öğrenci No', flex: 2),
+                RowTableColumn('Ad Soyad', flex: 3),
+                RowTableColumn('Sınıf', flex: 1),
+                RowTableColumn('Telefon', flex: 3),
+                RowTableColumn('Durum', flex: 1),
+              ],
+              rows: [
+                for (final o in _items)
+                  RowTableRow(
+                    rowKey: _rowKeyOf(o),
+                    selected: _selectedId == o.id,
+                    onSelected: () {
+                      if (_selectedId != o.id) setState(() => _selectedId = o.id);
+                    },
+                    onOpen: () => _openDetail(o),
+                    cells: [
+                      Text(o.ogrenciNo,
+                          style: const TextStyle(fontWeight: FontWeight.w600)),
+                      Text(o.adSoyad, overflow: TextOverflow.ellipsis),
+                      Text(o.sinif?.ad ?? '—'),
+                      Text(o.telefon ?? '—'),
+                      Text(o.aktif ? 'Aktif' : 'Pasif',
+                          style: TextStyle(
+                            color: o.aktif
+                                ? successColor(context)
+                                : Theme.of(context).colorScheme.onSurfaceVariant,
+                            fontWeight: FontWeight.w500,
+                          )),
+                    ],
+                  ),
+              ],
+            ),
+          ),
+          if (selected != null)
+            AnchoredRowActions(
+              stackKey: _stackKey,
+              rowKey: _rowKeyOf(selected),
+              tick: _scrollTick,
+              viewportHeight: constraints.maxHeight,
+              onOutOfView: () => setState(() => _selectedId = null),
+              actions: [
+                IconButton(
+                  tooltip: 'Düzenle',
+                  visualDensity: VisualDensity.compact,
+                  icon: const Icon(Icons.edit_outlined),
+                  onPressed: () => _editStudent(selected),
+                ),
                 if (_isAdmin)
                   IconButton(
-                    tooltip: o.aktif ? 'Pasife al' : 'Aktifleştir',
+                    tooltip: selected.aktif ? 'Pasife al' : 'Aktifleştir',
                     visualDensity: VisualDensity.compact,
-                    icon: Icon(
-                      o.aktif ? Icons.person_off_outlined : Icons.person_outline,
-                      color: o.aktif ? null : Colors.grey.shade600,
-                    ),
-                    onPressed: () => _toggleStatus(o),
+                    icon: Icon(selected.aktif
+                        ? Icons.person_off_outlined
+                        : Icons.person_outline),
+                    onPressed: () => _toggleStatus(selected),
+                  ),
+                if (_isAdmin)
+                  IconButton(
+                    tooltip: 'Sil',
+                    visualDensity: VisualDensity.compact,
+                    icon: const Icon(Icons.delete_outline),
+                    onPressed: () => _deleteStudent(selected),
                   ),
                 IconButton(
                   tooltip: 'Detaylar',
                   visualDensity: VisualDensity.compact,
                   icon: const Icon(Icons.chevron_right),
-                  onPressed: () => _openDetail(o),
+                  onPressed: () => _openDetail(selected),
                 ),
               ],
             ),

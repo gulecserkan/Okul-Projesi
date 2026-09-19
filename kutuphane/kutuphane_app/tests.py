@@ -7,8 +7,9 @@ from decimal import Decimal
 from datetime import timedelta
 
 from django.contrib.auth.models import User
+from django.core.cache import cache
 from django.db import connection
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APITestCase
@@ -21,6 +22,7 @@ from kutuphane_app.models import (
     Ogrenci,
     OduncKaydi,
     Personel,
+    Raf,
     Rol,
     Sinif,
     Yazar,
@@ -39,6 +41,7 @@ from kutuphane_app.rules import (
     suggested_loss_penalty,
     validate_transition,
 )
+from kutuphane_app.book_lookup import google_books_lookup
 
 
 def make_policy(**kw):
@@ -681,3 +684,319 @@ class OgrenciCRUDAPITests(APITestCase):
         self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST, resp.content)
         self.assertTrue(Ogrenci.objects.filter(pk=ogrenci.pk).exists())
         _ = kitap
+
+
+class KatalogAPITests(APITestCase):
+    """Faz C: katalog CRUD (admin), raf modeli, nüsha durum düzeltme (K4.8),
+    birleştirme (K6.2), çift kitap (K6.1), kitap/nüsha silme kuralları."""
+
+    def setUp(self):
+        self.admin = User.objects.create_user(username="admin", password="a1!", is_staff=True)
+        self.personel = User.objects.create_user(username="person", password="p1!")
+        self.client.force_authenticate(self.personel)
+
+    def test_personel_create_yazar_forbidden_admin_ok(self):
+        resp = self.client.post("/api/yazarlar/", {"ad_soyad": "Yeni"}, format="json")
+        self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN)
+        self.client.force_authenticate(self.admin)
+        resp = self.client.post("/api/yazarlar/", {"ad_soyad": "Yeni"}, format="json")
+        self.assertEqual(resp.status_code, status.HTTP_201_CREATED, resp.content)
+
+    def test_raf_crud(self):
+        self.client.force_authenticate(self.admin)
+        resp = self.client.post("/api/raflar/", {"ad": "A2"}, format="json")
+        self.assertEqual(resp.status_code, status.HTTP_201_CREATED, resp.content)
+        rid = resp.data["id"]
+        resp = self.client.patch(f"/api/raflar/{rid}/", {"aciklama": "Yazarlar A"}, format="json")
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        # raf listesi herkese açık
+        self.client.force_authenticate(self.personel)
+        resp = self.client.get("/api/raflar/")
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+
+    def test_nusha_create_via_api(self):
+        kitap, _ = make_book_and_copy(barkod="KIT0000705")
+        resp = self.client.post("/api/nushalar/", {"kitap_id": kitap.id}, format="json")
+        self.assertEqual(resp.status_code, status.HTTP_201_CREATED, resp.content)
+        self.assertTrue(resp.data["barkod"].startswith("KIT"))
+
+    def test_durum_duzelt_admin_only(self):
+        kitap, nusha = make_book_and_copy(barkod="KIT0000706")
+        resp = self.client.post(
+            f"/api/nushalar/{nusha.id}/durum_duzelt/", {"durum": "kayip"}, format="json"
+        )
+        self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN)
+        self.client.force_authenticate(self.admin)
+        resp = self.client.post(
+            f"/api/nushalar/{nusha.id}/durum_duzelt/", {"durum": "kayip"}, format="json"
+        )
+        self.assertEqual(resp.status_code, status.HTTP_200_OK, resp.content)
+        nusha.refresh_from_db()
+        self.assertEqual(nusha.durum, "kayip")
+        # mevcut'a geri dön
+        resp = self.client.post(
+            f"/api/nushalar/{nusha.id}/durum_duzelt/", {"durum": "mevcut"}, format="json"
+        )
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+
+    def test_durum_duzelt_oduncte_rejected(self):
+        self.client.force_authenticate(self.admin)
+        ogrenci = Ogrenci.objects.create(ad="A", soyad="B", ogrenci_no="60127")
+        kitap, nusha = make_book_and_copy(barkod="KIT0000707")
+        resp = self.client.post(
+            "/api/checkout/", {"ogrenci_no": "60127", "barkod": "KIT0000707"}, format="json"
+        )
+        self.assertEqual(resp.status_code, status.HTTP_201_CREATED, resp.content)
+        resp = self.client.post(
+            f"/api/nushalar/{nusha.id}/durum_duzelt/", {"durum": "mevcut"}, format="json"
+        )
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST, resp.content)
+        self.assertIn("ödünçte", resp.data["error"])
+
+    def test_duzelt_oduncte_target_rejected(self):
+        self.client.force_authenticate(self.admin)
+        kitap, nusha = make_book_and_copy(barkod="KIT0000708")
+        resp = self.client.post(
+            f"/api/nushalar/{nusha.id}/durum_duzelt/", {"durum": "oduncte"}, format="json"
+        )
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_kitap_cift_listesi(self):
+        kitap1, _ = make_book_and_copy(baslik="Suç ve Ceza", barkod="KIT0000710")
+        kitap2, _ = make_book_and_copy(baslik="suç ve ceza", barkod="KIT0000711")
+        resp = self.client.get("/api/kitaplar/cift/")
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        keys = [r["anahtar"] for r in resp.data]
+        self.assertTrue(any("suc ve ceza" == k for k in keys))
+        _ = (kitap1, kitap2)
+
+    def test_kitap_destroy_admin_personel_forbidden(self):
+        kitap, _ = make_book_and_copy(barkod="KIT0000712")
+        resp = self.client.delete(f"/api/kitaplar/{kitap.id}/")
+        self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN)
+        self.client.force_authenticate(self.admin)
+        resp = self.client.delete(f"/api/kitaplar/{kitap.id}/")
+        self.assertEqual(resp.status_code, status.HTTP_204_NO_CONTENT)
+
+    def test_kitap_destroy_with_history_blocked(self):
+        self.client.force_authenticate(self.admin)
+        ogrenci = Ogrenci.objects.create(ad="A", soyad="B", ogrenci_no="60128")
+        kitap, nusha = make_book_and_copy(barkod="KIT0000713")
+        resp = self.client.post(
+            "/api/checkout/", {"ogrenci_no": "60128", "barkod": "KIT0000713"}, format="json"
+        )
+        self.assertEqual(resp.status_code, status.HTTP_201_CREATED, resp.content)
+        resp = self.client.delete(f"/api/kitaplar/{kitap.id}/")
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST, resp.content)
+        resp = self.client.delete(f"/api/nushalar/{nusha.id}/")
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_kitap_create_duplicate_isbn_conflict(self):
+        existing, _ = make_book_and_copy(
+            baslik="Devlet-i Aliyye", barkod="KIT0000715"
+        )
+        existing.isbn = "978-975-08-1522-1"
+        existing.save(update_fields=["isbn", "arama"])
+        resp = self.client.post(
+            "/api/kitaplar/",
+            {"baslik": "Devlet-i Aliyye (ciltli)", "isbn": "9789750815221"},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, status.HTTP_409_CONFLICT, resp.content)
+        self.assertTrue(resp.data["isbn_eslesme"])
+        self.assertEqual(resp.data["benzerler"][0]["id"], existing.id)
+        self.assertEqual(resp.data["benzerler"][0]["nusha_sayisi"], 1)
+
+    def test_kitap_create_duplicate_isbn_force_ok(self):
+        existing, _ = make_book_and_copy(
+            baslik="Devlet-i Aliyye", barkod="KIT0000716"
+        )
+        existing.isbn = "978-975-08-1522-1"
+        existing.save(update_fields=["isbn", "arama"])
+        resp = self.client.post(
+            "/api/kitaplar/",
+            {"baslik": "Devlet-i Aliyye (ciltli)", "isbn": "9789750815221", "force": True},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, status.HTTP_201_CREATED, resp.content)
+        self.assertNotEqual(resp.data["id"], existing.id)
+
+    def test_kitap_create_duplicate_title_conflict(self):
+        existing, _ = make_book_and_copy(baslik="Suç ve Ceza", barkod="KIT0000717")
+        resp = self.client.post(
+            "/api/kitaplar/", {"baslik": "suç ve ceza"}, format="json"
+        )
+        self.assertEqual(resp.status_code, status.HTTP_409_CONFLICT, resp.content)
+        self.assertFalse(resp.data["isbn_eslesme"])
+        self.assertEqual(resp.data["benzerler"][0]["id"], existing.id)
+
+    def test_kitap_create_distinct_no_conflict(self):
+        make_book_and_copy(baslik="Suç ve Ceza", barkod="KIT0000718")
+        resp = self.client.post(
+            "/api/kitaplar/", {"baslik": "Sefiller"}, format="json"
+        )
+        self.assertEqual(resp.status_code, status.HTTP_201_CREATED, resp.content)
+
+    def test_yazar_birles(self):
+        self.client.force_authenticate(self.admin)
+        y1 = Yazar.objects.create(ad_soyad="Orhan Pamuk")
+        y2 = Yazar.objects.create(ad_soyad="orpamuk")
+        k1 = Kitap.objects.create(baslik="Kitap X", yazar=y1)
+        resp = self.client.post(f"/api/yazarlar/{y1.id}/birles/", {"hedef_id": y2.id}, format="json")
+        self.assertEqual(resp.status_code, status.HTTP_200_OK, resp.content)
+        k1.refresh_from_db()
+        self.assertEqual(k1.yazar_id, y2.id)
+        self.assertFalse(Yazar.objects.filter(pk=y1.pk).exists())
+
+    def test_raf_birles(self):
+        self.client.force_authenticate(self.admin)
+        r1 = Raf.objects.create(ad="A1")
+        r2 = Raf.objects.create(ad="A-1")
+        kitap, nusha = make_book_and_copy(barkod="KIT0000714")
+        nusha.raf = r1
+        nusha.save()
+        resp = self.client.post(f"/api/raflar/{r1.id}/birles/", {"hedef_id": r2.id}, format="json")
+        self.assertEqual(resp.status_code, status.HTTP_200_OK, resp.content)
+        nusha.refresh_from_db()
+        self.assertEqual(nusha.raf_id, r2.id)
+        self.assertEqual(nusha.raf_kodu, "A-1")
+
+    def test_google_books_endpoint(self):
+        import unittest.mock as mock
+        import json as _json
+        from io import BytesIO
+
+        cache.clear()
+
+        fake_payload = {
+            "items": [
+                {
+                    "volumeInfo": {
+                        "title": "Sineklerin Tanrısı",
+                        "authors": ["William Golding"],
+                        "publishedDate": "1954",
+                        "industryIdentifiers": [{"type": "ISBN_13", "identifier": "9781234"}],
+                        "description": "Klasik roman",
+                        "imageLinks": {"thumbnail": "http://x/c.jpg?zoom=1"},
+                    }
+                }
+            ]
+        }
+
+        class FakeResp:
+            def read(self):
+                return _json.dumps(fake_payload).encode("utf-8")
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *a):
+                return False
+
+        with mock.patch("kutuphane_app.book_lookup.urlopen", return_value=FakeResp()):
+            resp = self.client.post("/api/kitap-google/", {"q": "sineklerin tanrisi"}, format="json")
+        self.assertEqual(resp.status_code, status.HTTP_200_OK, resp.content)
+        first = resp.data["results"][0]
+        self.assertEqual(first["baslik"], "Sineklerin Tanrısı")
+        self.assertEqual(first["isbn"], "9781234")
+        self.assertIn("zoom=2", first["kapak_url"])
+
+    def test_google_books_rete_limit_429(self):
+        import unittest.mock as mock
+        from io import BytesIO
+        from urllib.error import HTTPError
+
+        cache.clear()
+
+        def _boom(*args, _headers=None, **kwargs):
+            req = args[0]
+            raise HTTPError(req.full_url, 429, "Too Many Requests",
+                            {}, BytesIO(b""))
+
+        with mock.patch("kutuphane_app.book_lookup.urlopen", side_effect=_boom):
+            resp = self.client.post("/api/kitap-google/", {"q": "arnold"}, format="json")
+        self.assertEqual(resp.status_code, status.HTTP_429_TOO_MANY_REQUESTS, resp.content)
+        self.assertIn("429", resp.data["error"])
+
+
+class BookLookupTests(TestCase):
+    """K7.5: anahtar URL'de; önbellek 7 gün; 429/başarısız sonuç önbelleklenmez."""
+
+    def setUp(self):
+        cache.clear()
+
+    def _fake_http(self, payload, record):
+        import json as _json
+        from unittest import mock
+
+        class FakeResp:
+            def read(self):
+                return _json.dumps(payload).encode("utf-8")
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *a):
+                return False
+
+        def _capture(req, **kwargs):
+            record["calls"] += 1
+            record["url"] = req.full_url
+            return FakeResp()
+
+        return mock.patch("kutuphane_app.book_lookup.urlopen", side_effect=_capture)
+
+    def test_key_and_country_in_url_when_set(self):
+        payload = {"items": [{"volumeInfo": {"title": "Kurtuluş Savaşı"}}]}
+        record = {"calls": 0, "url": ""}
+        with override_settings(GOOGLE_BOOKS_API_KEY="AIza_TEST_KEY"):
+            with self._fake_http(payload, record):
+                results, err = google_books_lookup("kurtulus savasi")
+        self.assertIsNone(err)
+        self.assertEqual(results[0]["baslik"], "Kurtuluş Savaşı")
+        self.assertIn("key=AIza_TEST_KEY", record["url"])
+        self.assertIn("country=TR", record["url"])
+
+    def test_no_key_when_unset(self):
+        payload = {"items": []}
+        record = {"calls": 0, "url": ""}
+        with override_settings(GOOGLE_BOOKS_API_KEY=""):
+            with self._fake_http(payload, record):
+                _, err = google_books_lookup("deneme")
+        self.assertEqual(err, "not_found")
+        self.assertNotIn("key=", record["url"])
+
+    def test_cache_hit_no_network(self):
+        payload = {"items": [{"volumeInfo": {"title": "Devlet-i Aliyye"}}]}
+        record = {"calls": 0, "url": ""}
+        with self._fake_http(payload, record):
+            r1, e1 = google_books_lookup("İlber Ortaylı")
+            r2, e2 = google_books_lookup("İLBER ORTAYLI")
+        self.assertEqual(record["calls"], 1)
+        self.assertIsNone(e1)
+        self.assertIsNone(e2)
+        self.assertEqual(r1, r2)
+
+    def test_empty_result_cached(self):
+        record = {"calls": 0, "url": ""}
+        with self._fake_http({"items": []}, record):
+            _, e1 = google_books_lookup("olmayan-kitap-xyz")
+            _, e2 = google_books_lookup("olmayan-kitap-xyz")
+        self.assertEqual(e1, "not_found")
+        self.assertEqual(e2, "not_found")
+        self.assertEqual(record["calls"], 1)
+
+    def test_429_not_cached(self):
+        import unittest.mock as mock
+        from io import BytesIO
+        from urllib.error import HTTPError
+
+        def _boom(req, **kwargs):
+            raise HTTPError(req.full_url, 429, "Too Many Requests", {}, BytesIO(b""))
+
+        with mock.patch("kutuphane_app.book_lookup.urlopen", side_effect=_boom) as m:
+            _, e1 = google_books_lookup("arnold")
+            _, e2 = google_books_lookup("arnold")
+        self.assertEqual(e1, "429")
+        self.assertEqual(e2, "429")
+        self.assertEqual(m.call_count, 2)

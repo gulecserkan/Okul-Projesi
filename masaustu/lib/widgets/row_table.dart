@@ -17,11 +17,15 @@ class RowTableRow {
   final VoidCallback onSelected;
   final VoidCallback onOpen;
 
+  /// Satırın konum ölçümü için GlobalKey (yüzen aksiyon çubuğu).
+  final Key? rowKey;
+
   const RowTableRow({
     required this.cells,
     this.selected = false,
     required this.onSelected,
     required this.onOpen,
+    this.rowKey,
   });
 }
 
@@ -117,6 +121,7 @@ class RowTable extends StatelessWidget {
   Widget _row(BuildContext context, RowTableRow row) {
     final theme = Theme.of(context);
     return Listener(
+      key: row.rowKey,
       onPointerDown: (_) => row.onSelected(),
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
