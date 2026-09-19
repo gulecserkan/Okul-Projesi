@@ -22,7 +22,7 @@ class ApiClient {
   Future<http.Response> _request(
     String method,
     String path, {
-    Map<String, dynamic>? body,
+    Object? body,
     String? accessToken,
   }) async {
     final uri = _uri(path);
@@ -48,7 +48,7 @@ class ApiClient {
   Future<http.Response> request(
     String method,
     String path, {
-    Map<String, dynamic>? body,
+    Object? body,
     bool auth = false,
   }) async {
     final session = AppConfig.session;

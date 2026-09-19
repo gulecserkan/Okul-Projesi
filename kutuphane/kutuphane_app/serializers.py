@@ -18,6 +18,7 @@ from .models import (
     LoanPolicy,
     RoleLoanPolicy,
     NotificationSettings,
+    KurumAyarlari,
     AuditLog,
     InventorySession,
     InventoryItem,
@@ -327,6 +328,12 @@ class NotificationSettingsSerializer(serializers.ModelSerializer):
             "sms_schedule_last_run",
             "mobile_schedule_last_run",
         )
+
+
+class KurumAyarlariSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = KurumAyarlari
+        exclude = ("singleton_key", "created_at", "updated_at")
 
 
 class InventoryItemSerializer(serializers.ModelSerializer):

@@ -373,6 +373,76 @@ class KutuphaneApi {
       return (null, 'Politika alınamadı');
     }
   }
+
+  // --- Ayarlar (K10) ---
+
+  Future<({Map<String, dynamic>? data, String? error})> _settingsGet(
+      String path) async {
+    try {
+      final resp = await _client.request('GET', path, auth: true);
+      if (resp.statusCode < 200 || resp.statusCode >= 300) {
+        return (data: null, error: extractError(resp, fallback: 'Ayarlar alınamadı.'));
+      }
+      final data = jsonDecode(utf8.decode(resp.bodyBytes));
+      if (data is Map<String, dynamic>) return (data: data, error: null);
+      return (data: null, error: 'Beklenmeyen yanıt.');
+    } catch (_) {
+      return (data: null, error: 'Ayarlar alınamadı.');
+    }
+  }
+
+  Future<({bool ok, String? error})> _settingsPut(
+      String path, Object body) async {
+    try {
+      final resp = await _client.request('PUT', path, auth: true, body: body);
+      if (resp.statusCode >= 200 && resp.statusCode < 300) {
+        return (ok: true, error: null);
+      }
+      return (ok: false, error: extractError(resp, fallback: 'Ayarlar kaydedilemedi.'));
+    } catch (_) {
+      return (ok: false, error: 'Ayarlar kaydedilemedi.');
+    }
+  }
+
+  Future<({Map<String, dynamic>? data, String? error})> loanPolicyGet() =>
+      _settingsGet('settings/loans/');
+
+  Future<({bool ok, String? error})> loanPolicyUpdate(
+          Map<String, dynamic> body) =>
+      _settingsPut('settings/loans/', body);
+
+  Future<({List<dynamic>? data, String? error})> roleLoanPolicies() async {
+    try {
+      final resp =
+          await _client.request('GET', 'settings/loans/roles/', auth: true);
+      if (resp.statusCode < 200 || resp.statusCode >= 300) {
+        return (data: null, error: extractError(resp, fallback: 'Rol ayarları alınamadı.'));
+      }
+      final data = jsonDecode(utf8.decode(resp.bodyBytes));
+      if (data is List) return (data: data, error: null);
+      return (data: null, error: 'Beklenmeyen yanıt.');
+    } catch (_) {
+      return (data: null, error: 'Rol ayarları alınamadı.');
+    }
+  }
+
+  Future<({bool ok, String? error})> roleLoanPoliciesUpdate(
+          List<dynamic> body) =>
+      _settingsPut('settings/loans/roles/', body);
+
+  Future<({Map<String, dynamic>? data, String? error})>
+      notificationSettingsGet() => _settingsGet('settings/notifications/');
+
+  Future<({bool ok, String? error})> notificationSettingsUpdate(
+          Map<String, dynamic> body) =>
+      _settingsPut('settings/notifications/', body);
+
+  Future<({Map<String, dynamic>? data, String? error})> kurumAyarlariGet() =>
+      _settingsGet('settings/kurum/');
+
+  Future<({bool ok, String? error})> kurumAyarlariUpdate(
+          Map<String, dynamic> body) =>
+      _settingsPut('settings/kurum/', body);
 /// Kitap oluşturur/düzenler (id verilirse PATCH). Faz C.
 /// K8.1: eşleşen mevcut kayıt olursa `benzerler`/`isbnEslesme` ile 409 bildirilir.
   Future<({

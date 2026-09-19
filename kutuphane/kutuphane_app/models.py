@@ -544,3 +544,31 @@ class NotificationSettings(models.Model):
     def get_solo(cls):
         settings, _ = cls.objects.get_or_create(singleton_key="default")
         return settings
+
+
+class KurumAyarlari(models.Model):
+    """Kurum/kütüphane kimlik bilgileri (fiş ve etiketlerde kullanılır)."""
+
+    singleton_key = models.CharField(max_length=50, unique=True, default="default")
+    kutuphane_adi = models.CharField(max_length=150, blank=True)
+    okul_adi = models.CharField(max_length=150, blank=True)
+    adres = models.CharField(max_length=255, blank=True)
+    telefon = models.CharField(max_length=40, blank=True)
+    eposta = models.CharField(max_length=120, blank=True)
+    website = models.CharField(max_length=150, blank=True)
+    logo_url = models.CharField(max_length=500, blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Kurum Bilgileri"
+        verbose_name_plural = "Kurum Bilgileri"
+
+    def __str__(self):
+        return self.kutuphane_adi or "Kurum Bilgileri"
+
+    @classmethod
+    def get_solo(cls):
+        kurum, _ = cls.objects.get_or_create(singleton_key="default")
+        return kurum

@@ -1232,3 +1232,57 @@ class UyeNoCaseInsensitiveTests(APITestCase):
         self.assertEqual(resp.data.get("type"), "student")
         resp = self.client.get("/api/uye-ceza/5a01/")
         self.assertEqual(resp.status_code, status.HTTP_200_OK, resp.content)
+
+
+class AyarlarYetkiTests(APITestCase):
+    """K10: ayar düzenleme yalnız admin; görüntüleme personel."""
+
+    def setUp(self):
+        self.admin = User.objects.create_superuser(username="admin", password="a1!")
+        self.personel = User.objects.create_user(username="person", password="p1!")
+
+    def test_kurum_get_personel_ok_put_admin_only(self):
+        self.client.force_authenticate(self.personel)
+        self.assertEqual(self.client.get("/api/settings/kurum/").status_code, 200)
+        resp = self.client.put(
+            "/api/settings/kurum/", {"kutuphane_adi": "X"}, format="json"
+        )
+        self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN)
+        self.client.force_authenticate(self.admin)
+        resp = self.client.put(
+            "/api/settings/kurum/", {"kutuphane_adi": "X"}, format="json"
+        )
+        self.assertEqual(resp.status_code, status.HTTP_200_OK, resp.content)
+        self.assertEqual(resp.data["kutuphane_adi"], "X")
+
+    def test_loan_policy_put_admin_only(self):
+        self.client.force_authenticate(self.personel)
+        self.assertEqual(self.client.get("/api/settings/loans/").status_code, 200)
+        resp = self.client.patch(
+            "/api/settings/loans/", {"default_duration": 20}, format="json"
+        )
+        self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN)
+        self.client.force_authenticate(self.admin)
+        resp = self.client.patch(
+            "/api/settings/loans/", {"default_duration": 20}, format="json"
+        )
+        self.assertEqual(resp.status_code, status.HTTP_200_OK, resp.content)
+
+    def test_role_loan_policy_put_admin_only(self):
+        rol = Rol.objects.create(ad="Öğrenci")
+        self.client.force_authenticate(self.personel)
+        self.assertEqual(self.client.get("/api/settings/loans/roles/").status_code, 200)
+        resp = self.client.put(
+            "/api/settings/loans/roles/",
+            [{"role": rol.id, "duration": 10}],
+            format="json",
+        )
+        self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_notification_put_admin_only(self):
+        self.client.force_authenticate(self.personel)
+        self.assertEqual(self.client.get("/api/settings/notifications/").status_code, 200)
+        resp = self.client.patch(
+            "/api/settings/notifications/", {"email_enabled": True}, format="json"
+        )
+        self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN)

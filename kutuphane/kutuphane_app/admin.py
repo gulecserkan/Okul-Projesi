@@ -24,7 +24,7 @@ from .models import (
     Rol, Sinif, Uye, Yazar, Kategori, Raf, Kitap, KitapNusha,
     OduncKaydi, AuditLog,
     ArsivBatch, ArsivUye, ArsivOdunc,
-    LoanPolicy, RoleLoanPolicy, NotificationSettings,
+    LoanPolicy, RoleLoanPolicy, NotificationSettings, KurumAyarlari,
     InventorySession, InventoryItem
 )
 
@@ -459,6 +459,13 @@ class NotificationSettingsAdmin(admin.ModelAdmin):
 
 
 admin_site.register(NotificationSettings, NotificationSettingsAdmin)
+
+
+class KurumAyarlariAdmin(admin.ModelAdmin):
+    list_display = ("kutuphane_adi", "okul_adi", "telefon", "eposta")
+
+
+admin_site.register(KurumAyarlari, KurumAyarlariAdmin)
 
 
 admin_site.register(User, UserAdmin)

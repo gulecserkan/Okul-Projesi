@@ -180,7 +180,18 @@ Not: Akıllı raf öneri sistemi (rafların program tarafından düzenli tutulma
 
 ---
 
-## 10. Test Sorumlulukları
+## 10. AYARLAR (K10)
+
+| # | Kural | İşlenir |
+|---|---|---|
+| K10.1 | Ayar **görüntüleme** personel; **düzenleme (PUT/PATCH) yalnız admin** — ödünç politikası, rol bazlı ceza, bildirim, kurum | `LoanPolicyView` / `RoleLoanPolicyView` / `NotificationSettingsView` / `KurumAyarlariView` `get_permissions` |
+| K10.2 | **Kurum bilgileri** (kütüphane/okul adı, adres, telefon, e-posta, web, logo_url) tekil kayıt; fiş/etiketlerde kullanılır | `KurumAyarlari.get_solo`, `/api/settings/kurum/` |
+| K10.3 | Ödünç politikası ve rol bazlı ceza (süre/limit/tolerans/ceza gecikmesi/hafta sonu/günlük ceza/tavan) sunucudan yönetilir | `settings/loans`, `settings/loans/roles` |
+| K10.4 | Masaüstü **Ayarlar** sekmeli: Görünüm · Sunucu · Ödünç Politikası · Ceza (Rol) · Bildirim · Kurum · Hesap; admin değilse düzenleme alanları kapalı | `masaustu/lib/screens/settings_screen.dart` |
+
+---
+
+## 11. Test Sorumlulukları
 
 Her kural için en az bir test:
 - `rules.py` birim testleri (matris K3.1, çift yazım K3.2, pasif_tarihi K2.1-2).
@@ -190,4 +201,5 @@ Her kural için en az bir test:
 - K8: ISBN/başlık çakışma → 409, `force` bypass, farklı kitap → 201 (K8.1-8.2).
 - K7.5: anahtar URL'de; ikinci arama önbellekten gelir (ağ yok); 429 yanıtı; ISBN önceliği (`isbn:` + Open Library `/isbn/`); kaynak birleştirme/tekilleştirme + kapak yedekleme (K7.5-K7.7).
 - K9: superuser token `role=admin`; üye girişi (`tip=uye`, `uye_no`, `parola_degistirilsin`); üye personel ucuna 403; editör kitap ekleyebilir / üye listesine 403; kendi/başkası geçmiş kapsamı; şifre değişince bayrak kalkar (K9.1-K9.6).
+- K10: kurum/ödünç/rol/bildirim GET personel 200; PUT/PATCH personel 403, admin 200 (K10.1-K10.2).
 - E2E canlı smoke: checkout → kapat döngüsü.

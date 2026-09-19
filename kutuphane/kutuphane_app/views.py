@@ -34,6 +34,7 @@ from .models import (
     LoanPolicy,
     RoleLoanPolicy,
     NotificationSettings,
+    KurumAyarlari,
     AuditLog,
     InventorySession,
     InventoryItem,
@@ -64,6 +65,7 @@ from .serializers import (
     LoanPolicySerializer,
     RoleLoanPolicySerializer,
     NotificationSettingsSerializer,
+    KurumAyarlariSerializer,
     AuditLogSerializer,
     InventorySessionSerializer,
     InventoryItemSerializer,
@@ -1651,7 +1653,11 @@ class ChangePasswordView(APIView):
 
 
 class LoanPolicyView(APIView):
-    permission_classes = [IsPersonel]
+    def get_permissions(self):
+        # K10: ayar düzenleme yalnız admin; görüntüleme personel.
+        if self.request.method in ("PUT", "PATCH"):
+            return [IsAdminPersonel()]
+        return [IsPersonel()]
 
     def get(self, request):
         policy = LoanPolicy.get_solo()
@@ -1676,7 +1682,10 @@ class LoanPolicyView(APIView):
 
 
 class RoleLoanPolicyView(APIView):
-    permission_classes = [IsPersonel]
+    def get_permissions(self):
+        if self.request.method in ("PUT", "PATCH"):
+            return [IsAdminPersonel()]
+        return [IsPersonel()]
 
     def get(self, request):
         policies = RoleLoanPolicy.objects.select_related("role").all()
@@ -1754,7 +1763,10 @@ class RoleLoanPolicyView(APIView):
 
 
 class NotificationSettingsView(APIView):
-    permission_classes = [IsPersonel]
+    def get_permissions(self):
+        if self.request.method in ("PUT", "PATCH"):
+            return [IsAdminPersonel()]
+        return [IsPersonel()]
 
     def get(self, request):
         settings = NotificationSettings.get_solo()
@@ -1770,6 +1782,33 @@ class NotificationSettingsView(APIView):
     def _update(self, request, *, partial):
         settings_obj = NotificationSettings.get_solo()
         serializer = NotificationSettingsSerializer(settings_obj, data=request.data, partial=partial)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class KurumAyarlariView(APIView):
+    """Kurum/kütüphane kimlik bilgileri (fiş/etiket için). GET personel, yazma admin."""
+
+    def get_permissions(self):
+        if self.request.method in ("PUT", "PATCH"):
+            return [IsAdminPersonel()]
+        return [IsPersonel()]
+
+    def get(self, request):
+        serializer = KurumAyarlariSerializer(KurumAyarlari.get_solo())
+        return Response(serializer.data)
+
+    def put(self, request):
+        return self._update(request, partial=False)
+
+    def patch(self, request):
+        return self._update(request, partial=True)
+
+    def _update(self, request, *, partial):
+        kurum = KurumAyarlari.get_solo()
+        serializer = KurumAyarlariSerializer(kurum, data=request.data, partial=partial)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_200_OK)
