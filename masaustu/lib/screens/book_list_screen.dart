@@ -126,6 +126,7 @@ class _BookListScreenState extends State<BookListScreen> {
               Expanded(
                 child: TextField(
                   controller: _searchController,
+                  autofocus: true,
                   onChanged: _onSearchChanged,
                   decoration: const InputDecoration(
                     hintText: 'Başlık, ISBN, yazar, kategori veya raf ara...',

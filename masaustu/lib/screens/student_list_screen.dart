@@ -127,6 +127,7 @@ class _StudentListScreenState extends State<StudentListScreen> {
               Expanded(
                 child: TextField(
                   controller: _searchController,
+                  autofocus: true,
                   onChanged: _onSearchChanged,
                   decoration: const InputDecoration(
                     hintText: 'No, ad, soyad veya sınıf ara...',
