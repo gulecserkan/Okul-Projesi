@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../api/kutuphane_api.dart';
 import '../models.dart';
+import '../widgets/row_table.dart';
 import 'book_detail_screen.dart';
 
 class BookListScreen extends StatefulWidget {
@@ -24,26 +25,6 @@ class _BookListScreenState extends State<BookListScreen> {
     Navigator.of(context).push(MaterialPageRoute(
       builder: (_) => BookDetailScreen(kitap: k),
     ));
-  }
-
-  DataCell _cell(Kitap k, Widget child) {
-    return DataCell(
-      Listener(
-        onPointerDown: (_) {
-          if (_selectedId != k.id) setState(() => _selectedId = k.id);
-        },
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onDoubleTap: () => _openDetail(k),
-          child: Container(
-            constraints: const BoxConstraints(minWidth: double.infinity),
-            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
-            alignment: Alignment.centerLeft,
-            child: child,
-          ),
-        ),
-      ),
-    );
   }
 
   @override
@@ -151,71 +132,49 @@ class _BookListScreenState extends State<BookListScreen> {
       return const Center(child: Text('Kayıtlı kitap bulunamadı.'));
     }
     final filtered = _filtered;
-    return SingleChildScrollView(
+    if (filtered.isEmpty) {
+      return const Center(child: Text('Aranan kriterde kitap yok.'));
+    }
+    return Padding(
       padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
-child: Card(
-          clipBehavior: Clip.antiAlias,
-          child: DataTable(
-            headingRowHeight: 44,
-            dataRowMinHeight: 40,
-            dataRowMaxHeight: 48,
-            columns: const [
-              DataColumn(label: Text('Kitap')),
-              DataColumn(label: Text('Yazar')),
-              DataColumn(label: Text('Kategori')),
-              DataColumn(label: Text('Yıl')),
-              DataColumn(label: Text('Nüsha')),
-              DataColumn(label: Text('Raf')),
-              DataColumn(label: Text('')),
-            ],
-            rows: [
-              for (final k in filtered)
-                DataRow(
-                  color: _selectedId == k.id
-                      ? WidgetStatePropertyAll(
-                          Theme.of(context).colorScheme.primaryContainer)
-                      : null,
-                  cells: [
-                    _cell(k, SizedBox(
-                      width: 280,
-                      child: Text(
-                        k.baslik,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontWeight: FontWeight.w500),
-                      ),
-                    )),
-                    _cell(k, Text(k.yazar?.adSoyad ?? '—')),
-                    _cell(k, Text(k.kategori?.ad ?? '—')),
-                    _cell(k, Text(k.yayinYili?.toString() ?? '—')),
-                    _cell(k, Text('${k.nushaSayisi}')),
-                    _cell(k, Text(k.rafKodlari.join(', '))),
-                    DataCell(Listener(
-                      onPointerDown: (_) =>
-                          setState(() => _selectedId = k.id),
-                      child: IconButton(
-                        tooltip: 'Detaylar',
-                        icon: const Icon(Icons.chevron_right),
-                        onPressed: () => _openDetail(k),
-                      ),
-                    )),
-                  ],
+      child: RowTable(
+        minWidth: 1050,
+        columns: const [
+          RowTableColumn('Kitap', flex: 4),
+          RowTableColumn('Yazar', flex: 3),
+          RowTableColumn('Kategori', flex: 2),
+          RowTableColumn('Yıl', flex: 1),
+          RowTableColumn('Nüsha', flex: 1),
+          RowTableColumn('Raf', flex: 2),
+          RowTableColumn('', flex: 0),
+        ],
+        rows: [
+          for (final k in filtered)
+            RowTableRow(
+              selected: _selectedId == k.id,
+              onSelected: () {
+                if (_selectedId != k.id) setState(() => _selectedId = k.id);
+              },
+              onOpen: () => _openDetail(k),
+              cells: [
+                Text(k.baslik,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontWeight: FontWeight.w500)),
+                Text(k.yazar?.adSoyad ?? '—', overflow: TextOverflow.ellipsis),
+                Text(k.kategori?.ad ?? '—'),
+                Text(k.yayinYili?.toString() ?? '—'),
+                Text('${k.nushaSayisi}'),
+                Text(k.rafKodlari.join(', '), overflow: TextOverflow.ellipsis),
+                IconButton(
+                  tooltip: 'Detaylar',
+                  visualDensity: VisualDensity.compact,
+                  icon: const Icon(Icons.chevron_right),
+                  onPressed: () => _openDetail(k),
                 ),
-              if (filtered.isEmpty)
-                const DataRow(
-                  cells: [
-                    DataCell(Text('Aranan kriterde kitap yok')),
-                    DataCell(Text('')),
-                    DataCell(Text('')),
-                    DataCell(Text('')),
-                    DataCell(Text('')),
-                    DataCell(Text('')),
-                    DataCell(Text('')),
-                  ],
-                ),
-            ],
-          ),
-        ),
+              ],
+            ),
+        ],
+      ),
     );
   }
 }

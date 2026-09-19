@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../api/kutuphane_api.dart';
 import '../models.dart';
+import '../widgets/row_table.dart';
 import 'student_detail_screen.dart';
 
 class StudentListScreen extends StatefulWidget {
@@ -24,26 +25,6 @@ class _StudentListScreenState extends State<StudentListScreen> {
     Navigator.of(context).push(MaterialPageRoute(
       builder: (_) => StudentDetailScreen(ogrenci: o),
     ));
-  }
-
-  DataCell _cell(Ogrenci o, Widget child) {
-    return DataCell(
-      Listener(
-        onPointerDown: (_) {
-          if (_selectedId != o.id) setState(() => _selectedId = o.id);
-        },
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onDoubleTap: () => _openDetail(o),
-          child: Container(
-            constraints: const BoxConstraints(minWidth: double.infinity),
-            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
-            alignment: Alignment.centerLeft,
-            child: child,
-          ),
-        ),
-      ),
-    );
   }
 
   @override
@@ -119,8 +100,10 @@ class _StudentListScreenState extends State<StudentListScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Align(
             alignment: Alignment.centerLeft,
-            child: Text('${_filtered.length} öğrenci',
-                style: Theme.of(context).textTheme.bodySmall),
+            child: Builder(builder: (context) {
+              return Text('${_filtered.length} öğrenci',
+                  style: Theme.of(context).textTheme.bodySmall);
+            }),
           ),
         ),
         Expanded(child: _buildBody()),
@@ -148,63 +131,50 @@ class _StudentListScreenState extends State<StudentListScreen> {
       return const Center(child: Text('Kayıtlı öğrenci bulunamadı.'));
     }
     final filtered = _filtered;
-    return SingleChildScrollView(
+    if (filtered.isEmpty) {
+      return const Center(child: Text('Aranan kriterde öğrenci yok.'));
+    }
+    return Padding(
       padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
-child: Card(
-          clipBehavior: Clip.antiAlias,
-          child: DataTable(
-            headingRowHeight: 44,
-            dataRowMinHeight: 40,
-            dataRowMaxHeight: 48,
-            columns: const [
-              DataColumn(label: Text('Öğrenci No')),
-              DataColumn(label: Text('Ad Soyad')),
-              DataColumn(label: Text('Sınıf')),
-              DataColumn(label: Text('Telefon')),
-              DataColumn(label: Text('Durum')),
-              DataColumn(label: Text('')),
-            ],
-            rows: [
-              for (final o in filtered)
-                DataRow(
-                  color: _selectedId == o.id
-                      ? WidgetStatePropertyAll(
-                          Theme.of(context).colorScheme.primaryContainer)
-                      : null,
-                  cells: [
-                    _cell(o, Text(o.ogrenciNo)),
-                    _cell(o, Text(o.adSoyad)),
-                    _cell(o, Text(o.sinif?.ad ?? '—')),
-                    _cell(o, Text(o.telefon ?? '—')),
-                    _cell(o, Text(o.aktif ? 'Aktif' : 'Pasif',
-                        style: TextStyle(
-                          color: o.aktif ? Colors.green.shade700 : Colors.grey,
-                        ))),
-                    DataCell(Listener(
-                      onPointerDown: (_) =>
-                          setState(() => _selectedId = o.id),
-                      child: IconButton(
-                        tooltip: 'Detaylar',
-                        icon: const Icon(Icons.chevron_right),
-                        onPressed: () => _openDetail(o),
-                      ),
+      child: RowTable(
+        minWidth: 900,
+        columns: const [
+          RowTableColumn('Öğrenci No', flex: 2),
+          RowTableColumn('Ad Soyad', flex: 3),
+          RowTableColumn('Sınıf', flex: 1),
+          RowTableColumn('Telefon', flex: 3),
+          RowTableColumn('Durum', flex: 1),
+          RowTableColumn('', flex: 0),
+        ],
+        rows: [
+          for (final o in filtered)
+            RowTableRow(
+              selected: _selectedId == o.id,
+              onSelected: () {
+                if (_selectedId != o.id) setState(() => _selectedId = o.id);
+              },
+              onOpen: () => _openDetail(o),
+              cells: [
+                Text(o.ogrenciNo,
+                    style: const TextStyle(fontWeight: FontWeight.w600)),
+                Text(o.adSoyad, overflow: TextOverflow.ellipsis),
+                Text(o.sinif?.ad ?? '—'),
+                Text(o.telefon ?? '—'),
+                Text(o.aktif ? 'Aktif' : 'Pasif',
+                    style: TextStyle(
+                      color: o.aktif ? Colors.green.shade700 : Colors.grey,
+                      fontWeight: FontWeight.w500,
                     )),
-                  ],
+                IconButton(
+                  tooltip: 'Detaylar',
+                  visualDensity: VisualDensity.compact,
+                  icon: const Icon(Icons.chevron_right),
+                  onPressed: () => _openDetail(o),
                 ),
-              if (filtered.isEmpty)
-                const DataRow(
-                  cells: [
-                    DataCell(Text('—')),
-                    DataCell(Text('Aranan kriterde öğrenci yok')),
-                    DataCell(Text('')),
-                    DataCell(Text('')),
-                    DataCell(Text('')),
-                    DataCell(Text('')),
-                  ],
-                ),
-            ],
-          ),
-        ),
+              ],
+            ),
+        ],
+      ),
     );
   }
 }
