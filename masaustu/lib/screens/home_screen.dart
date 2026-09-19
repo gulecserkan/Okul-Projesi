@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../config.dart';
@@ -6,6 +8,7 @@ import '../api_client.dart';
 import '../formatters.dart';
 import '../models.dart';
 import '../theme.dart';
+import '../widgets/horizontal_menu.dart';
 import '../widgets/radial_menu.dart';
 import '../widgets/return_dialog.dart';
 import 'book_detail_screen.dart';
@@ -152,11 +155,23 @@ class _OverviewState extends State<_Overview> {
   int _uyeCount = 0;
   int _nushaCount = 0;
   int? _selectedLoanId;
+  OverlayEntry? _menuEntry;
 
   @override
   void initState() {
     super.initState();
     _load();
+  }
+
+  @override
+  void dispose() {
+    _kapatMenu();
+    super.dispose();
+  }
+
+  void _kapatMenu() {
+    _menuEntry?.remove();
+    _menuEntry = null;
   }
 
   Future<void> _load() async {
@@ -274,7 +289,14 @@ class _OverviewState extends State<_Overview> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return ListView(
+    return NotificationListener<ScrollNotification>(
+      onNotification: (n) {
+        if (n is ScrollUpdateNotification) _kapatMenu();
+        return false;
+      },
+      child: Listener(
+        onPointerDown: (_) => _kapatMenu(),
+        child: ListView(
       padding: const EdgeInsets.all(24),
       children: [
         Text('Hoş geldiniz, ${widget.session.fullName}!',
@@ -327,6 +349,8 @@ class _OverviewState extends State<_Overview> {
         const SizedBox(height: 8),
         _aktifOdunclerBolumu(theme),
       ],
+    ),
+      ),
     );
   }
 
@@ -365,26 +389,40 @@ class _OverviewState extends State<_Overview> {
     );
   }
 
-  /// Satır hücresi: tek tık → anında işlem menüsü (İade / Kitap / Üye).
+  /// Satır hücresi: basıldığı anda işlem menüsü (İade / Kitap / Üye).
   Widget _hucre(OduncKaydi l, Widget child) => GestureDetector(
         behavior: HitTestBehavior.opaque,
-        onTapUp: (d) {
+        onTapDown: (d) {
           setState(() => _selectedLoanId = l.id);
           _satirMenu(l, d.globalPosition);
         },
         child: child,
       );
 
-  /// Satıra tıklanınca imlecin yanında yuvarlak (dilimli) işlem menüsü.
-  Future<void> _satirMenu(OduncKaydi l, Offset globalPos) async {
-    final secim = await showRadialRowMenu(context, globalPos, const [
+  /// Satıra tıklanınca imlecin altında yatay işlem menüsü (modal değil).
+  void _satirMenu(OduncKaydi l, Offset globalPos) {
+    _kapatMenu();
+    final items = const [
       RadialMenuItem(icon: Icons.login, label: 'İade', value: 'iade'),
       RadialMenuItem(
           icon: Icons.menu_book_outlined, label: 'Kitap', value: 'kitap'),
-      RadialMenuItem(
-          icon: Icons.person_outline, label: 'Üye', value: 'uye'),
-    ]);
-    if (!mounted || secim == null) return;
+      RadialMenuItem(icon: Icons.person_outline, label: 'Üye', value: 'uye'),
+    ];
+    scheduleMicrotask(() {
+      if (!mounted) return;
+      _menuEntry = buildHorizontalRowMenu(
+        globalPosition: globalPos,
+        items: items,
+        onSelect: (value) {
+          _kapatMenu();
+          _menuSecildi(l, value);
+        },
+      );
+      Overlay.of(context).insert(_menuEntry!);
+    });
+  }
+
+  Future<void> _menuSecildi(OduncKaydi l, String secim) async {
     switch (secim) {
       case 'iade':
         await _iadeAl(l);

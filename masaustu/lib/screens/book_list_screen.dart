@@ -6,6 +6,7 @@ import '../api/kutuphane_api.dart';
 import '../config.dart';
 import '../models.dart';
 import '../theme.dart';
+import '../widgets/horizontal_menu.dart';
 import '../widgets/radial_menu.dart';
 import '../widgets/row_table.dart';
 import 'book_detail_screen.dart';
@@ -35,6 +36,7 @@ class _BookListScreenState extends State<BookListScreen> {
   String _sortKey = 'baslik';
   bool _sortAsc = true;
   Timer? _debounce;
+  OverlayEntry? _menuEntry;
 
   @override
   void initState() {
@@ -45,13 +47,20 @@ class _BookListScreenState extends State<BookListScreen> {
 
   @override
   void dispose() {
+    _kapatMenu();
     _debounce?.cancel();
     _scrollController.dispose();
     super.dispose();
   }
 
+  void _kapatMenu() {
+    _menuEntry?.remove();
+    _menuEntry = null;
+  }
+
   void _onScroll() {
     if (!_scrollController.hasClients) return;
+    if (_menuEntry != null) _kapatMenu();
     final pos = _scrollController.position;
     if (pos.pixels >= pos.maxScrollExtent - 200) _load(reset: false);
   }
@@ -200,7 +209,9 @@ class _BookListScreenState extends State<BookListScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    return Listener(
+      onPointerDown: (_) => _kapatMenu(),
+      child: Column(
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
@@ -244,6 +255,7 @@ class _BookListScreenState extends State<BookListScreen> {
         ),
         Expanded(child: _buildBody()),
       ],
+      ),
     );
   }
 
@@ -315,8 +327,9 @@ class _BookListScreenState extends State<BookListScreen> {
     );
   }
 
-  /// Satıra tıklanınca imleç yanında yuvarlak (dilimli) işlem menüsü.
-  Future<void> _satirMenu(Kitap k, Offset globalPos) async {
+  /// Satıra tıklanınca imlecin altında yatay işlem menüsü (modal değil).
+  void _satirMenu(Kitap k, Offset globalPos) {
+    _kapatMenu();
     final items = <RadialMenuItem>[
       const RadialMenuItem(
           icon: Icons.edit_outlined, label: 'Düzenle', value: 'duzenle'),
@@ -326,8 +339,21 @@ class _BookListScreenState extends State<BookListScreen> {
         const RadialMenuItem(
             icon: Icons.delete_outline, label: 'Sil', value: 'sil'),
     ];
-    final secim = await showRadialRowMenu(context, globalPos, items);
-    if (!mounted || secim == null) return;
+    scheduleMicrotask(() {
+      if (!mounted) return;
+      _menuEntry = buildHorizontalRowMenu(
+        globalPosition: globalPos,
+        items: items,
+        onSelect: (value) {
+          _kapatMenu();
+          _menuSecildi(k, value);
+        },
+      );
+      Overlay.of(context).insert(_menuEntry!);
+    });
+  }
+
+  Future<void> _menuSecildi(Kitap k, String secim) async {
     switch (secim) {
       case 'duzenle':
         await _editBook(k);
