@@ -157,6 +157,61 @@ class KutuphaneApi {
       return const PenaltySummary();
     }
   }
+
+  /// Hızlı tarama: barkod / öğrenci no / ISBN / başlık. Ham JSON döner.
+  Future<Map<String, dynamic>?> fastQuery(String q) async {
+    final resp = await _client.request(
+      'GET',
+      'fast-query/?q=${Uri.encodeQueryComponent(q)}',
+      auth: true,
+    );
+    if (resp.statusCode != 200) return null;
+    try {
+      return jsonDecode(resp.body) as Map<String, dynamic>?;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Ödünç ver: POST /api/checkout/ {ogrenci_no, barkod}.
+  Future<http.Response> checkout(String ogrenciNo, String barkod) {
+    return _client.request(
+      'POST',
+      'checkout/',
+      auth: true,
+      body: {'ogrenci_no': ogrenciNo, 'barkod': barkod},
+    );
+  }
+
+  /// İade durumu güncelle: PATCH `/api/oduncler/{id}/`.
+  Future<http.Response> updateLoanStatus(
+    int loanId, {
+    required String durum,
+    String? teslimTarihi,
+    String? gecikmeCezasi,
+  }) {
+    return _client.request(
+      'PATCH',
+      'oduncler/$loanId/',
+      auth: true,
+      body: {
+        'durum': durum,
+        'teslim_tarihi': ?teslimTarihi,
+        if (gecikmeCezasi != null && gecikmeCezasi.trim().isNotEmpty)
+          'gecikme_cezasi': gecikmeCezasi.trim(),
+      },
+    );
+  }
+
+  /// Nüsha durumu güncelle: PATCH `/api/nushalar/{id}/`.
+  Future<http.Response> updateCopyStatus(int copyId, String durum) {
+    return _client.request(
+      'PATCH',
+      'nushalar/$copyId/',
+      auth: true,
+      body: {'durum': durum},
+    );
+  }
 }
 
 /// Sayfalı liste sonucu: satırlar + toplam kayıt + sonraki sayfa (yoksa null).

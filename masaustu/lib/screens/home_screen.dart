@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../config.dart';
 import 'book_list_screen.dart';
+import 'loan_screen.dart';
 import 'student_list_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -89,7 +90,7 @@ class _HomeScreenState extends State<HomeScreen> {
             Expanded(
               child: switch (_selectedIndex) {
                 0 => _Overview(session: widget.session),
-                1 => const _Placeholder(index: 1),
+                1 => const LoanScreen(),
                 2 => const StudentListScreen(),
                 3 => const BookListScreen(),
                 _ => const _Placeholder(index: 4),
