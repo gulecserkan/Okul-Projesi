@@ -259,21 +259,33 @@ class _CatalogListTabState<T> extends State<_CatalogListTab<T>> {
       builder: (dc) => StatefulBuilder(
         builder: (dc, setLocal) => AlertDialog(
           title: Text('${widget.nameOf(item)} → hedefe birleştir'),
-          content: DropdownButtonFormField<int>(
-            initialValue: hedefId,
-            isExpanded: true,
-            decoration: const InputDecoration(
-              labelText: 'Hedef',
-              border: OutlineInputBorder(),
-              isDense: true,
-            ),
-            items: [
-              for (final o in others)
-                DropdownMenuItem<int>(
-                    value: (o as dynamic).id as int,
-                    child: Text(widget.nameOf(o))),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '"${widget.nameOf(item)}" kaydına bağlı tüm kayıtlar seçilen hedefe '
+                'taşınır ve bu kayıt silinir. Ödünç geçmişi korunur. Geri alınamaz.',
+                style: const TextStyle(fontSize: 12),
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<int>(
+                initialValue: hedefId,
+                isExpanded: true,
+                decoration: const InputDecoration(
+                  labelText: 'Hedef',
+                  border: OutlineInputBorder(),
+                  isDense: true,
+                ),
+                items: [
+                  for (final o in others)
+                    DropdownMenuItem<int>(
+                        value: (o as dynamic).id as int,
+                        child: Text(widget.nameOf(o))),
+                ],
+                onChanged: (v) => setLocal(() => hedefId = v),
+              ),
             ],
-            onChanged: (v) => setLocal(() => hedefId = v),
           ),
           actions: [
             TextButton(
@@ -343,6 +355,12 @@ class _CatalogListTabState<T> extends State<_CatalogListTab<T>> {
                 child: Text('${widget.labelField} listesi',
                     style: theme.textTheme.bodySmall),
               ),
+              IconButton(
+                tooltip: 'Birleştirme nasıl çalışır?',
+                icon: const Icon(Icons.info_outline),
+                onPressed: () => _birlesmeBilgisi(context),
+              ),
+              const SizedBox(width: 4),
               FilledButton.icon(
                 onPressed: _add,
                 icon: const Icon(Icons.add, size: 18),
@@ -406,9 +424,39 @@ class _CatalogListTabState<T> extends State<_CatalogListTab<T>> {
   }
 }
 
+/// K6.2: Birleştirme işleminin ne yaptığını açıklayan bilgi diyaloğu.
+Future<void> _birlesmeBilgisi(BuildContext context) {
+  return showDialog<void>(
+    context: context,
+    builder: (dc) => AlertDialog(
+      title: const Text('Birleştirme nasıl çalışır?'),
+      content: const Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Aynı şeyin iki yazım varyantı (ör. "çocuk" / "cocuk") '
+              'iki ayrı kayıt olabilir.'),
+          SizedBox(height: 10),
+          Text('• Kaynak kaydın bağlı tüm kayıtları (kitaplar / nüshalar) hedefe taşınır.'),
+          Text('• Kaynak kayıt silinir; hedef kalır.'),
+          Text('• Ödünç geçmişi korunur.'),
+          SizedBox(height: 10),
+          Text('Geri alınamaz; doğru hedefi seçin.',
+              style: TextStyle(fontWeight: FontWeight.w600)),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(dc).pop(),
+          child: const Text('Anladım'),
+        ),
+      ],
+    ),
+  );
+}
+
 class _DuplicateBooksTab extends StatefulWidget {
   const _DuplicateBooksTab();
-
   @override
   State<_DuplicateBooksTab> createState() => _DuplicateBooksTabState();
 }
@@ -464,11 +512,23 @@ class _DuplicateBooksTabState extends State<_DuplicateBooksTab> {
         return ListView(
           padding: const EdgeInsets.all(24),
           children: [
-            Text(
-                'Fold-normalize edilmiş başlıkta çakışan ${groups.length} grup bulundu. '
-                    'Hedef kitabı seçip diğerleri o gruba birleştirilebilir. Geçmiş nüsha '
-                    'bazında korunur.',
-                style: theme.textTheme.bodySmall),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Text(
+                      'Fold-normalize edilmiş başlıkta çakışan ${groups.length} grup bulundu. '
+                          'Hedef kitabı seçip diğerleri o gruba birleştirilebilir. Geçmiş nüsha '
+                          'bazında korunur.',
+                      style: theme.textTheme.bodySmall),
+                ),
+                IconButton(
+                  tooltip: 'Birleştirme nasıl çalışır?',
+                  icon: const Icon(Icons.info_outline),
+                  onPressed: () => _birlesmeBilgisi(context),
+                ),
+              ],
+            ),
             const SizedBox(height: 8),
             for (final g in groups)
               Card(
