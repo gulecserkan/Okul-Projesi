@@ -34,6 +34,29 @@ String durumLabel(String durum) {
   }
 }
 
+/// İade tarihine göre takip tonu: gecikmiş **kırmızı**, bugün **turuncu**,
+/// ≤3 gün **sarı**, normal **yeşil**. `durum=gecikmis` ise her zaman kırmızı.
+/// (Satır zemini için `layerColor`/`withValues(alpha:)` ile birlikte kullanılır.)
+Color iadeTone(String? iadeTarihi, Brightness brightness, {String? durum}) {
+  final dark = brightness == Brightness.dark;
+  final kirmizi = dark ? const Color(0xFFF2B8B5) : const Color(0xFFB3261E);
+  final turuncu = dark ? const Color(0xFFF2B98C) : const Color(0xFFB25E00);
+  final sari = dark ? const Color(0xFFE8C05A) : const Color(0xFF8A6100);
+  final yesil = dark ? const Color(0xFF7BD88F) : const Color(0xFF1B873B);
+
+  if ((durum ?? '').toLowerCase() == 'gecikmis') return kirmizi;
+  final due = DateTime.tryParse(iadeTarihi ?? '');
+  if (due == null) return yesil;
+  final now = DateTime.now();
+  final bugun = DateTime(now.year, now.month, now.day);
+  final hedef = DateTime(due.year, due.month, due.day);
+  final fark = hedef.difference(bugun).inDays;
+  if (fark < 0) return kirmizi;
+  if (fark == 0) return turuncu;
+  if (fark <= 3) return sari;
+  return yesil;
+}
+
 /// Durum kodu → renk (açık/koyu duyarlı: koyuda daha açık ton kullanılır).
 Color durumColor(String durum, Brightness brightness) {
   final dark = brightness == Brightness.dark;

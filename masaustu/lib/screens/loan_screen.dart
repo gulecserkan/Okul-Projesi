@@ -899,8 +899,11 @@ class _StudentResult extends StatelessWidget {
                 for (final loan in active)
                   Container(
                     padding: const EdgeInsets.all(12),
-                    decoration: const BoxDecoration(
-                      border: Border(
+                    decoration: BoxDecoration(
+                      color: iadeTone(loan.iadeTarihi, theme.brightness,
+                              durum: loan.durum)
+                          .withValues(alpha: 0.14),
+                      border: const Border(
                         bottom:
                             BorderSide(color: Color(0xFFE4E4E7), width: 0.5),
                       ),

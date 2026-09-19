@@ -219,8 +219,45 @@ class _OverviewState extends State<_Overview> {
             ),
           ],
         ),
+        const SizedBox(height: 4),
+        _renkLejandi(theme),
         const SizedBox(height: 8),
         _aktifOdunclerBolumu(theme),
+      ],
+    );
+  }
+
+  /// İade tarihine göre satır renklerinin açıklaması.
+  Widget _renkLejandi(ThemeData theme) {
+    final bugun = DateTime.now();
+    String iso(int gun) => bugun.add(Duration(days: gun)).toIso8601String();
+    final items = <(String, Color)>[
+      ('Gecikmiş', iadeTone(iso(-1), theme.brightness)),
+      ('Bugün', iadeTone(iso(0), theme.brightness)),
+      ('≤3 gün', iadeTone(iso(3), theme.brightness)),
+      ('Normal', iadeTone(iso(10), theme.brightness)),
+    ];
+    return Wrap(
+      spacing: 16,
+      runSpacing: 4,
+      children: [
+        for (final it in items)
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 12,
+                height: 12,
+                decoration: BoxDecoration(
+                  color: it.$2.withValues(alpha: 0.35),
+                  borderRadius: BorderRadius.circular(3),
+                  border: Border.all(color: it.$2),
+                ),
+              ),
+              const SizedBox(width: 6),
+              Text(it.$1, style: theme.textTheme.bodySmall),
+            ],
+          ),
       ],
     );
   }
@@ -259,22 +296,28 @@ class _OverviewState extends State<_Overview> {
           ],
           rows: [
             for (final l in _loans)
-              DataRow(cells: [
-                DataCell(Text(l.kitapBaslik)),
-                DataCell(Text([
-                  if ((l.uyeAdSoyad ?? '').isNotEmpty) l.uyeAdSoyad!,
-                  if ((l.uyeNo ?? '').isNotEmpty) '(${l.uyeNo})',
-                ].join(' '))),
-                DataCell(Text(formatDate(l.oduncTarihi))),
-                DataCell(Text(formatDate(l.iadeTarihi))),
-                DataCell(Text(
-                  durumLabel(l.durum),
-                  style: TextStyle(
-                    color: durumColor(l.durum, theme.brightness),
-                    fontWeight: FontWeight.w600,
-                  ),
-                )),
-              ]),
+              DataRow(
+                color: WidgetStatePropertyAll<Color?>(
+                  iadeTone(l.iadeTarihi, theme.brightness, durum: l.durum)
+                      .withValues(alpha: 0.14),
+                ),
+                cells: [
+                  DataCell(Text(l.kitapBaslik)),
+                  DataCell(Text([
+                    if ((l.uyeAdSoyad ?? '').isNotEmpty) l.uyeAdSoyad!,
+                    if ((l.uyeNo ?? '').isNotEmpty) '(${l.uyeNo})',
+                  ].join(' '))),
+                  DataCell(Text(formatDate(l.oduncTarihi))),
+                  DataCell(Text(formatDate(l.iadeTarihi))),
+                  DataCell(Text(
+                    durumLabel(l.durum),
+                    style: TextStyle(
+                      color: durumColor(l.durum, theme.brightness),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  )),
+                ],
+              ),
           ],
         ),
       ),
