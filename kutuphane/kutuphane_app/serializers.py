@@ -44,15 +44,45 @@ class OgrenciSerializer(serializers.ModelSerializer):
     rol_id = serializers.PrimaryKeyRelatedField(
         source="rol", queryset=Rol.objects.all(), write_only=True, required=False, allow_null=True
     )
+    # K9: personel, borçlu (öğrenci/öğretmen) için başlangıç/yeni şifre belirler.
+    sifre = serializers.CharField(write_only=True, required=False, allow_blank=True)
 
     class Meta:
         model = Ogrenci
-        exclude = ("arama",)
+        exclude = ("arama", "user")
         extra_kwargs = {
             # K2.6: aktif/pasif değişimi yalnızca durum action (admin); düz PATCH kilili.
             "aktif": {"read_only": True},
             "pasif_tarihi": {"read_only": True},
         }
+
+    def create(self, validated_data):
+        sifre = (validated_data.pop("sifre", "") or "").strip()
+        ogrenci = super().create(validated_data)
+        if sifre:
+            self._set_borrower_password(ogrenci, sifre)
+        return ogrenci
+
+    def update(self, instance, validated_data):
+        sifre = (validated_data.pop("sifre", "") or "").strip()
+        ogrenci = super().update(instance, validated_data)
+        if sifre:
+            self._set_borrower_password(ogrenci, sifre)
+        return ogrenci
+
+    def _set_borrower_password(self, ogrenci, raw_password):
+        """Borçlu girişi: kullanıcı adı = ogrenci_no; ilk girişte değiştirme zorunlu."""
+        from django.contrib.auth.models import User
+
+        user = ogrenci.user
+        if user is None:
+            user, _ = User.objects.get_or_create(username=ogrenci.ogrenci_no)
+        user.set_password(raw_password)
+        user.is_staff = False
+        user.save()
+        ogrenci.user = user
+        ogrenci.parola_degistirilsin = True
+        ogrenci.save(update_fields=["user", "parola_degistirilsin"])
 
 
 class YazarSerializer(serializers.ModelSerializer):
@@ -408,22 +438,48 @@ class AuditLogSerializer(serializers.ModelSerializer):
 
 class TokenObtainPairSerializer(BaseTokenObtainPairSerializer):
     @classmethod
+    def _claims(cls, user):
+        """K9: hesap tipi + rol. Personel yoksa superuser/staff admin sayılır."""
+        personel = getattr(user, "personel", None)
+        ogrenci = getattr(user, "ogrenci", None)
+        claims = {}
+        if personel:
+            claims["tip"] = "personel"
+            claims["full_name"] = personel.ad_soyad
+            claims["role"] = personel.rol
+        elif ogrenci:
+            claims["tip"] = "ogrenci"
+            claims["full_name"] = f"{ogrenci.ad} {ogrenci.soyad}".strip()
+            claims["role"] = ogrenci.rol.ad if ogrenci.rol else "Öğrenci"
+        elif user.is_superuser or user.is_staff:
+            claims["tip"] = "personel"
+            claims["full_name"] = user.get_full_name() or user.username
+            claims["role"] = "admin"
+        else:
+            claims["tip"] = "personel"
+            claims["full_name"] = user.get_full_name() or user.username
+            claims["role"] = ""
+        if ogrenci is not None:
+            claims["ogrenci_id"] = ogrenci.id
+            claims["ogrenci_no"] = ogrenci.ogrenci_no
+            claims["parola_degistirilsin"] = bool(ogrenci.parola_degistirilsin)
+        else:
+            claims["parola_degistirilsin"] = False
+        return claims
+
+    @classmethod
     def get_token(cls, user):
         token = super().get_token(user)
-        personel = getattr(user, "personel", None)
-        if personel:
-            token["full_name"] = personel.ad_soyad
-            token["role"] = personel.rol
-        else:
-            token["full_name"] = user.get_full_name() or user.username
-            token["role"] = getattr(user, "role", "")
+        for key, value in cls._claims(user).items():
+            token[key] = value
         return token
 
     def validate(self, attrs):
         data = super().validate(attrs)
         token = self.get_token(self.user)
-        data["full_name"] = token.get("full_name")
-        data["role"] = token.get("role")
+        for key in ("full_name", "role", "tip", "ogrenci_id", "ogrenci_no", "parola_degistirilsin"):
+            if key in token:
+                data[key] = token[key]
         return data
 
 
@@ -431,6 +487,7 @@ class TokenRefreshSerializer(BaseTokenRefreshSerializer):
     def validate(self, attrs):
         data = super().validate(attrs)
         refresh = self.token_class(attrs["refresh"])
-        data["full_name"] = refresh.get("full_name")
-        data["role"] = refresh.get("role")
+        for key in ("full_name", "role", "tip", "ogrenci_id", "ogrenci_no", "parola_degistirilsin"):
+            if key in refresh:
+                data[key] = refresh[key]
         return data

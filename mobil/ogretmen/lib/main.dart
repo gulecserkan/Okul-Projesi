@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import 'api/library_api.dart';
 import 'models/auth.dart';
 import 'screens/book_list_screen.dart';
+import 'screens/borrower_home_screen.dart';
 import 'screens/connection_screen.dart';
+import 'screens/force_password_screen.dart';
 import 'screens/login_screen.dart';
 import 'storage/session_storage.dart';
 import 'theme/app_theme.dart';
@@ -117,6 +119,17 @@ class _OgretmenAppState extends State<OgretmenApp> {
     });
   }
 
+  /// K9: ilk giriş şifresi değiştirildi → zorunluluk bayrağını kaldır.
+  Future<void> _onPasswordChanged() async {
+    final updated = _tokens?.copyWith(parolaDegistirilsin: false);
+    if (updated != null) {
+      await _storage.saveTokens(updated);
+    }
+    setState(() {
+      _tokens = updated;
+    });
+  }
+
   Future<void> _logout() async {
     await _storage.clearTokens();
     await _storage.saveLastAuthAt(DateTime.now());
@@ -175,6 +188,23 @@ class _OgretmenAppState extends State<OgretmenApp> {
         onAuthenticated: _onLogin,
         onChangeServer: _resetServer,
         lastKnownBaseUrl: _rememberedBaseUrl,
+      );
+    }
+
+    if (_tokens!.parolaDegistirilsin) {
+      return ForcePasswordScreen(
+        baseUrl: _baseUrl!,
+        tokens: _tokens!,
+        onDone: _onPasswordChanged,
+      );
+    }
+
+    if (_tokens!.isBorrower) {
+      return BorrowerHomeScreen(
+        baseUrl: _baseUrl!,
+        tokens: _tokens!,
+        onLogout: _logout,
+        onChangeServer: _resetServer,
       );
     }
 

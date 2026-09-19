@@ -149,6 +149,40 @@ class IsAdminPersonel(BasePermission):
         return personel is not None and getattr(personel, "rol", None) == "admin"
 
 
+class IsPersonel(BasePermission):
+    """K9: personel uçları için. Borçlu (Ogrenci bağlantılı, Personel olmayan)
+    hesaplar erişemez; superuser/staff ve Personel kayıtlı kullanıcılar erişir.
+    """
+
+    message = "Bu işlem için personel yetkisi gerekli."
+
+    def has_permission(self, request, view):
+        user = getattr(request, "user", None)
+        if not user or not user.is_authenticated:
+            return False
+        if user.is_superuser or user.is_staff:
+            return True
+        personel = getattr(user, "personel", None)
+        ogrenci = getattr(user, "ogrenci", None)
+        if personel is None and ogrenci is not None:
+            return False  # yalnız borçlu hesabı
+        return True
+
+
+def requester_ogrenci(user):
+    """K9: istek sahibi borçlu (öğrenci/öğretmen) ise Ogrenci kaydını döner.
+
+    Personel/superuser/staff için None döner (kısıt yok).
+    """
+    if not user or not user.is_authenticated:
+        return None
+    if user.is_superuser or user.is_staff:
+        return None
+    if getattr(user, "personel", None) is not None:
+        return None
+    return getattr(user, "ogrenci", None)
+
+
 def penalty_summary_for_student(ogrenci, limit=None):
     if not ogrenci:
         return {
@@ -232,12 +266,10 @@ class OgrenciViewSet(viewsets.ModelViewSet):
     pagination_class = ConditionalPageNumberPagination
 
     def get_permissions(self):
-        # Faz B: düzenleme (create/update/liste/detay) tüm personel; silme yalnızca admin.
-        if self.action == "durum":
-            return [IsAuthenticated(), IsAdminPersonel()]
-        if self.action == "destroy":
+        # K9: öğrenci yönetimi personel; silme/durum yalnızca admin.
+        if self.action in ("destroy", "durum"):
             return [IsAdminPersonel()]
-        return [IsAuthenticated()]
+        return [IsPersonel()]
 
     def get_queryset(self):
         qs = super().get_queryset()
@@ -282,6 +314,8 @@ class YazarViewSet(viewsets.ModelViewSet):
         # K6.6 (revize): yazar ekleme kitap girişinde tüm personel; düzenle/sil/birleştir admin.
         if self.action in ("update", "partial_update", "destroy", "birles"):
             return [IsAdminPersonel()]
+        if self.action == "create":
+            return [IsPersonel()]
         return [IsAuthenticated()]
 
     @action(detail=True, methods=["post"])
@@ -353,9 +387,12 @@ class KitapViewSet(viewsets.ModelViewSet):
     pagination_class = ConditionalPageNumberPagination
 
     def get_permissions(self):
-        # Faz C: kitap ekleme/düzenleme tüm personel; silme/birleştirme yalnızca admin.
+        # Faz C + K9: kitap ekleme/düzenleme personel; silme/birleştirme admin;
+        # liste/detay (gezinti) tüm kimliği doğrulanmış kullanıcılar.
         if self.action in ("destroy", "birles"):
             return [IsAdminPersonel()]
+        if self.action in ("create", "update", "partial_update"):
+            return [IsPersonel()]
         return [IsAuthenticated()]
 
     def create(self, request, *args, **kwargs):
@@ -550,7 +587,7 @@ class KitapViewSet(viewsets.ModelViewSet):
 
 
 class ShelfCodeListView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsPersonel]
 
     def get(self, request):
         codes = (
@@ -568,10 +605,10 @@ class KitapNushaViewSet(viewsets.ModelViewSet):
     pagination_class = ConditionalPageNumberPagination
 
     def get_permissions(self):
-        # Faz C: nüsha ekle/raf düzenle tüm personel; silme + durum düzeltme admin.
+        # Faz C + K9: nüsha ekle/raf düzenle personel; silme + durum düzeltme admin.
         if self.action in ("destroy", "durum_duzelt"):
             return [IsAdminPersonel()]
-        return [IsAuthenticated()]
+        return [IsPersonel()]
 
     def destroy(self, request, *args, **kwargs):
         # K4.3: ödünç kaydı olan nüsha silinemez (geçmiş kaybı).
@@ -660,6 +697,7 @@ class OduncKaydiViewSet(viewsets.ModelViewSet):
     ).all()
     serializer_class = OduncKaydiSerializer
     pagination_class = ConditionalPageNumberPagination
+    permission_classes = [IsPersonel]
 
     def get_queryset(self):
         qs = super().get_queryset()
@@ -677,7 +715,7 @@ class OduncKapatView(APIView):
            "gecikme_cezasi": decimal (ops.), "gecikme_cezasi_odendi": bool (ops.)}
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsPersonel]
 
     def post(self, request, pk):
         loan = get_object_or_404(
@@ -743,18 +781,18 @@ class OduncKapatView(APIView):
 class PersonelViewSet(viewsets.ModelViewSet):
     queryset = Personel.objects.all()
     serializer_class = PersonelSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsPersonel]
 
     def get_permissions(self):
         if self.action in ("create", "update", "partial_update", "destroy"):
             return [IsAdminPersonel()]
-        return [IsAuthenticated()]
+        return [IsPersonel()]
 
 
 class InventorySessionViewSet(viewsets.ModelViewSet):
     queryset = InventorySession.objects.all().select_related("created_by")
     serializer_class = InventorySessionSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsPersonel]
 
     def get_queryset(self):
         qs = super().get_queryset()
@@ -910,6 +948,7 @@ class InventorySessionViewSet(viewsets.ModelViewSet):
         return Response(InventorySessionSerializer(session).data)
 
 class IstatistikViewSet(viewsets.ViewSet):
+    permission_classes = [IsPersonel]
 
     # 1. En çok okuyan öğrenci
     @action(detail=False, methods=['get'])
@@ -1022,6 +1061,9 @@ class StudentHistoryView(ListAPIView):
 
     def get_queryset(self):
         ogrenci_no = self.kwargs["ogrenci_no"]
+        borrower = requester_ogrenci(self.request.user)
+        if borrower is not None and borrower.ogrenci_no != ogrenci_no:
+            return OduncKaydi.objects.none()
         return (
             OduncKaydi.objects
             .filter(ogrenci__ogrenci_no=ogrenci_no)
@@ -1033,6 +1075,10 @@ class StudentHistoryView(ListAPIView):
 
 class StudentPenaltySummaryView(APIView):
     def get(self, request, ogrenci_no):
+        borrower = requester_ogrenci(request.user)
+        if borrower is not None and borrower.ogrenci_no != ogrenci_no:
+            return Response({"detail": "Bu kayda erişim yetkiniz yok."},
+                            status=status.HTTP_403_FORBIDDEN)
         ogrenci = (
             Ogrenci.objects
             .filter(ogrenci_no=ogrenci_no)
@@ -1056,6 +1102,8 @@ class StudentPenaltySummaryView(APIView):
         return Response(summary)
 
 class FastQueryView(APIView):
+    permission_classes = [IsPersonel]
+
     def get(self, request):
         raw_q = request.query_params.get("q", "") or ""
         q = "".join(raw_q.split())  # tüm whitespace kaldır
@@ -1397,6 +1445,8 @@ class CheckoutView(APIView):
     Bir öğrencinin belirli bir barkoda sahip kitabı ödünç almasını sağlar.
     POST /api/checkout/  -> {"ogrenci_no": "...", "barkod": "..."}
     """
+    permission_classes = [IsPersonel]
+
     def post(self, request):
         ogrenci_no = (request.data.get("ogrenci_no") or "").strip()
         barkod = (request.data.get("barkod") or "").strip()
@@ -1540,11 +1590,17 @@ class ChangePasswordView(APIView):
             personel.sifre_hash = user.password
             personel.save(update_fields=["sifre_hash"])
 
+        # K9: borçlu ilk giriş şifresini değiştirdiyse zorunluluk kalkar.
+        ogrenci = getattr(user, "ogrenci", None)
+        if ogrenci is not None and ogrenci.parola_degistirilsin:
+            ogrenci.parola_degistirilsin = False
+            ogrenci.save(update_fields=["parola_degistirilsin"])
+
         return Response({"detail": "Şifre güncellendi."}, status=status.HTTP_200_OK)
 
 
 class LoanPolicyView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsPersonel]
 
     def get(self, request):
         policy = LoanPolicy.get_solo()
@@ -1569,7 +1625,7 @@ class LoanPolicyView(APIView):
 
 
 class RoleLoanPolicyView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsPersonel]
 
     def get(self, request):
         policies = RoleLoanPolicy.objects.select_related("role").all()
@@ -1647,7 +1703,7 @@ class RoleLoanPolicyView(APIView):
 
 
 class NotificationSettingsView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsPersonel]
 
     def get(self, request):
         settings = NotificationSettings.get_solo()
@@ -1670,7 +1726,7 @@ class NotificationSettingsView(APIView):
 
 
 class AuditLogView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsPersonel]
 
     def post(self, request):
         incoming = request.data or {}
@@ -1699,7 +1755,7 @@ class AuditLogView(APIView):
 
 
 class PenaltyPaymentView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsPersonel]
 
     def post(self, request, pk):
         try:
@@ -1745,7 +1801,7 @@ class PenaltyPaymentView(APIView):
 
 
 class UpdateOverdueLoansView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsPersonel]
 
     def post(self, request):
         try:
@@ -1775,6 +1831,8 @@ class BookHistoryView(APIView):
     Belirli bir barkodun geçmişini ve aynı ISBN'e sahip TÜM nüshaların durumlarını döndürür.
     GET /api/book-history/<barkod>/
     """
+    permission_classes = [IsPersonel]
+
     def get(self, request, barkod):
         try:
             # 1️⃣ Nüsha bilgisi

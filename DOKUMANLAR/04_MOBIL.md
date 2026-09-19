@@ -2,6 +2,12 @@
 
 İki ayrı Flutter uygulaması. Aynı Django API'sine bağlanırlar.
 
+> **Güncel (K9):** `ogretmen/` uygulaması artık **rol bazlı tek uygulama**dır.
+> `personel` girişinde kitap yönetimi (mevcut), `ogrenci` (borçlu) girişinde
+> salt-okunur **gezinti + ödünçlerim** gösterilir. Borçlu girişi `ogrenci_no` +
+> başlangıç şifresi ile yapılır; ilk girişte şifre değiştirme zorunludur.
+> `ogrenci/` mock uygulaması bu kapsamda gereksizdir (arşiv).
+
 ```
 mobil/
 ├── ogrenci/     → ÖĞRENCİ UYGULAMASI (Prototip — backend bağlantısı YOK)

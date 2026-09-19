@@ -68,6 +68,16 @@ class Ogrenci(models.Model):
     # 🔹 yeni alanlar:
     aktif = models.BooleanField(default=True)
     pasif_tarihi = models.DateTimeField(blank=True, null=True)
+    # Borçlu mobil girişi (öğrenci/öğretmen). Personel'den ayrı hesap tipi.
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="ogrenci",
+    )
+    # İlk girişte şifre değiştirme zorunluluğu (basit başlangıç şifresi).
+    parola_degistirilsin = models.BooleanField(default=False)
     # Türkçe arama anahtarı (fold edilmiş: ad, soyad, no, sınıf, rol)
     arama = models.CharField(max_length=400, blank=True, default="")
 

@@ -160,7 +160,23 @@ Not: Akıllı raf öneri sistemi (rafların program tarafından düzenli tutulma
 
 ---
 
-## 9. Test Sorumlulukları
+## 9. KİMLİK VE HESAP TİPLERİ (K9)
+
+İki hesap tipi: **personel** (kütüphane görevlisi/editör) ve **borçlu** (öğrenci/öğretmen).
+Öğretmen/öğrenci ayrımı `Rol` (ödünç grubu) ile; "kitap düzenleme" ise hesap tipiyle çözülür.
+
+| # | Kural | İşlenir |
+|---|---|---|
+| K9.1 | Token `tip` taşır: `personel` (Personel kaydı) veya `ogrenci` (Ogrenci bağlantılı). Borçlu için `ogrenci_no` da eklenir | `TokenObtainPairSerializer` |
+| K9.2 | Personel kaydı olmayan **superuser/staff** admin sayılır (`tip=personel, role=admin`) — masaüstünde admin ekranları görünür | Evet |
+| K9.3 | **Editör öğretmen** = `Personel(rol=personel)`: kitap ekle/düzenle yapar; silme/katalog/öğrenci yönetimi yok | `IsPersonel` / `IsAdminPersonel` |
+| K9.4 | **Borçlu uçları salt-okunur ve kendine ait**: kitap/kategori/yazar listesi açık; `student-history`/`student-penalties` yalnız kendi numarası. Personel uçları (`ogrenciler`, `oduncler`, `nushalar`, `istatistik`, `checkout`, ayarlar...) borçluya **kapalı** | `IsPersonel` + `requester_ogrenci` |
+| K9.5 | Borçlu girişi: kullanıcı adı = `ogrenci_no`; personel **basit başlangıç şifresi** belirler; ilk girişte **şifre değiştirme zorunlu** (`parola_degistirilsin`) | `OgrenciSerializer.sifre`, `ChangePasswordView` |
+| K9.6 | Tek mobil uygulama rol bazlı çalışır: `personel` → kitap yönetimi; `ogrenci` → gezinti + ödünçlerim; ilk girişte şifre ekranı | `mobil/ogretmen` |
+
+---
+
+## 10. Test Sorumlulukları
 
 Her kural için en az bir test:
 - `rules.py` birim testleri (matris K3.1, çift yazım K3.2, pasif_tarihi K2.1-2).
@@ -169,4 +185,5 @@ Her kural için en az bir test:
 - Flutter widget: kapat diyaloğu + ceza önerisi; admin gating (K5).
 - K8: ISBN/başlık çakışma → 409, `force` bypass, farklı kitap → 201 (K8.1-8.2).
 - K7.5: anahtar URL'de; ikinci arama önbellekten gelir (ağ yok); 429 yanıtı; ISBN önceliği (`isbn:` + Open Library `/isbn/`); kaynak birleştirme/tekilleştirme + kapak yedekleme (K7.5-K7.7).
+- K9: superuser token `role=admin`; borçlu girişi (`tip=ogrenci`, `ogrenci_no`, `parola_degistirilsin`); borçlu personel ucuna 403; kendi/başkası geçmiş kapsamı; şifre değişince bayrak kalkar (K9.1-K9.5).
 - E2E canlı smoke: checkout → kapat döngüsü.

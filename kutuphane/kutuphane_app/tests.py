@@ -1149,3 +1149,100 @@ class BookLookupTests(TestCase):
             results, err = lookup_books(isbn="9786051924731")
         self.assertIsNone(err)
         self.assertEqual(results[0]["baslik"], "Daginik Zihinler")
+
+
+class BorrowerAccountTests(APITestCase):
+    """K9: borçlu (öğrenci/öğretmen) hesabı, token tipi, kapsam ve şifre akışı."""
+
+    def setUp(self):
+        self.sinif = Sinif.objects.create(ad="9-A")
+        self.rol = Rol.objects.create(ad="Öğrenci")
+        self.ogrenci = Ogrenci.objects.create(
+            ad="Ali", soyad="Veli", ogrenci_no="9001",
+            sinif=self.sinif, rol=self.rol,
+        )
+        self.diger = Ogrenci.objects.create(
+            ad="Ayşe", soyad="Yılmaz", ogrenci_no="9002",
+            sinif=self.sinif, rol=self.rol,
+        )
+        self.admin = User.objects.create_user(
+            username="admin", password="a1!", is_staff=True
+        )
+
+    def _set_password(self, ogrenci, sifre):
+        self.client.force_authenticate(self.admin)
+        resp = self.client.patch(
+            f"/api/ogrenciler/{ogrenci.id}/", {"sifre": sifre}, format="json"
+        )
+        self.client.force_authenticate(None)
+        return resp
+
+    def _login(self, username, password):
+        return self.client.post(
+            "/api/token/", {"username": username, "password": password}, format="json"
+        )
+
+    def test_superuser_token_is_admin(self):
+        # K9: Personel kaydı olmayan superuser/staff admin sayılır.
+        resp = self._login("admin", "a1!")
+        self.assertEqual(resp.status_code, status.HTTP_200_OK, resp.content)
+        self.assertEqual(resp.data["tip"], "personel")
+        self.assertEqual(resp.data["role"], "admin")
+
+    def test_borrower_login_and_scope(self):
+        resp = self._set_password(self.ogrenci, "ilk1234")
+        self.assertEqual(resp.status_code, status.HTTP_200_OK, resp.content)
+
+        login = self._login("9001", "ilk1234")
+        self.assertEqual(login.status_code, status.HTTP_200_OK, login.content)
+        self.assertEqual(login.data["tip"], "ogrenci")
+        self.assertEqual(login.data["role"], "Öğrenci")
+        self.assertEqual(login.data["ogrenci_no"], "9001")
+        self.assertTrue(login.data["parola_degistirilsin"])
+
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {login.data['access']}")
+        # Personel uçları kapalı
+        self.assertEqual(
+            self.client.get("/api/ogrenciler/").status_code,
+            status.HTTP_403_FORBIDDEN,
+        )
+        self.assertEqual(
+            self.client.get("/api/oduncler/").status_code,
+            status.HTTP_403_FORBIDDEN,
+        )
+        self.assertEqual(
+            self.client.post("/api/kitaplar/", {"baslik": "X"}, format="json").status_code,
+            status.HTTP_403_FORBIDDEN,
+        )
+        # Kitap gezintisi açık
+        self.assertEqual(self.client.get("/api/kitaplar/").status_code, status.HTTP_200_OK)
+        # Kendi geçmişi açık; başkasınınki boş/dışlanmış
+        self.assertEqual(
+            self.client.get("/api/student-history/9001/").status_code,
+            status.HTTP_200_OK,
+        )
+        self.assertEqual(self.client.get("/api/student-history/9002/").data, [])
+        self.assertEqual(
+            self.client.get("/api/student-penalties/9002/").status_code,
+            status.HTTP_403_FORBIDDEN,
+        )
+
+    def test_borrower_change_password_clears_flag(self):
+        self._set_password(self.ogrenci, "ilk1234")
+        login = self._login("9001", "ilk1234")
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {login.data['access']}")
+        resp = self.client.post(
+            "/api/change-password/",
+            {
+                "current_password": "ilk1234",
+                "new_password": "Guvenli!234",
+                "new_password_confirm": "Guvenli!234",
+            },
+            format="json",
+        )
+        self.assertEqual(resp.status_code, status.HTTP_200_OK, resp.content)
+        self.ogrenci.refresh_from_db()
+        self.assertFalse(self.ogrenci.parola_degistirilsin)
+        relogin = self._login("9001", "Guvenli!234")
+        self.assertEqual(relogin.status_code, status.HTTP_200_OK, relogin.content)
+        self.assertFalse(relogin.data["parola_degistirilsin"])

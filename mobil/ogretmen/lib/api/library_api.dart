@@ -115,6 +115,26 @@ class LibraryApiClient {
     return data.map((e) => Category.fromJson(e)).toList();
   }
 
+  /// K9: borçlunun kendi ödünç geçmişi (salt-okunur).
+  Future<List<Map<String, dynamic>>> fetchStudentHistory(String ogrenciNo) async {
+    final response = await _authorizedGet("/api/student-history/$ogrenciNo/");
+    final decoded = jsonDecode(response.body);
+    if (decoded is List) {
+      return decoded.whereType<Map<String, dynamic>>().toList();
+    }
+    if (decoded is Map<String, dynamic> && decoded["results"] is List) {
+      return (decoded["results"] as List).whereType<Map<String, dynamic>>().toList();
+    }
+    return const [];
+  }
+
+  /// K9: borçlunun ceza özeti (salt-okunur).
+  Future<Map<String, dynamic>> fetchStudentPenalties(String ogrenciNo) async {
+    final response = await _authorizedGet("/api/student-penalties/$ogrenciNo/");
+    final decoded = jsonDecode(response.body);
+    return decoded is Map<String, dynamic> ? decoded : <String, dynamic>{};
+  }
+
   Future<List<Author>> fetchAuthors() async {
     final response = await _authorizedGet("/api/yazarlar/");
     final data = _unwrapList(response);
