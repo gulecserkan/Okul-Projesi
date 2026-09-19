@@ -255,7 +255,8 @@ class _OverviewState extends State<_Overview> {
       final durum = (copy?['durum'] ?? '').toString();
       final loan = data['loan'] as Map<String, dynamic>?;
       if (loan != null && (durum == 'oduncte' || durum == 'gecikmis')) {
-        await _hizliIade(loan);
+        await _hizliIade(loan,
+            book: data['book'] as Map<String, dynamic>?, copy: copy);
       } else if (durum == 'mevcut') {
         final book = data['book'] as Map<String, dynamic>?;
         final baslik = (book?['baslik'] ?? q).toString();
@@ -316,16 +317,53 @@ class _OverviewState extends State<_Overview> {
     );
   }
 
-  Future<void> _hizliIade(Map<String, dynamic> loan) async {
-    final id = loan['id'] as int?;
-    if (id == null) return;
+  Future<void> _hizliIade(Map<String, dynamic> loanJson,
+      {Map<String, dynamic>? book, Map<String, dynamic>? copy}) async {
+    final temel = FastLoan.fromJson(loanJson);
+    final loan = FastLoan(
+      id: temel.id,
+      durum: temel.durum,
+      oduncTarihi: temel.oduncTarihi,
+      iadeTarihi: temel.iadeTarihi,
+      teslimTarihi: temel.teslimTarihi,
+      isOverdue: temel.isOverdue,
+      overdueDays: temel.overdueDays,
+      penaltyPreview: temel.penaltyPreview,
+      barkod: (copy?['barkod'] ?? temel.barkod)?.toString(),
+      kitapBaslik: (book?['baslik'] ?? temel.kitapBaslik)?.toString(),
+      uyeNo: temel.uyeNo,
+      uyeAdSoyad: temel.uyeAdSoyad,
+    );
+
+    // Ceza/gecikme varsa onay + ceza/ödeme bilgisi için iade diyaloğu açılır.
+    final cezaVar = loan.isOverdue ||
+        ((double.tryParse(loan.penaltyPreview ?? '') ?? 0) > 0);
+
+    var durum = 'teslim';
+    var ceza = loan.penaltyPreview;
+    var odendi = false;
+
+    if (cezaVar) {
+      final action = await showDialog<Map<String, String>>(
+        context: context,
+        builder: (_) => ReturnDialog(loan: loan, api: _api),
+      );
+      if (action == null) {
+        _hizliOdakla();
+        return;
+      }
+      durum = action['durum']!;
+      ceza = action['penalty'];
+      odendi = action['odendi'] == 'true';
+    }
+
     setState(() => _hizliBusy = true);
     final resp = await _api.closeLoan(
-      id,
-      durum: 'teslim',
+      loan.id,
+      durum: durum,
       teslimTarihi: DateTime.now().toUtc().toIso8601String(),
-      gecikmeCezasi: loan['penalty_preview'] as String?,
-      odendi: false,
+      gecikmeCezasi: ceza,
+      odendi: odendi,
     );
     if (!mounted) return;
     setState(() {
@@ -333,9 +371,17 @@ class _OverviewState extends State<_Overview> {
       _hizliMesaj = null;
     });
     final ok = resp.statusCode >= 200 && resp.statusCode < 300;
+    final kim = [loan.kitapBaslik, loan.uyeAdSoyad]
+        .where((s) => s != null && s.isNotEmpty)
+        .join(' — ');
+    final cezaNotu = (ceza != null && (double.tryParse(ceza) ?? 0) > 0)
+        ? ' (ceza ₺$ceza${odendi ? ', ödendi' : ''})'
+        : '';
     showAppSnack(
       context,
-      ok ? 'İade alındı.' : extractError(resp, fallback: 'İade yapılamadı.'),
+      ok
+          ? 'İade alındı${kim.isEmpty ? '' : ': $kim'}$cezaNotu.'
+          : extractError(resp, fallback: 'İade yapılamadı.'),
       error: !ok,
     );
     if (ok) _load();
@@ -551,8 +597,9 @@ class _OverviewState extends State<_Overview> {
             const SizedBox(height: 6),
             Text(
               _hizliMesaj ??
-                  'Barkod ödünçteyse iade edilir; müsaitse üye no ayrı bir '
-                      'pencerede sorulur. Üye no girilirse kitap barkodu sorulur.',
+                  'Barkod ödünçteyse iade edilir (gecikme cezası varsa iade '
+                      'penceresi açılır); müsaitse üye no ayrı bir pencerede sorulur. '
+                      'Üye no girilirse kitap barkodu sorulur.',
               style: theme.textTheme.bodySmall?.copyWith(
                 color: _hizliMesaj != null
                     ? theme.colorScheme.primary
