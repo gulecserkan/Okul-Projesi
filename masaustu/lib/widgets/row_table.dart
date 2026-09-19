@@ -47,6 +47,7 @@ class RowTable extends StatelessWidget {
         final tableWidth = (minWidth ?? 960) > available
             ? (minWidth ?? 960)
             : available;
+        final boundedHeight = constraints.maxHeight.isFinite;
         return SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           child: SizedBox(
@@ -54,13 +55,30 @@ class RowTable extends StatelessWidget {
             child: Card(
               clipBehavior: Clip.antiAlias,
               margin: EdgeInsets.zero,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _header(context),
-                  for (final row in rows) _row(context, row),
-                ],
-              ),
+              child: boundedHeight
+                  ? Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        _header(context),
+                        Expanded(
+                          child: SingleChildScrollView(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                for (final row in rows) _row(context, row),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    )
+                  : Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        _header(context),
+                        for (final row in rows) _row(context, row),
+                      ],
+                    ),
             ),
           ),
         );
