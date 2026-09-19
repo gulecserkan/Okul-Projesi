@@ -164,6 +164,30 @@ class KutuphaneApi {
     }
   }
 
+  /// Ana sayfa: aktif (ödünçte + gecikmiş) ödünç kayıtları.
+  Future<List<OduncKaydi>> aktifOduncler() async {
+    final data = <dynamic>[];
+    for (final durum in ['oduncte', 'gecikmis']) {
+      data.addAll(await _fetchAllPages('oduncler/?durum=$durum'));
+    }
+    return data
+        .whereType<Map<String, dynamic>>()
+        .map(OduncKaydi.fromJson)
+        .toList();
+  }
+
+  /// Bir liste ucunun toplam kayıt sayısı (pagination `count`).
+  Future<int> count(String path) async {
+    final resp = await _client.request('GET', path, auth: true);
+    if (resp.statusCode != 200) return 0;
+    try {
+      final data = jsonDecode(resp.body);
+      if (data is Map && data['count'] is int) return data['count'] as int;
+      if (data is List) return data.length;
+    } catch (_) {}
+    return 0;
+  }
+
   /// Hızlı tarama: barkod / üye no / ISBN / başlık. Ham JSON döner.
   Future<Map<String, dynamic>?> fastQuery(String q) async {
     final resp = await _client.request(

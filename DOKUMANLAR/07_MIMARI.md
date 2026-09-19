@@ -63,7 +63,7 @@ Bağlantı: `Uye.user` = **opsiyonel** 1:1 (`related_name="uye"`).
 6. (0033) `Rol="Editör"` + politikası (Öğretmen ile aynı).
 
 ## İstemciler
-- **Masaüstü** (`masaustu/`): operatör/admin yönetimi; Ayarlar'da self-servis üye ekleme.
+- **Masaüstü** (`masaustu/`): operatör/admin yönetimi; **Genel Bakış** sayfasında aktif ödünçler (ödünçte+gecikmiş) ve özet sayılar; Ayarlar'da self-servis üye ekleme.
 - **Mobil** (`mobil/kutuphane/`): `personel`→yönetim; `editor`→düzenleme+Ödünçlerim;
   `uye`→gezinti+Ödünçlerim; ilk girişte şifre ekranı.
 

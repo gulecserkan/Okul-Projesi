@@ -161,6 +161,8 @@ class OduncKaydi {
   final String? teslimTarihi;
   final String durum;
   final String? gecikmeCezasi;
+  final String? uyeNo;
+  final String? uyeAdSoyad;
 
   const OduncKaydi({
     required this.id,
@@ -171,11 +173,14 @@ class OduncKaydi {
     this.teslimTarihi,
     required this.durum,
     this.gecikmeCezasi,
+    this.uyeNo,
+    this.uyeAdSoyad,
   });
 
   factory OduncKaydi.fromJson(Map<String, dynamic> json) {
     final nusha = json['kitap_nusha'];
     final kitap = nusha is Map<String, dynamic> ? nusha['kitap'] : null;
+    final uye = json['uye'];
     return OduncKaydi(
       id: json['id'] as int,
       kitapBaslik: kitap is Map<String, dynamic> ? kitap['baslik'] as String? ?? '' : '',
@@ -185,6 +190,10 @@ class OduncKaydi {
       teslimTarihi: json['teslim_tarihi'] as String?,
       durum: json['durum'] as String? ?? '',
       gecikmeCezasi: json['gecikme_cezasi'] as String?,
+      uyeNo: uye is Map<String, dynamic> ? uye['uye_no'] as String? : null,
+      uyeAdSoyad: (uye is Map<String, dynamic>)
+          ? '${uye['ad'] ?? ''} ${uye['soyad'] ?? ''}'.trim()
+          : null,
     );
   }
 }

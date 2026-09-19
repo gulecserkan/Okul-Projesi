@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../config.dart';
 import '../api/kutuphane_api.dart';
+import '../formatters.dart';
+import '../models.dart';
 import '../theme.dart';
 import 'book_list_screen.dart';
 import 'catalog_screen.dart';
@@ -117,33 +119,165 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-class _Overview extends StatelessWidget {
+class _Overview extends StatefulWidget {
   final Session session;
 
   const _Overview({required this.session});
 
   @override
+  State<_Overview> createState() => _OverviewState();
+}
+
+class _OverviewState extends State<_Overview> {
+  final _api = KutuphaneApi();
+  bool _loading = true;
+  String? _error;
+  List<OduncKaydi> _loans = const [];
+  int _uyeCount = 0;
+  int _nushaCount = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final results = await Future.wait([
+        _api.aktifOduncler(),
+        _api.count('uyeler/'),
+        _api.count('nushalar/'),
+      ]);
+      if (!mounted) return;
+      setState(() {
+        _loans = results[0] as List<OduncKaydi>;
+        _uyeCount = results[1] as int;
+        _nushaCount = results[2] as int;
+        _loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = e.toString();
+        _loading = false;
+      });
+    }
+  }
+
+  int get _gecikenSayisi => _loans.where((l) => l.durum == 'gecikmis').length;
+
+  @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return ListView(
       padding: const EdgeInsets.all(24),
       children: [
-        Text('Hoş geldiniz, ${session.fullName}!',
-            style: Theme.of(context).textTheme.headlineSmall),
+        Text('Hoş geldiniz, ${widget.session.fullName}!',
+            style: theme.textTheme.headlineSmall),
         const SizedBox(height: 8),
-        Text('Ödünç, iade ve üye işlemleri için sağdaki menüyü kullanın.',
-            style: Theme.of(context).textTheme.bodyMedium),
+        Text('Ödünç, iade ve üye işlemleri için soldaki menüyü kullanın.',
+            style: theme.textTheme.bodyMedium),
         const SizedBox(height: 24),
         Wrap(
           spacing: 16,
           runSpacing: 16,
-          children: const [
-            _StatCard(icon: Icons.swap_horiz, title: 'Aktif Ödünçler', value: '—'),
-            _StatCard(icon: Icons.report_gmailerrorred, title: 'Gecikenler', value: '—'),
-            _StatCard(icon: Icons.group_outlined, title: 'Üye', value: '—'),
-            _StatCard(icon: Icons.inventory_2_outlined, title: 'Kitap Nüshası', value: '—'),
+          children: [
+            _StatCard(
+                icon: Icons.swap_horiz,
+                title: 'Aktif Ödünçler',
+                value: _loading ? '…' : '${_loans.length}'),
+            _StatCard(
+                icon: Icons.report_gmailerrorred,
+                title: 'Gecikenler',
+                value: _loading ? '…' : '$_gecikenSayisi'),
+            _StatCard(
+                icon: Icons.group_outlined,
+                title: 'Üye',
+                value: _loading ? '…' : '$_uyeCount'),
+            _StatCard(
+                icon: Icons.inventory_2_outlined,
+                title: 'Kitap Nüshası',
+                value: _loading ? '…' : '$_nushaCount'),
           ],
         ),
+        const SizedBox(height: 24),
+        Row(
+          children: [
+            Text('Aktif Ödünçler',
+                style: theme.textTheme.titleMedium
+                    ?.copyWith(fontWeight: FontWeight.bold)),
+            const SizedBox(width: 8),
+            IconButton(
+              tooltip: 'Yenile',
+              icon: const Icon(Icons.refresh, size: 20),
+              onPressed: _loading ? null : _load,
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        _aktifOdunclerBolumu(theme),
       ],
+    );
+  }
+
+  Widget _aktifOdunclerBolumu(ThemeData theme) {
+    if (_loading) {
+      return const Padding(
+        padding: EdgeInsets.all(24),
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+    if (_error != null) {
+      return Padding(
+        padding: const EdgeInsets.all(16),
+        child: Text('Aktif ödünçler yüklenemedi.\n$_error',
+            style: TextStyle(color: dangerColor(context))),
+      );
+    }
+    if (_loans.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.all(16),
+        child: Text('Şu an aktif ödünç yok.'),
+      );
+    }
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: DataTable(
+          columns: const [
+            DataColumn(label: Text('Kitap')),
+            DataColumn(label: Text('Üye')),
+            DataColumn(label: Text('Ödünç')),
+            DataColumn(label: Text('İade')),
+            DataColumn(label: Text('Durum')),
+          ],
+          rows: [
+            for (final l in _loans)
+              DataRow(cells: [
+                DataCell(Text(l.kitapBaslik)),
+                DataCell(Text([
+                  if ((l.uyeAdSoyad ?? '').isNotEmpty) l.uyeAdSoyad!,
+                  if ((l.uyeNo ?? '').isNotEmpty) '(${l.uyeNo})',
+                ].join(' '))),
+                DataCell(Text(formatDate(l.oduncTarihi))),
+                DataCell(Text(formatDate(l.iadeTarihi))),
+                DataCell(Text(
+                  durumLabel(l.durum),
+                  style: TextStyle(
+                    color: durumColor(l.durum, theme.brightness),
+                    fontWeight: FontWeight.w600,
+                  ),
+                )),
+              ]),
+          ],
+        ),
+      ),
     );
   }
 }
