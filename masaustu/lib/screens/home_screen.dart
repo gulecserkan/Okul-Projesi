@@ -154,8 +154,17 @@ class _OverviewState extends State<_Overview> {
         _api.count('nushalar/'),
       ]);
       if (!mounted) return;
+      final loans = (results[0] as List<OduncKaydi>).toList()
+        ..sort((a, b) {
+          final da = DateTime.tryParse(a.iadeTarihi ?? '');
+          final db = DateTime.tryParse(b.iadeTarihi ?? '');
+          if (da == null && db == null) return 0;
+          if (da == null) return 1;
+          if (db == null) return -1;
+          return da.compareTo(db); // geçmişten geleceğe
+        });
       setState(() {
-        _loans = results[0] as List<OduncKaydi>;
+        _loans = loans;
         _uyeCount = results[1] as int;
         _nushaCount = results[2] as int;
         _loading = false;

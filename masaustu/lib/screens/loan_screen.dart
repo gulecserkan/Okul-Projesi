@@ -758,7 +758,15 @@ class _StudentResult extends StatelessWidget {
     final active = (data['active_loans'] as List<dynamic>? ?? const [])
         .whereType<Map<String, dynamic>>()
         .map(FastLoan.fromJson)
-        .toList();
+        .toList()
+      ..sort((a, b) {
+        final da = DateTime.tryParse(a.iadeTarihi ?? '');
+        final db = DateTime.tryParse(b.iadeTarihi ?? '');
+        if (da == null && db == null) return 0;
+        if (da == null) return 1;
+        if (db == null) return -1;
+        return da.compareTo(db); // geçmişten geleceğe
+      });
     final history = (data['history'] as List<dynamic>? ?? const [])
         .whereType<Map<String, dynamic>>()
         .map(FastLoan.fromJson)
