@@ -346,6 +346,37 @@ class _DurumChip extends StatelessWidget {
   }
 }
 
+/// Öğrenci durumu çipi: Aktif / Pasif.
+class _AktifChip extends StatelessWidget {
+  final bool aktif;
+
+  const _AktifChip(this.aktif);
+
+  @override
+  Widget build(BuildContext context) {
+    final color = aktif ? Colors.green.shade700 : Colors.grey.shade600;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: color.withValues(alpha: 0.5)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(aktif ? Icons.check_circle_outline : Icons.person_off,
+              size: 14, color: color),
+          const SizedBox(width: 4),
+          Text(aktif ? 'Aktif' : 'Pasif',
+              style:
+                  TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w600)),
+        ],
+      ),
+    );
+  }
+}
+
 /// Tek nüsha sonucu (barkod tarandı).
 class _BookCopyResult extends StatefulWidget {
   final KutuphaneApi api;
@@ -773,9 +804,40 @@ class _StudentResult extends StatelessWidget {
                         ],
                       ),
                     ),
-                    _DurumChip(st.aktif ? 'mevcut' : 'kayip'),
+                    _AktifChip(st.aktif),
                   ],
                 ),
+                if (!st.aktif) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.withValues(alpha: 0.10),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                          color: Colors.orange.withValues(alpha: 0.5)),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.person_off,
+                            color: Colors.orange.shade800),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            active.isEmpty
+                                ? 'Bu öğrenci pasif (mezun / nakil / tasdikname). '
+                                    'Bu durumda ödünç alması kapalıdır.'
+                                : 'Bu öğrenci pasif (mezun / nakil / tasdikname) ama '
+                                    '${active.length} kitabı hâlâ ödünçte — mutlaka toplayın.',
+                            style: TextStyle(
+                                color: Colors.orange.shade900,
+                                fontWeight: FontWeight.w500),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
                 if (role is Map<String, dynamic>)
                   Padding(
                     padding: const EdgeInsets.only(top: 12),
@@ -1030,10 +1092,14 @@ class _StudentPickerDialogState extends State<_StudentPickerDialog> {
                       itemBuilder: (context, i) {
                         final o = _results[i];
                         return ListTile(
-                          leading: const Icon(Icons.person_outline),
+                          leading: Icon(
+                            o.aktif ? Icons.person_outline : Icons.person_off,
+                            color: o.aktif ? null : Colors.grey.shade500,
+                          ),
                           title: Text(o.adSoyad),
                           subtitle: Text(
-                              '${o.ogrenciNo}  •  ${o.sinif?.ad ?? '—'}'),
+                            '${o.ogrenciNo}  •  ${o.sinif?.ad ?? '—'}'
+                            '${o.aktif ? '' : '  •  Pasif'}'),
                           onTap: () => _pick(o),
                         );
                       },

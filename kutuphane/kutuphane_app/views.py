@@ -1059,6 +1059,15 @@ class CheckoutView(APIView):
         except Ogrenci.DoesNotExist:
             return Response({"error": "Öğrenci bulunamadı"}, status=status.HTTP_404_NOT_FOUND)
 
+        if not ogrenci.aktif:
+            return Response(
+                {
+                    "error": "Pasif öğrenci (mezun / nakil / tasdikname) ödünç alamaz. "
+                    "Aktif ödünçleri varsa önce toplayın."
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         snapshot = get_snapshot()
 
         if is_role_blocked(snapshot, ogrenci.rol):

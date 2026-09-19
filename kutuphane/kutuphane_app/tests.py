@@ -192,6 +192,14 @@ class CheckoutAPITests(APITestCase):
         resp = self.client.post("/api/checkout/", {"ogrenci_no": "YOK999", "barkod": "KIT0000999"}, format="json")
         self.assertEqual(resp.status_code, status.HTTP_404_NOT_FOUND)
 
+    def test_pasif_student_rejected(self):
+        self.ogrenci.aktif = False
+        self.ogrenci.save()
+        resp = self.client.post("/api/checkout/", {"ogrenci_no": "60123", "barkod": "KIT0000999"}, format="json")
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+        self.nusha.refresh_from_db()
+        self.assertEqual(self.nusha.durum, "mevcut")
+
     def test_max_items_reached(self):
         policy = make_policy(default_max_items=1)
         self.client.post("/api/checkout/", {"ogrenci_no": "60123", "barkod": "KIT0000999"}, format="json")
