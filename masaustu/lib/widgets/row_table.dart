@@ -8,7 +8,10 @@ class RowTableColumn {
   final String label;
   final int flex;
 
-  const RowTableColumn(this.label, {this.flex = 1});
+  /// Sunucu tarafı sıralama anahtarı (null ise bu başlık sıralanamaz).
+  final String? sortKey;
+
+  const RowTableColumn(this.label, {this.flex = 1, this.sortKey});
 }
 
 class RowTableRow {
@@ -38,6 +41,11 @@ class RowTable extends StatelessWidget {
   /// ListView.builder yapılandırıldığında en alta eklenen satır (→ yükleme göstergesi).
   final Widget? footer;
 
+  /// Aktif sıralama anahtarı ve yönü; `onSort` ile birlikte başlıklar tıklanır.
+  final String? sortKey;
+  final bool sortAscending;
+  final ValueChanged<String>? onSort;
+
   const RowTable({
     super.key,
     required this.columns,
@@ -45,6 +53,9 @@ class RowTable extends StatelessWidget {
     this.minWidth,
     this.controller,
     this.footer,
+    this.sortKey,
+    this.sortAscending = true,
+    this.onSort,
   });
 
   @override
@@ -107,12 +118,40 @@ class RowTable extends StatelessWidget {
           for (final col in columns)
             Expanded(
               flex: col.flex,
-              child: Text(
-                col.label,
-                style: theme.textTheme.labelLarge
-                    ?.copyWith(fontWeight: FontWeight.bold),
-              ),
+              child: _headerCell(theme, col),
             ),
+        ],
+      ),
+    );
+  }
+
+  Widget _headerCell(ThemeData theme, RowTableColumn col) {
+    final style =
+        theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.bold);
+    final sortable = onSort != null && col.sortKey != null;
+    if (!sortable) {
+      return Text(col.label, style: style);
+    }
+    final active = sortKey == col.sortKey;
+    return InkWell(
+      onTap: () => onSort!(col.sortKey!),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Flexible(
+            child: Text(col.label,
+                style: style, overflow: TextOverflow.ellipsis),
+          ),
+          const SizedBox(width: 4),
+          Icon(
+            active
+                ? (sortAscending ? Icons.arrow_upward : Icons.arrow_downward)
+                : Icons.unfold_more,
+            size: 14,
+            color: active
+                ? theme.colorScheme.primary
+                : theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
+          ),
         ],
       ),
     );

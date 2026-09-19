@@ -27,11 +27,13 @@ class KutuphaneApi {
     int page = 1,
     int pageSize = 50,
     String? q,
+    String? ordering,
   }) async {
     final params = <String, String>{
       'page': '$page',
       'page_size': '$pageSize',
       if (q != null && q.isNotEmpty) 'q': q,
+      if (ordering != null && ordering.isNotEmpty) 'ordering': ordering,
     };
     final resp = await _client.request(
       'GET',
@@ -60,8 +62,10 @@ class KutuphaneApi {
     int page = 1,
     int pageSize = 50,
     String? q,
+    String? ordering,
   }) async {
-    final res = await _page('uyeler', page: page, pageSize: pageSize, q: q);
+    final res = await _page('uyeler',
+        page: page, pageSize: pageSize, q: q, ordering: ordering);
     return Page(
       items: res.items.map(Uye.fromJson).toList(),
       total: res.total,

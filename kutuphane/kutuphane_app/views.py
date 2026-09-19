@@ -267,6 +267,16 @@ class UyeViewSet(viewsets.ModelViewSet):
     serializer_class = UyeSerializer
     pagination_class = ConditionalPageNumberPagination
 
+    # Sıralanabilir başlıklar → ORM alanları
+    ORDERING_FIELDS = {
+        "ad": ("ad", "soyad"),
+        "soyad": ("soyad", "ad"),
+        "uye_no": ("uye_no",),
+        "sinif": ("sinif__ad",),
+        "rol": ("rol__ad",),
+        "aktif": ("aktif",),
+    }
+
     def get_permissions(self):
         # K9: öğrenci yönetimi personel; silme/durum yalnızca admin.
         if self.action in ("destroy", "durum"):
@@ -278,6 +288,13 @@ class UyeViewSet(viewsets.ModelViewSet):
         arama = self.request.query_params.get("q")
         if arama:
             qs = qs.filter(arama__icontains=fold(arama))
+        ordering = (self.request.query_params.get("ordering") or "").strip()
+        if ordering:
+            desc = ordering.startswith("-")
+            mapped = self.ORDERING_FIELDS.get(ordering.lstrip("-"))
+            if mapped:
+                fields = [("-" if desc else "") + f for f in mapped]
+                qs = qs.order_by(*fields)
         return qs
 
     def destroy(self, request, *args, **kwargs):

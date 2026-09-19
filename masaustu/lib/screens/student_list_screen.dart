@@ -32,6 +32,8 @@ class _StudentListScreenState extends State<StudentListScreen> {
   String? _error;
   int? _selectedId;
   String _query = '';
+  String _sortKey = 'uye_no';
+  bool _sortAsc = true;
   Timer? _debounce;
   final Map<int, GlobalKey> _rowKeys = {};
   final _stackKey = GlobalKey();
@@ -74,7 +76,12 @@ class _StudentListScreenState extends State<StudentListScreen> {
 
     final page = reset ? 1 : _loadedPage + 1;
     try {
-      final res = await _api.studentsPage(page: page, pageSize: 50, q: _query);
+      final res = await _api.studentsPage(
+        page: page,
+        pageSize: 50,
+        q: _query,
+        ordering: '${_sortAsc ? '' : '-'}$_sortKey',
+      );
       if (!mounted) return;
       setState(() {
         _loadedPage = page;
@@ -120,6 +127,19 @@ class _StudentListScreenState extends State<StudentListScreen> {
       _query = text.trim();
       _load(reset: true);
     });
+  }
+
+  /// Başlığa tıklayınca sıralama (aynı başlık → yön değiştir).
+  void _onSort(String key) {
+    setState(() {
+      if (_sortKey == key) {
+        _sortAsc = !_sortAsc;
+      } else {
+        _sortKey = key;
+        _sortAsc = true;
+      }
+    });
+    _load(reset: true);
   }
 
   void _openDetail(Uye o) async {
@@ -307,12 +327,15 @@ void _snack(String msg, {bool error = false}) {
               controller: _scrollController,
               footer: _footer(),
               minWidth: 900,
+              sortKey: _sortKey,
+              sortAscending: _sortAsc,
+              onSort: _onSort,
               columns: const [
-                RowTableColumn('Üye No', flex: 2),
-                RowTableColumn('Ad Soyad', flex: 3),
-                RowTableColumn('Sınıf', flex: 1),
+                RowTableColumn('Üye No', flex: 2, sortKey: 'uye_no'),
+                RowTableColumn('Ad Soyad', flex: 3, sortKey: 'ad'),
+                RowTableColumn('Sınıf', flex: 1, sortKey: 'sinif'),
                 RowTableColumn('Telefon', flex: 3),
-                RowTableColumn('Durum', flex: 1),
+                RowTableColumn('Durum', flex: 1, sortKey: 'aktif'),
               ],
               rows: [
                 for (final o in _items)
