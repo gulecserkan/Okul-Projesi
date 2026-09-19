@@ -261,3 +261,58 @@ def policy_snapshot():
     from kutuphane_app.loan_policy import get_snapshot
 
     return get_snapshot()
+
+
+class SearchFilterAPITests(APITestCase):
+    """Ogrenci/Kitap listelerinde q arama filtresi (sayfalı/sayfasız liste)."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(username="testara", password="z1!")
+        self.client.force_authenticate(self.user)
+        self.sinif = Sinif.objects.create(ad="5-A")
+        self.rol = Rol.objects.create(ad="Öğrenci")
+        self.ogrenci = Ogrenci.objects.create(
+            ad="Arpağ", soyad="Seven", ogrenci_no="5A01", sinif=self.sinif, rol=self.rol
+        )
+        Ogrenci.objects.create(
+            ad="Zeynep", soyad="Kaya", ogrenci_no="5A02", sinif=self.sinif, rol=self.rol
+        )
+        yazar = Yazar.objects.create(ad_soyad="Halil İnalcık")
+        kategori = Kategori.objects.create(ad="Tarih")
+        kitap = Kitap.objects.create(
+            baslik="Osmanlı Tarihi", yazar=yazar, kategori=kategori
+        )
+        KitapNusha.objects.create(kitap=kitap, barkod="KIT000001", raf_kodu="R27")
+        KitapNusha.objects.create(kitap=kitap, barkod="KIT000002", raf_kodu="R27")
+
+    @staticmethod
+    def _as_list(data):
+        return data["results"] if isinstance(data, dict) else data
+
+    def test_ogrenci_q_ad_soyad_no_sinif(self):
+        resp = self.client.get("/api/ogrenciler/", {"q": "Arpa"})
+        nos = [o["ogrenci_no"] for o in self._as_list(resp.data)]
+        self.assertEqual(nos, ["5A01"])
+
+        resp = self.client.get("/api/ogrenciler/", {"q": "5A02"})
+        self.assertEqual([o["ogrenci_no"] for o in self._as_list(resp.data)], ["5A02"])
+
+        resp = self.client.get("/api/ogrenciler/", {"q": "5-A"})
+        self.assertEqual(len(self._as_list(resp.data)), 2)
+
+        resp = self.client.get("/api/ogrenciler/", {"q": "YOKBÖYLE"})
+        self.assertEqual(self._as_list(resp.data), [])
+
+    def test_kitap_q_baslik_yazar_kategori_raf(self):
+        resp = self.client.get("/api/kitaplar/", {"q": "Osmanlı"})
+        self.assertEqual([k["baslik"] for k in self._as_list(resp.data)], ["Osmanlı Tarihi"])
+
+        resp = self.client.get("/api/kitaplar/", {"q": "Halil"})
+        self.assertEqual([k["baslik"] for k in self._as_list(resp.data)], ["Osmanlı Tarihi"])
+
+        resp = self.client.get("/api/kitaplar/", {"q": "Tarih"})
+        self.assertEqual([k["baslik"] for k in self._as_list(resp.data)], ["Osmanlı Tarihi"])
+
+        # nüşa raf koduna göre arama — aynı kitap iki nüşayla eşleşse de 1 sonuç (distinct)
+        resp = self.client.get("/api/kitaplar/", {"q": "R27"})
+        self.assertEqual(len(self._as_list(resp.data)), 1)
