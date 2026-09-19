@@ -162,8 +162,6 @@ class _OverviewState extends State<_Overview> {
   final _hizliController = TextEditingController();
   final _hizliFocus = FocusNode();
   bool _hizliBusy = false;
-  String? _hizliBekleyenUyeNo;
-  String? _hizliBekleyenBarkod;
   String? _hizliMesaj;
 
   @override
@@ -223,35 +221,14 @@ class _OverviewState extends State<_Overview> {
 
   int get _gecikenSayisi => _loans.where((l) => l.durum == 'gecikmis').length;
 
-  void _hizliIptal() {
-    setState(() {
-      _hizliBekleyenUyeNo = null;
-      _hizliBekleyenBarkod = null;
-      _hizliMesaj = null;
-    });
-    _hizliFocus.requestFocus();
-  }
-
-  /// Hızlı işlem: barkod veya üye no. İlk girilen türe göre ikinci adım istenir.
-  /// - Barkod: ödünçteyse iade; müsaitse üye no istenir.
-  /// - Üye no: kitap barkodu istenir.
+  /// Hızlı işlem: barkod veya üye no. İkinci veri ayrı bir popup'ta istenir.
+  /// - Barkod: ödünçteyse iade; müsaitse popup ile üye no istenir.
+  /// - Üye no: popup ile kitap barkodu istenir.
   Future<void> _hizliIslem(String raw) async {
     final q = raw.trim();
     if (q.isEmpty || _hizliBusy) return;
     _hizliController.clear();
 
-    // 2. adım: bekleyen üye + barkod
-    if (_hizliBekleyenUyeNo != null) {
-      await _hizliOdunc(_hizliBekleyenUyeNo!, q);
-      return;
-    }
-    // 2. adım: bekleyen barkod + üye no
-    if (_hizliBekleyenBarkod != null) {
-      await _hizliOdunc(q, _hizliBekleyenBarkod!);
-      return;
-    }
-
-    // 1. adım: türü çöz
     setState(() {
       _hizliBusy = true;
       _hizliMesaj = null;
@@ -261,6 +238,7 @@ class _OverviewState extends State<_Overview> {
     setState(() => _hizliBusy = false);
     if (data == null) {
       setState(() => _hizliMesaj = 'Eşleşme bulunamadı.');
+      _hizliFocus.requestFocus();
       return;
     }
     final type = data['type'];
@@ -272,27 +250,94 @@ class _OverviewState extends State<_Overview> {
         await _hizliIade(loan);
       } else if (durum == 'mevcut') {
         final book = data['book'] as Map<String, dynamic>?;
-        setState(() {
-          _hizliBekleyenBarkod = (copy?['barkod'] ?? q).toString();
-          _hizliMesaj = '"${book?['baslik'] ?? q}" için üye no okutun.';
-        });
+        final baslik = (book?['baslik'] ?? q).toString();
+        final barkod = (copy?['barkod'] ?? q).toString();
+        final uyeNo = await _hizliIkinciSor(
+          baslik: 'Üye No',
+          aciklama:
+              '"$baslik" kitabını ödünç vermek için üye numarasını okutun/girin.',
+          ipucu: 'Üye No',
+        );
+        if (uyeNo == null || uyeNo.trim().isEmpty) {
+          _hizliFocus.requestFocus();
+          return;
+        }
+        await _hizliOdunc(uyeNo.trim(), barkod);
       } else {
-        setState(() => _hizliMesaj = 'Bu nüsha ödünç verilemez (durum: $durum).');
+        setState(
+            () => _hizliMesaj = 'Bu nüsha ödünç verilemez (durum: $durum).');
+        _hizliFocus.requestFocus();
       }
       return;
     }
     if (type == 'student') {
       final s = data['student'] as Map<String, dynamic>?;
       final no = (s?['no'] ?? s?['uye_no'] ?? q).toString();
-      setState(() {
-        _hizliBekleyenUyeNo = no;
-        _hizliMesaj =
-            '${s?['ad'] ?? ''} ${s?['soyad'] ?? ''} için kitap barkodu okutun.';
-      });
+      final adSoyad = '${s?['ad'] ?? ''} ${s?['soyad'] ?? ''}'.trim();
+      final barkod = await _hizliIkinciSor(
+        baslik: 'Kitap Barkodu',
+        aciklama:
+            '$adSoyad ($no) için ödünç verilecek kitabın barkodunu okutun/girin.',
+        ipucu: 'Barkod',
+      );
+      if (barkod == null || barkod.trim().isEmpty) {
+        _hizliFocus.requestFocus();
+        return;
+      }
+      await _hizliOdunc(no, barkod.trim());
       return;
     }
-    setState(() => _hizliMesaj =
-        'Bu arama için Ödünç / İade sayfasını kullanın.');
+    setState(
+        () => _hizliMesaj = 'Bu arama için Ödünç / İade sayfasını kullanın.');
+    _hizliFocus.requestFocus();
+  }
+
+  /// İkinci veriyi (üye no / barkod) ayrı bir popup input'unda, açıklamayla ister.
+  Future<String?> _hizliIkinciSor({
+    required String baslik,
+    required String aciklama,
+    required String ipucu,
+  }) async {
+    final controller = TextEditingController();
+    final sonuc = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(baslik),
+        content: SizedBox(
+          width: 380,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(aciklama),
+              const SizedBox(height: 12),
+              TextField(
+                controller: controller,
+                autofocus: true,
+                decoration: InputDecoration(
+                  labelText: ipucu,
+                  border: const OutlineInputBorder(),
+                  isDense: true,
+                ),
+                onSubmitted: (v) => Navigator.of(ctx).pop(v),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Vazgeç'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(controller.text),
+            child: const Text('Tamam'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    return sonuc;
   }
 
   Future<void> _hizliIade(Map<String, dynamic> loan) async {
@@ -327,8 +372,6 @@ class _OverviewState extends State<_Overview> {
     if (!mounted) return;
     setState(() {
       _hizliBusy = false;
-      _hizliBekleyenUyeNo = null;
-      _hizliBekleyenBarkod = null;
       _hizliMesaj = null;
     });
     final ok = resp.statusCode >= 200 && resp.statusCode < 300;
@@ -492,7 +535,6 @@ class _OverviewState extends State<_Overview> {
 
   /// Hızlı işlem kartı: barkod/üye no ile hızlı iade-ödünç.
   Widget _hizliIslemKarti(ThemeData theme) {
-    final bekliyor = _hizliBekleyenUyeNo != null || _hizliBekleyenBarkod != null;
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(12),
@@ -506,12 +548,6 @@ class _OverviewState extends State<_Overview> {
                 Text('Hızlı İşlem',
                     style: theme.textTheme.titleSmall
                         ?.copyWith(fontWeight: FontWeight.bold)),
-                const Spacer(),
-                if (bekliyor)
-                  TextButton(
-                    onPressed: _hizliBusy ? null : _hizliIptal,
-                    child: const Text('Vazgeç'),
-                  ),
               ],
             ),
             const SizedBox(height: 8),
@@ -539,10 +575,10 @@ class _OverviewState extends State<_Overview> {
             const SizedBox(height: 6),
             Text(
               _hizliMesaj ??
-                  'Barkod ödünçteyse iade edilir; müsaitse üye no istenir. '
-                      'Üye no girilirse kitap barkodu istenir.',
+                  'Barkod ödünçteyse iade edilir; müsaitse üye no ayrı bir '
+                      'pencerede sorulur. Üye no girilirse kitap barkodu sorulur.',
               style: theme.textTheme.bodySmall?.copyWith(
-                color: bekliyor
+                color: _hizliMesaj != null
                     ? theme.colorScheme.primary
                     : theme.colorScheme.onSurfaceVariant,
               ),
