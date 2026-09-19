@@ -121,12 +121,12 @@ olmadan **geçmiş sessizce silinir**.
 
 | # | Kural | İşlenir |
 |---|---|---|
-| K6.1 | Yazar/kategori/raf eklemede `fold` normalizasyonlu **kopya uyarısı** (çocuk/cocuk tespiti) | rules + kitap formu / katalog UI |
+| K6.1 | Yazar/kategori/raf eklemede **%100 aynı** (normalize) kayıt eklenemez; çok **benzer** (yazım hatası) kayıt varsa liste gösterilip onay sorulur (kitap formu yazar ekleme + katalog UI) | `rules.fold_duplicate` + serializer `validate_*` + istemci `normalizeTr`/`similarityTr` |
 | K6.2 | **Birleştirme (merge):** aynı yazım varyantı iki kayıt birleştirilir; kitaplar hedefe taşınır, kaynak silinir, `arama` alanları tazelenir | Faz C (admin): yazar/kategori/raf + `kitaplar/{id}/birles/` |
 | K6.3 | Raf kök çözüm: ayrı `Raf` modeli + `KitapNusha.raf` FK (rafta dropdown; kopya kod engeli) | Evet |
 | K6.4 | Referans kopyalanması sonrası `arama` denormalizasyonu (yazar/kategori/yeni raf) sinyallerle tazelenir | Mevcut + Faz C |
 | K6.5 | **Çift kitap tespiti** (`fold`-normalize başlık grupları — `kitaplar/cift/`) ve tek tıkla birleştirme admin'e açık | `KitapViewSet.cift`/`birles` |
-| K6.6 | Katalog yazma işlemleri (yazar/kategori/raf ekle, düzenle, sil, birleştir) **yalnız admin** | Yazar/Kategori/RafViewSet `get_permissions` |
+| K6.6 | Katalog yazma işlemleri (düzenle, sil, birleştir) **yalnız admin**; **yazar ekleme** kitap girişinde tüm personel (kategori/raf ekleme admin'de kalır) | Yazar/Kategori/RafViewSet `get_permissions` |
 
 Not: Akıllı raf öneri sistemi (rafların program tarafından düzenli tutulması) ertelendi
 — şekillendirme sonradan yapılacak.
@@ -140,10 +140,10 @@ Not: Akıllı raf öneri sistemi (rafların program tarafından düzenli tutulma
 | K7.1 | Kitap eklerken başlık/yazar/ISBN ile otomatik veri+kapak çekme (Google Books + Open Library, kaynak başına en çok 5 sonuç) **yardımcı** yoldur; manuel giriş birincildir | Evet — `POST /api/kitap-google/` |
 | K7.2 | Çekilen veri el ile doğrulanmadan kaydetme onayı ister (form "Doldur" + kullanıcı düzenler, kaydeder) | Evet |
 | K7.3 | İnternet yoksa/başarısızsa otomatik çekme gizlenir/sessizce biter, manuel giriş devam eder | Evet |
-| K7.4 | Kapak **dosya yüklenmez**; `kapak_url` alanına internet adresi depolanır (Google kitaplı adreslerde `zoom=2` kullanılır). Adres doluysa form önizlemede kapak görselini **resim olarak gösterir**; görsel yüklenemezse sessizce/hata metniyle geçilir | Evet |
+| K7.4 | Kapak **dosya yüklenmez**; `kapak_url` alanına internet adresi depolanır (Google kitaplı adreslerde `zoom=2` kullanılır). Adres doluysa form önizlemede kapak görselini **resim olarak gösterir**; görsele tıklayınca büyük (yakınlaştırılabilir) önizleme açılır; görsel yüklenemezse sessizce/hata metniyle geçilir | Evet |
 | K7.5 | Arama Google Books (`.env` `GOOGLE_BOOKS_API_KEY`) + Open Library (anahtarsız) ile yapılır; başarılı aramalar 7 gün önbelleklenir, ağ hatası/429 önbelleklenmez; istemci ardışık aramalar arasında en az 3 sn bekler; doldurma **akıllı birleştirir** (gelen alan boşsa mevcut değer korunur, doluysa gelen değer yazılır) | Evet — `kutuphane_app/book_lookup.py` |
 | K7.6 | **ISBN önceliği:** ISBN alanı doluysa (veya arama metni ISBN ise) tire/boşluk normalize edilip `isbn:` ile aranır; kaynaklar ISBN'e göre tekilleştirilir, eksik alan/kapak diğer kaynaktan tamamlanır | Evet |
-| K7.7 | Sonuçlar **kapak görselli liste** olarak sunulur; kullanıcı seçer. Tek sonuç varsa doğrudan doldurulur. Kapak hiçbir kaynakta yoksa boş bırakılır | Evet |
+| K7.7 | Sonuçlar **kapak görselli liste** olarak sunulur; kullanıcı seçer, küçük kapağa tıklayınca büyük önizleme açılır. Tek sonuç varsa doğrudan doldurulur. Kapak hiçbir kaynakta yoksa boş bırakılır | Evet |
 
 ---
 

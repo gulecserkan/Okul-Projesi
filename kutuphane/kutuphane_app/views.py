@@ -279,8 +279,8 @@ class YazarViewSet(viewsets.ModelViewSet):
     serializer_class = YazarSerializer
 
     def get_permissions(self):
-        # Faz C: katalog yönetimi (yaz/kategori/raf CRUD + birleştirme) admin'e; görüntüleme herkese.
-        if self.action in ("create", "update", "partial_update", "destroy", "birles"):
+        # K6.6 (revize): yazar ekleme kitap girişinde tüm personel; düzenle/sil/birleştir admin.
+        if self.action in ("update", "partial_update", "destroy", "birles"):
             return [IsAdminPersonel()]
         return [IsAuthenticated()]
 

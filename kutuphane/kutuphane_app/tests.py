@@ -717,11 +717,43 @@ class KatalogAPITests(APITestCase):
         self.personel = User.objects.create_user(username="person", password="p1!")
         self.client.force_authenticate(self.personel)
 
-    def test_personel_create_yazar_forbidden_admin_ok(self):
+    def test_personel_create_yazar_ok_update_forbidden(self):
+        # K6.6 (revize): yazar ekleme kitap girişi için tüm personel; düzenle/sil admin.
         resp = self.client.post("/api/yazarlar/", {"ad_soyad": "Yeni"}, format="json")
+        self.assertEqual(resp.status_code, status.HTTP_201_CREATED, resp.content)
+        yazar_id = resp.data["id"]
+        resp = self.client.patch(
+            f"/api/yazarlar/{yazar_id}/", {"ad_soyad": "Değişti"}, format="json"
+        )
         self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN)
         self.client.force_authenticate(self.admin)
-        resp = self.client.post("/api/yazarlar/", {"ad_soyad": "Yeni"}, format="json")
+        resp = self.client.patch(
+            f"/api/yazarlar/{yazar_id}/", {"ad_soyad": "Değişti"}, format="json"
+        )
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+
+    def test_katalog_fold_duplicate_blocked(self):
+        # K6.1: %100 aynı (fold) kayıt eklenemez; farklı ad serbest.
+        self.client.force_authenticate(self.admin)
+        resp = self.client.post(
+            "/api/yazarlar/", {"ad_soyad": "Sabahattin Ali"}, format="json"
+        )
+        self.assertEqual(resp.status_code, status.HTTP_201_CREATED, resp.content)
+        resp = self.client.post(
+            "/api/yazarlar/", {"ad_soyad": "sabahattin ali"}, format="json"
+        )
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST, resp.content)
+        resp = self.client.post(
+            "/api/kategoriler/", {"ad": "Roman"}, format="json"
+        )
+        self.assertEqual(resp.status_code, status.HTTP_201_CREATED, resp.content)
+        resp = self.client.post(
+            "/api/kategoriler/", {"ad": "roman"}, format="json"
+        )
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST, resp.content)
+        resp = self.client.post(
+            "/api/yazarlar/", {"ad_soyad": "Orhan Kemal"}, format="json"
+        )
         self.assertEqual(resp.status_code, status.HTTP_201_CREATED, resp.content)
 
     def test_raf_crud(self):

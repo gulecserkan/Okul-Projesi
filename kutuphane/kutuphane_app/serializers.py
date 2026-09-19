@@ -60,17 +60,51 @@ class YazarSerializer(serializers.ModelSerializer):
         model = Yazar
         fields = "__all__"
 
+    def validate_ad_soyad(self, value):
+        # K6.1: fold-normalize edilmiş birebir kopya eklenemez.
+        from .rules import fold_duplicate
+
+        qs = Yazar.objects.all()
+        if self.instance is not None:
+            qs = qs.exclude(pk=self.instance.pk)
+        existing = fold_duplicate(qs, value, field="ad_soyad")
+        if existing is not None:
+            raise serializers.ValidationError(f'"{existing}" zaten kayıtlı.')
+        return value
+
 
 class KategoriSerializer(serializers.ModelSerializer):
     class Meta:
         model = Kategori
         fields = "__all__"
 
+    def validate_ad(self, value):
+        from .rules import fold_duplicate
+
+        qs = Kategori.objects.all()
+        if self.instance is not None:
+            qs = qs.exclude(pk=self.instance.pk)
+        existing = fold_duplicate(qs, value, field="ad")
+        if existing is not None:
+            raise serializers.ValidationError(f'"{existing}" zaten kayıtlı.')
+        return value
+
 
 class RafSerializer(serializers.ModelSerializer):
     class Meta:
         model = Raf
         fields = "__all__"
+
+    def validate_ad(self, value):
+        from .rules import fold_duplicate
+
+        qs = Raf.objects.all()
+        if self.instance is not None:
+            qs = qs.exclude(pk=self.instance.pk)
+        existing = fold_duplicate(qs, value, field="ad")
+        if existing is not None:
+            raise serializers.ValidationError(f'"{existing}" zaten kayıtlı.')
+        return value
 
 
 class KitapBaseSerializer(serializers.ModelSerializer):

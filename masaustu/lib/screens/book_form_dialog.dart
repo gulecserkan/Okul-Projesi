@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../api/kutuphane_api.dart';
+import '../formatters.dart';
 import '../models.dart';
 import '../theme.dart';
 
@@ -70,6 +71,142 @@ class _BookFormDialogState extends State<BookFormDialog> {
       if (!mounted) return;
       setState(() => _loading = false);
     }
+  }
+
+  /// K6.6 (revize): kitap girişinde yeni yazar ekleme (tüm personel).
+  /// K6.1: fold-normalize kopya uyarısı; benzer kayıt varsa mevcut kullanılır.
+  Future<void> _yeniYazar() async {
+    final controller = TextEditingController();
+    final ad = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Yeni yazar ekle'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration:
+              const InputDecoration(labelText: 'Ad Soyad', isDense: true),
+          onSubmitted: (v) => Navigator.of(ctx).pop(v),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Vazgeç'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(controller.text),
+            child: const Text('Ekle'),
+          ),
+        ],
+      ),
+    );
+    final adSoyad = (ad ?? '').trim();
+    controller.dispose();
+    if (adSoyad.isEmpty) return;
+
+    // K6.1: %100 aynı (normalize) kayıt varsa ekleme; mevcut seçilir.
+    final norm = normalizeTr(adSoyad);
+    final ayni = _yazarlar.where((y) => normalizeTr(y.adSoyad) == norm).toList();
+    if (ayni.isNotEmpty) {
+      if (!mounted) return;
+      setState(() => _yazarId = ayni.first.id);
+      _snack('"${ayni.first.adSoyad}" zaten kayıtlı; mevcut kayıt seçildi.');
+      return;
+    }
+
+    // K6.1: çok benzer kayıt(lar) varsa gösterip sor.
+    final benzer = _yazarlar
+        .map((y) => (y, similarityTr(y.adSoyad, adSoyad)))
+        .where((e) => e.$2 >= 0.8)
+        .toList()
+      ..sort((a, b) => b.$2.compareTo(a.$2));
+    if (benzer.isNotEmpty) {
+      if (!mounted) return;
+      final secim = await _benzerKayitUyari(
+        baslik: 'Benzer yazar var',
+        girilen: adSoyad,
+        kayitlar: [for (final e in benzer.take(5)) (e.$1.adSoyad, e.$2)],
+      );
+      if (secim == 'mevcut') {
+        setState(() => _yazarId = benzer.first.$1.id);
+        return;
+      }
+      if (secim != 'ekle') return;
+    }
+
+    setState(() => _busy = true);
+    final res =
+        await _api.saveCatalogItem('yazarlar/', body: {'ad_soyad': adSoyad});
+    if (!mounted) return;
+    setState(() => _busy = false);
+    if (res.id == null) {
+      _snack(res.error ?? 'Yazar eklenemedi.');
+      return;
+    }
+    final yeniId = res.id!;
+    try {
+      final liste = await _api.yazarlar();
+      if (!mounted) return;
+      setState(() {
+        _yazarlar = liste;
+        _yazarId = yeniId;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _yazarlar = [..._yazarlar, Yazar(id: yeniId, adSoyad: adSoyad)];
+        _yazarId = yeniId;
+      });
+    }
+    _snack('Yazar eklendi: $adSoyad');
+  }
+
+  /// K6.1: benzer kayıtları gösterip "mevcut / yine de ekle / vazgeç" sorar.
+  Future<String?> _benzerKayitUyari({
+    required String baslik,
+    required String girilen,
+    required List<(String, double)> kayitlar,
+  }) {
+    return showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(baslik),
+        content: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 460),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Girilen: "$girilen"'),
+              const SizedBox(height: 8),
+              const Text('Benzer kayıt(lar):'),
+              for (final k in kayitlar)
+                ListTile(
+                  dense: true,
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.warning_amber_rounded),
+                  title: Text(k.$1),
+                  subtitle: Text('Benzerlik: %${(k.$2 * 100).round()}'),
+                ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Vazgeç'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop('ekle'),
+            child: const Text('Yine de ekle'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop('mevcut'),
+            child: const Text('Mevcudu kullan'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -148,7 +285,7 @@ class _BookFormDialogState extends State<BookFormDialog> {
               final yil = r['yayin_yili'];
               final kaynak = (r['kaynak'] as String? ?? '').trim();
               return ListTile(
-                leading: _kapakKucuk((r['kapak_url'] as String?)?.trim()),
+                leading: _kapakKucuk(ctx, (r['kapak_url'] as String?)?.trim()),
                 title: Text((r['baslik'] as String? ?? '').trim()),
                 subtitle: Text([
                   if (yazar.isNotEmpty) yazar,
@@ -170,21 +307,66 @@ class _BookFormDialogState extends State<BookFormDialog> {
     );
   }
 
-  Widget _kapakKucuk(String? url) {
+  Widget _kapakKucuk(BuildContext context, String? url) {
     const bos = SizedBox(
       width: 40,
       height: 56,
       child: Icon(Icons.menu_book_rounded),
     );
     if (url == null || url.isEmpty) return bos;
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(4),
-      child: Image.network(
-        url,
-        width: 40,
-        height: 56,
-        fit: BoxFit.cover,
-        errorBuilder: (_, _, _) => bos,
+    return GestureDetector(
+      onTap: () => _buyukOnizleme(context, url),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(4),
+        child: Image.network(
+          url,
+          width: 40,
+          height: 56,
+          fit: BoxFit.cover,
+          errorBuilder: (_, _, _) => bos,
+        ),
+      ),
+    );
+  }
+
+  /// Kapak resmini büyük, yakınlaştırılabilir bir pencerede gösterir.
+  void _buyukOnizleme(BuildContext context, String url) {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => Dialog(
+        insetPadding: const EdgeInsets.all(24),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 720, maxHeight: 720),
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              InteractiveViewer(
+                minScale: 0.5,
+                maxScale: 4,
+                child: Image.network(
+                  url,
+                  fit: BoxFit.contain,
+                  errorBuilder: (_, _, _) => Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Text(
+                      'Kapak görseli yüklenemedi.',
+                      style: TextStyle(color: dangerColor(ctx)),
+                    ),
+                  ),
+                ),
+              ),
+              Positioned(
+                top: 0,
+                right: 0,
+                child: IconButton(
+                  icon: const Icon(Icons.close),
+                  tooltip: 'Kapat',
+                  onPressed: () => Navigator.of(ctx).pop(),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -241,15 +423,22 @@ class _BookFormDialogState extends State<BookFormDialog> {
           padding: const EdgeInsets.only(top: 8),
           child: Align(
             alignment: Alignment.centerLeft,
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: Image.network(
-                url,
-                height: 160,
-                fit: BoxFit.contain,
-                errorBuilder: (_, _, _) => Text(
-                  'Kapak görseli yüklenemedi.',
-                  style: TextStyle(color: dangerColor(context), fontSize: 12),
+            child: Tooltip(
+              message: 'Büyük önizleme için tıkla',
+              child: GestureDetector(
+                onTap: () => _buyukOnizleme(context, url),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.network(
+                    url,
+                    height: 160,
+                    fit: BoxFit.contain,
+                    errorBuilder: (_, _, _) => Text(
+                      'Kapak görseli yüklenemedi.',
+                      style:
+                          TextStyle(color: dangerColor(context), fontSize: 12),
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -412,25 +601,35 @@ class _BookFormDialogState extends State<BookFormDialog> {
                       height: 56,
                       child: Center(child: CircularProgressIndicator(strokeWidth: 2)))
                 else ...[
-                  DropdownButtonFormField<int>(
-                    initialValue: _yazarId,
-                    isExpanded: true,
-                    decoration: const InputDecoration(
-                      labelText: 'Yazar',
-                      border: OutlineInputBorder(),
-                      isDense: true,
+                  Row(children: [
+                    Expanded(
+                      child: DropdownButtonFormField<int>(
+                        initialValue: _yazarId,
+                        isExpanded: true,
+                        decoration: const InputDecoration(
+                          labelText: 'Yazar',
+                          border: OutlineInputBorder(),
+                          isDense: true,
+                        ),
+                        items: [
+                          const DropdownMenuItem<int>(
+                              value: null, child: Text('— yazar seç —')),
+                          for (final y in _yazarlar)
+                            DropdownMenuItem<int>(
+                                value: y.id, child: Text(y.adSoyad)),
+                        ],
+                        onChanged: _busy
+                            ? null
+                            : (v) => setState(() => _yazarId = v),
+                      ),
                     ),
-                    items: [
-                      const DropdownMenuItem<int>(
-                          value: null, child: Text('— yazar seç —')),
-                      for (final y in _yazarlar)
-                        DropdownMenuItem<int>(
-                            value: y.id, child: Text(y.adSoyad)),
-                    ],
-                    onChanged: _busy
-                        ? null
-                        : (v) => setState(() => _yazarId = v),
-                  ),
+                    const SizedBox(width: 8),
+                    IconButton.filledTonal(
+                      tooltip: 'Yeni yazar ekle',
+                      onPressed: _busy ? null : _yeniYazar,
+                      icon: const Icon(Icons.person_add_alt_1),
+                    ),
+                  ]),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<int>(
                     initialValue: _kategoriId,

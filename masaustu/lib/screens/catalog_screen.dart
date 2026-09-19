@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../api/kutuphane_api.dart';
+import '../formatters.dart';
 import '../models.dart';
 import '../theme.dart';
 
@@ -136,12 +137,79 @@ class _CatalogListTabState<T> extends State<_CatalogListTab<T>> {
   Future<void> _add() async {
     final name = await _prompt(_addController, '${widget.labelField} Ekle',
         '${widget.labelField} adı:');
-    if (name == null || name.trim().isEmpty) return;
-    final res = await _api.saveCatalogItem(
-        widget.path, body: widget.renameOf(name));
+    final ad = (name ?? '').trim();
+    if (ad.isEmpty) return;
+
+    final items = await _load();
+    // K6.1: %100 aynı (normalize) kayıt varsa ekleme.
+    final norm = normalizeTr(ad);
+    final ayni =
+        items.where((e) => normalizeTr(widget.nameOf(e)) == norm).toList();
+    if (ayni.isNotEmpty) {
+      if (!mounted) return;
+      showAppSnack(context, '"${widget.nameOf(ayni.first)}" zaten kayıtlı.',
+          error: true);
+      return;
+    }
+    // K6.1: çok benzer kayıt(lar) varsa gösterip sor.
+    final benzer = items
+        .map((e) => (e, similarityTr(widget.nameOf(e), ad)))
+        .where((e) => e.$2 >= 0.8)
+        .toList()
+      ..sort((a, b) => b.$2.compareTo(a.$2));
+    if (benzer.isNotEmpty) {
+      if (!mounted) return;
+      final ekle = await _benzerUyari(ad, [
+        for (final e in benzer.take(5)) (widget.nameOf(e.$1), e.$2),
+      ]);
+      if (ekle != true) return;
+    }
+
+    final res =
+        await _api.saveCatalogItem(widget.path, body: widget.renameOf(ad));
     _after(res.error == null, res.error,
         okMessage: '${widget.labelField} eklendi.',
         errorText: 'Ekleme yapılamadı.');
+  }
+
+  /// K6.1: benzer kayıtları gösterip eklemeyi onaylatır.
+  Future<bool?> _benzerUyari(String girilen, List<(String, double)> kayitlar) {
+    return showDialog<bool>(
+      context: context,
+      builder: (dc) => AlertDialog(
+        title: Text('Benzer ${widget.labelField.toLowerCase()} var'),
+        content: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 460),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Girilen: "$girilen"'),
+              const SizedBox(height: 8),
+              const Text('Benzer kayıt(lar):'),
+              for (final k in kayitlar)
+                ListTile(
+                  dense: true,
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.warning_amber_rounded),
+                  title: Text(k.$1),
+                  subtitle: Text('Benzerlik: %${(k.$2 * 100).round()}'),
+                ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dc).pop(false),
+            child: const Text('Vazgeç'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dc).pop(true),
+            child: const Text('Yine de ekle'),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _rename(T item) async {

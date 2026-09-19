@@ -55,3 +55,57 @@ Color durumColor(String durum, Brightness brightness) {
       return dark ? const Color(0xFFC5C6CE) : Colors.grey.shade600;
   }
 }
+
+/// Türkçe-duyarlı agresif normalizasyon (K6.1): büyük/küçük harf, `ı/i`,
+/// aksan ve noktalama farkları giderilir. Kopya/benzerlik karşılaştırması için.
+String normalizeTr(String? s) {
+  if (s == null || s.isEmpty) return '';
+  const map = {
+    'İ': 'i', 'I': 'i', 'ı': 'i',
+    'Ş': 's', 'ş': 's', 'Ğ': 'g', 'ğ': 'g',
+    'Ü': 'u', 'ü': 'u', 'Ö': 'o', 'ö': 'o',
+    'Ç': 'c', 'ç': 'c', 'Â': 'a', 'â': 'a',
+    'Î': 'i', 'î': 'i', 'Û': 'u', 'û': 'u',
+  };
+  final buf = StringBuffer();
+  for (final ch in s.split('')) {
+    buf.write(map[ch] ?? ch.toLowerCase());
+  }
+  return buf
+      .toString()
+      .replaceAll(RegExp(r'[^a-z0-9]+'), ' ')
+      .trim()
+      .replaceAll(RegExp(r'\s+'), ' ');
+}
+
+/// İki metin arasındaki benzerlik (0..1): normalize Levenshtein oranı (K6.1).
+double similarityTr(String? a, String? b) {
+  final x = normalizeTr(a);
+  final y = normalizeTr(b);
+  if (x.isEmpty && y.isEmpty) return 1;
+  if (x.isEmpty || y.isEmpty) return 0;
+  final maxLen = x.length > y.length ? x.length : y.length;
+  return 1 - _levenshtein(x, y) / maxLen;
+}
+
+int _levenshtein(String a, String b) {
+  final m = a.length, n = b.length;
+  if (m == 0) return n;
+  if (n == 0) return m;
+  var prev = List<int>.generate(n + 1, (i) => i);
+  var curr = List<int>.filled(n + 1, 0);
+  for (var i = 1; i <= m; i++) {
+    curr[0] = i;
+    for (var j = 1; j <= n; j++) {
+      final cost = a.codeUnitAt(i - 1) == b.codeUnitAt(j - 1) ? 0 : 1;
+      final del = prev[j] + 1;
+      final ins = curr[j - 1] + 1;
+      final sub = prev[j - 1] + cost;
+      curr[j] = del < ins ? (del < sub ? del : sub) : (ins < sub ? ins : sub);
+    }
+    final tmp = prev;
+    prev = curr;
+    curr = tmp;
+  }
+  return prev[n];
+}
