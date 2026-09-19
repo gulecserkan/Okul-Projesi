@@ -10,6 +10,7 @@ from django.core.validators import EmailValidator
 from django.utils import timezone
 
 from .encryption import EncryptedCharField
+from .turkish import fold
 
 
 # --- Sınıflar ---
@@ -67,9 +68,35 @@ class Ogrenci(models.Model):
     # 🔹 yeni alanlar:
     aktif = models.BooleanField(default=True)
     pasif_tarihi = models.DateTimeField(blank=True, null=True)
+    # Türkçe arama anahtarı (fold edilmiş: ad, soyad, no, sınıf, rol)
+    arama = models.CharField(max_length=400, blank=True, default="")
+
+    def save(self, *args, **kwargs):
+        self.arama = self._build_arama()
+        super().save(*args, **kwargs)
+
+    def _build_arama(self):
+        parts = [self.ad or "", self.soyad or "", self.ogrenci_no or ""]
+        if self.sinif_id:
+            parts.append(self.sinif.ad or "")
+        if self.rol_id:
+            parts.append(self.rol.ad or "")
+        return fold(" ".join(parts))
 
     def __str__(self):
         return f"{self.ad} {self.soyad} ({self.ogrenci_no})"
+
+
+@receiver(post_save, sender=Sinif)
+def refresh_sinif_arama(sender, instance, **kwargs):
+    for o in Ogrenci.objects.filter(sinif=instance).only("id"):
+        o.save(update_fields=["arama"])
+
+
+@receiver(post_save, sender=Rol)
+def refresh_rol_arama(sender, instance, **kwargs):
+    for o in Ogrenci.objects.filter(rol=instance).only("id"):
+        o.save(update_fields=["arama"])
 
 
 # 🔹 Arşiv paketini temsil eden üst kayıt
@@ -144,6 +171,26 @@ class Kitap(models.Model):
     resim3 = models.ImageField(upload_to="kitap_resimleri/", blank=True, null=True)
     resim4 = models.ImageField(upload_to="kitap_resimleri/", blank=True, null=True)
     resim5 = models.ImageField(upload_to="kitap_resimleri/", blank=True, null=True)
+    # Türkçe arama anahtarı (fold edilmiş: başlık, isbn, yazar, kategori, raf kodları)
+    arama = models.CharField(max_length=800, blank=True, default="")
+
+    def save(self, *args, **kwargs):
+        self.arama = self._build_arama()
+        super().save(*args, **kwargs)
+
+    def _build_arama(self):
+        parts = [self.baslik or ""]
+        if self.isbn:
+            parts.append(self.isbn)
+        if self.yazar_id:
+            parts.append(self.yazar.ad_soyad or "")
+        if self.kategori_id:
+            parts.append(self.kategori.ad or "")
+        raf_kodlari = KitapNusha.objects.filter(kitap_id=self.pk).values_list(
+            "raf_kodu", flat=True
+        )
+        parts.extend(r for r in raf_kodlari if r)
+        return fold(" ".join(parts))
 
     def __str__(self):
         return self.baslik
@@ -193,6 +240,32 @@ class KitapNusha(models.Model):
 
     def __str__(self):
         return f"{self.kitap.baslik} - {self.barkod}"
+
+
+@receiver(post_save, sender=KitapNusha)
+def refresh_kitap_arama(sender, instance, **kwargs):
+    if kwargs.get("created"):
+        instance.kitap.save(update_fields=["arama"])
+        return
+    try:
+        old = KitapNusha.objects.get(pk=instance.pk)
+    except KitapNusha.DoesNotExist:
+        instance.kitap.save(update_fields=["arama"])
+        return
+    if old.raf_kodu != instance.raf_kodu:
+        instance.kitap.save(update_fields=["arama"])
+
+
+@receiver(post_save, sender=Yazar)
+def refresh_yazar_arama(sender, instance, **kwargs):
+    for k in Kitap.objects.filter(yazar=instance).only("id"):
+        k.save(update_fields=["arama"])
+
+
+@receiver(post_save, sender=Kategori)
+def refresh_kategori_arama(sender, instance, **kwargs):
+    for k in Kitap.objects.filter(kategori=instance).only("id"):
+        k.save(update_fields=["arama"])
 
 
 # --- Ödünç Kayıtları ---

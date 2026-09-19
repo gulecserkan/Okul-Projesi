@@ -264,7 +264,7 @@ def policy_snapshot():
 
 
 class SearchFilterAPITests(APITestCase):
-    """Ogrenci/Kitap listelerinde q arama filtresi (sayfalı/sayfasız liste)."""
+    """Ogrenci/Kitap listelerinde q arama filtresi (Türkçe karakter duyarlı)."""
 
     def setUp(self):
         self.user = User.objects.create_user(username="testara", password="z1!")
@@ -272,29 +272,44 @@ class SearchFilterAPITests(APITestCase):
         self.sinif = Sinif.objects.create(ad="5-A")
         self.rol = Rol.objects.create(ad="Öğrenci")
         self.ogrenci = Ogrenci.objects.create(
-            ad="Arpağ", soyad="Seven", ogrenci_no="5A01", sinif=self.sinif, rol=self.rol
+            ad="İlber", soyad="Ortaylı", ogrenci_no="5A01", sinif=self.sinif, rol=self.rol
         )
         Ogrenci.objects.create(
             ad="Zeynep", soyad="Kaya", ogrenci_no="5A02", sinif=self.sinif, rol=self.rol
         )
-        yazar = Yazar.objects.create(ad_soyad="Halil İnalcık")
-        kategori = Kategori.objects.create(ad="Tarih")
-        kitap = Kitap.objects.create(
-            baslik="Osmanlı Tarihi", yazar=yazar, kategori=kategori
+        self.yazar = Yazar.objects.create(ad_soyad="Halil İnalcık")
+        self.kategori = Kategori.objects.create(ad="Tarih")
+        self.kitap = Kitap.objects.create(
+            baslik="Osmanlı Tarihi", yazar=self.yazar, kategori=self.kategori
         )
-        KitapNusha.objects.create(kitap=kitap, barkod="KIT000001", raf_kodu="R27")
-        KitapNusha.objects.create(kitap=kitap, barkod="KIT000002", raf_kodu="R27")
+        KitapNusha.objects.create(kitap=self.kitap, barkod="KIT000001", raf_kodu="R27")
+        KitapNusha.objects.create(kitap=self.kitap, barkod="KIT000002", raf_kodu="R27")
+        siir_kat = Kategori.objects.create(ad="Şiir")
+        siir = Kitap.objects.create(
+            baslik="Şiirler", yazar=Yazar.objects.create(ad_soyad="Orhan Veli"), kategori=siir_kat
+        )
+        KitapNusha.objects.create(kitap=siir, barkod="KIT000003", raf_kodu="R30")
 
     @staticmethod
     def _as_list(data):
         return data["results"] if isinstance(data, dict) else data
 
-    def test_ogrenci_q_ad_soyad_no_sinif(self):
-        resp = self.client.get("/api/ogrenciler/", {"q": "Arpa"})
-        nos = [o["ogrenci_no"] for o in self._as_list(resp.data)]
-        self.assertEqual(nos, ["5A01"])
+    def test_ogrenci_q_turkce_dot_duyarli(self):
+        # küçük i → büyük İ ("ilber" ↔ "İlber")
+        resp = self.client.get("/api/ogrenciler/", {"q": "ilber"})
+        self.assertEqual([o["ogrenci_no"] for o in self._as_list(resp.data)], ["5A01"])
 
-        resp = self.client.get("/api/ogrenciler/", {"q": "5A02"})
+        resp = self.client.get("/api/ogrenciler/", {"q": "İlber"})
+        self.assertEqual([o["ogrenci_no"] for o in self._as_list(resp.data)], ["5A01"])
+
+        # büyük I alt okuduğu → ı ("ORTAYLI" ↔ "Ortaylı")
+        resp = self.client.get("/api/ogrenciler/", {"q": "ORTAYLI"})
+        self.assertEqual([o["ogrenci_no"] for o in self._as_list(resp.data)], ["5A01"])
+
+        resp = self.client.get("/api/ogrenciler/", {"q": "ortayl"})
+        self.assertEqual([o["ogrenci_no"] for o in self._as_list(resp.data)], ["5A01"])
+
+        resp = self.client.get("/api/ogrenciler/", {"q": "kaya"})
         self.assertEqual([o["ogrenci_no"] for o in self._as_list(resp.data)], ["5A02"])
 
         resp = self.client.get("/api/ogrenciler/", {"q": "5-A"})
@@ -303,16 +318,37 @@ class SearchFilterAPITests(APITestCase):
         resp = self.client.get("/api/ogrenciler/", {"q": "YOKBÖYLE"})
         self.assertEqual(self._as_list(resp.data), [])
 
-    def test_kitap_q_baslik_yazar_kategori_raf(self):
-        resp = self.client.get("/api/kitaplar/", {"q": "Osmanlı"})
+    def test_ogrenci_q_rol_aksani(self):
+        # rol adı da aranabilir ("öğrenci" ↔ "ogrenci" ya da "ÖĞRENCİ")
+        resp = self.client.get("/api/ogrenciler/", {"q": "ogrenci"})
+        self.assertEqual(len(self._as_list(resp.data)), 2)
+
+    def test_kitap_q_turkce_ve_join_alanlari(self):
+        # başlıktaki ı → i ("osmanlı" ↔ "Osmanlı")
+        resp = self.client.get("/api/kitaplar/", {"q": "osmanli"})
         self.assertEqual([k["baslik"] for k in self._as_list(resp.data)], ["Osmanlı Tarihi"])
 
-        resp = self.client.get("/api/kitaplar/", {"q": "Halil"})
+        # yazar adındaki İ ("inalcik" ↔ "İnalcık")
+        resp = self.client.get("/api/kitaplar/", {"q": "inalcik"})
         self.assertEqual([k["baslik"] for k in self._as_list(resp.data)], ["Osmanlı Tarihi"])
 
-        resp = self.client.get("/api/kitaplar/", {"q": "Tarih"})
+        # ş → s başlık ve kategori ("şiir")
+        resp = self.client.get("/api/kitaplar/", {"q": "siir"})
+        self.assertEqual([k["baslik"] for k in self._as_list(resp.data)], ["Şiirler"])
+
+        # yazar: "orhan"
+        resp = self.client.get("/api/kitaplar/", {"q": "orhan"})
+        self.assertEqual([k["baslik"] for k in self._as_list(resp.data)], ["Şiirler"])
+
+        # kategori: "tarih"
+        resp = self.client.get("/api/kitaplar/", {"q": "tarih"})
         self.assertEqual([k["baslik"] for k in self._as_list(resp.data)], ["Osmanlı Tarihi"])
 
-        # nüşa raf koduna göre arama — aynı kitap iki nüşayla eşleşse de 1 sonuç (distinct)
+        # raf kodu — aynı kitabın iki nüşçesi eşleşse bile tek sonuç
         resp = self.client.get("/api/kitaplar/", {"q": "R27"})
         self.assertEqual(len(self._as_list(resp.data)), 1)
+
+    def test_serializer_arama_gizli(self):
+        resp = self.client.get("/api/ogrenciler/", {"q": "ilber"})
+        row = self._as_list(resp.data)[0]
+        self.assertNotIn("arama", row)

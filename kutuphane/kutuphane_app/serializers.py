@@ -46,7 +46,7 @@ class OgrenciSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Ogrenci
-        fields = "__all__"
+        exclude = ("arama",)
 
 
 class YazarSerializer(serializers.ModelSerializer):

@@ -36,6 +36,7 @@ from .models import (
     InventorySession,
     InventoryItem,
 )
+from .turkish import fold
 from .serializers import (
     OgrenciSerializer,
     SinifSerializer,
@@ -219,12 +220,7 @@ class OgrenciViewSet(viewsets.ModelViewSet):
         qs = super().get_queryset()
         arama = self.request.query_params.get("q")
         if arama:
-            qs = qs.filter(
-                Q(ad__icontains=arama)
-                | Q(soyad__icontains=arama)
-                | Q(ogrenci_no__icontains=arama)
-                | Q(sinif__ad__icontains=arama)
-            )
+            qs = qs.filter(arama__icontains=fold(arama))
         return qs
 
 class YazarViewSet(viewsets.ModelViewSet):
@@ -255,13 +251,7 @@ class KitapViewSet(viewsets.ModelViewSet):
             qs = qs.filter(kategori_id=kategori_id)
         arama = self.request.query_params.get("q")
         if arama:
-            qs = qs.filter(
-                Q(baslik__icontains=arama)
-                | Q(isbn__icontains=arama)
-                | Q(yazar__ad_soyad__icontains=arama)
-                | Q(kategori__ad__icontains=arama)
-                | Q(nushalar__raf_kodu__icontains=arama)
-            ).distinct()
+            qs = qs.filter(arama__icontains=fold(arama))
         isbn = self.request.query_params.get("isbn") or self.request.query_params.get("isbn_query")
         barkod = self.request.query_params.get("barkod") or self.request.query_params.get("barcode")
         if isbn and barkod and isbn == barkod:
