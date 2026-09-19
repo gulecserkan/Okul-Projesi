@@ -18,6 +18,67 @@ class KutuphaneApi {
     return const [];
   }
 
+  /// Sayfalı liste sonucu.
+  Future<Page<Map<String, dynamic>>> _page(
+    String path, {
+    int page = 1,
+    int pageSize = 50,
+    String? q,
+  }) async {
+    final params = <String, String>{
+      'page': '$page',
+      'page_size': '$pageSize',
+      if (q != null && q.isNotEmpty) 'q': q,
+    };
+    final resp = await _client.request(
+      'GET',
+      '$path?${Uri(queryParameters: params).query}',
+      auth: true,
+    );
+    if (resp.statusCode != 200) {
+      return const Page(items: [], total: 0);
+    }
+    final data = jsonDecode(resp.body);
+    final items = data is List
+        ? data.whereType<Map<String, dynamic>>().toList()
+        : ((data['results'] as List<dynamic>?) ?? const [])
+            .whereType<Map<String, dynamic>>()
+            .toList();
+    final total = data is Map ? (data['count'] as int? ?? items.length) : items.length;
+    final hasNext = data is Map && (data['next'] as String?)?.isNotEmpty == true;
+    return Page(
+      items: items,
+      total: total,
+      nextPage: hasNext ? page + 1 : null,
+    );
+  }
+
+  Future<Page<Ogrenci>> studentsPage({
+    int page = 1,
+    int pageSize = 50,
+    String? q,
+  }) async {
+    final res = await _page('ogrenciler', page: page, pageSize: pageSize, q: q);
+    return Page(
+      items: res.items.map(Ogrenci.fromJson).toList(),
+      total: res.total,
+      nextPage: res.nextPage,
+    );
+  }
+
+  Future<Page<Kitap>> booksPage({
+    int page = 1,
+    int pageSize = 50,
+    String? q,
+  }) async {
+    final res = await _page('kitaplar', page: page, pageSize: pageSize, q: q);
+    return Page(
+      items: res.items.map(Kitap.fromJson).toList(),
+      total: res.total,
+      nextPage: res.nextPage,
+    );
+  }
+
   /// Tüm sayfaları çeker (koşullu sayfalama: sayfa yoksa düz dizi döner).
   Future<List<dynamic>> _fetchAllPages(String path) async {
     final results = <dynamic>[];
@@ -96,4 +157,13 @@ class KutuphaneApi {
       return const PenaltySummary();
     }
   }
+}
+
+/// Sayfalı liste sonucu: satırlar + toplam kayıt + sonraki sayfa (yoksa null).
+class Page<T> {
+  final List<T> items;
+  final int total;
+  final int? nextPage;
+
+  const Page({required this.items, required this.total, this.nextPage});
 }

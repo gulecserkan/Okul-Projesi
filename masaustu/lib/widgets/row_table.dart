@@ -29,12 +29,18 @@ class RowTable extends StatelessWidget {
   final List<RowTableColumn> columns;
   final List<RowTableRow> rows;
   final double? minWidth;
+  final ScrollController? controller;
+
+  /// ListView.builder yapılandırıldığında en alta eklenen satır (→ yükleme göstergesi).
+  final Widget? footer;
 
   const RowTable({
     super.key,
     required this.columns,
     required this.rows,
     this.minWidth,
+    this.controller,
+    this.footer,
   });
 
   @override
@@ -61,13 +67,13 @@ class RowTable extends StatelessWidget {
                       children: [
                         _header(context),
                         Expanded(
-                          child: SingleChildScrollView(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                for (final row in rows) _row(context, row),
-                              ],
-                            ),
+                          child: ListView.builder(
+                            controller: controller,
+                            itemCount: rows.length + (footer != null ? 1 : 0),
+                            itemBuilder: (context, i) {
+                              if (i < rows.length) return _row(context, rows[i]);
+                              return footer ?? const SizedBox.shrink();
+                            },
                           ),
                         ),
                       ],
@@ -77,6 +83,7 @@ class RowTable extends StatelessWidget {
                       children: [
                         _header(context),
                         for (final row in rows) _row(context, row),
+                        ?footer,
                       ],
                     ),
             ),

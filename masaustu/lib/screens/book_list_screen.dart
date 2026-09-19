@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../api/kutuphane_api.dart';
@@ -15,56 +17,102 @@ class BookListScreen extends StatefulWidget {
 class _BookListScreenState extends State<BookListScreen> {
   final _api = KutuphaneApi();
   final _searchController = TextEditingController();
+  final _scrollController = ScrollController();
 
-  List<Kitap> _all = [];
-  bool _loading = true;
+  List<Kitap> _items = [];
+  int _total = 0;
+  int _loadedPage = 0;
+  bool _hasMore = true;
+  bool _initialLoading = true;
+  bool _loadingMore = false;
   String? _error;
   int? _selectedId;
-
-  void _openDetail(Kitap k) {
-    Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => BookDetailScreen(kitap: k),
-    ));
-  }
+  String _query = '';
+  Timer? _debounce;
 
   @override
   void initState() {
     super.initState();
-    _load();
+    _scrollController.addListener(_onScroll);
+    _load(reset: true);
   }
 
-  Future<void> _load() async {
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (!_scrollController.hasClients) return;
+    final pos = _scrollController.position;
+    if (pos.pixels >= pos.maxScrollExtent - 200) _load(reset: false);
+  }
+
+  Future<void> _load({required bool reset}) async {
+    if (reset) {
+      setState(() {
+        _initialLoading = true;
+        _error = null;
+      });
+    } else {
+      if (_loadingMore || !_hasMore) return;
+      setState(() => _loadingMore = true);
+    }
+
+    final page = reset ? 1 : _loadedPage + 1;
     try {
-      final books = await _api.books();
+      final res = await _api.booksPage(page: page, pageSize: 50, q: _query);
       if (!mounted) return;
       setState(() {
-        _all = books
-          ..sort((a, b) => a.baslik.toLowerCase().compareTo(b.baslik.toLowerCase()));
-        _loading = false;
+        _loadedPage = page;
+        _total = res.total;
+        _hasMore = res.nextPage != null;
+        if (reset) {
+          _items = res.items;
+        } else {
+          _items.addAll(res.items);
+        }
+        _initialLoading = false;
+        _loadingMore = false;
       });
+      _continueIfFits();
     } catch (_) {
       if (!mounted) return;
       setState(() {
-        _loading = false;
+        _initialLoading = false;
+        _loadingMore = false;
         _error = 'Kitap listesi alınamadı. Bağlantıyı kontrol edin.';
       });
     }
   }
 
-  List<Kitap> get _filtered {
-    final q = _searchController.text.trim().toLowerCase();
-    if (q.isEmpty) return _all;
-    return _all.where((k) {
-      return k.baslik.toLowerCase().contains(q) ||
-          k.isbn.toLowerCase().contains(q) ||
-          (k.yazar?.adSoyad.toLowerCase().contains(q) ?? false) ||
-          (k.kategori?.ad.toLowerCase().contains(q) ?? false) ||
-          k.rafKodlari.any((r) => r.toLowerCase().contains(q));
-    }).toList();
+  void _continueIfFits() {
+    if (!_hasMore) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_scrollController.hasClients) return;
+      final pos = _scrollController.position;
+      if (pos.maxScrollExtent <= pos.viewportDimension ||
+          pos.pixels >= pos.maxScrollExtent - 200) {
+        _load(reset: false);
+      }
+    });
+  }
+
+  void _onSearchChanged(String text) {
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 400), () {
+      if (!mounted) return;
+      _query = text.trim();
+      _load(reset: true);
+    });
+  }
+
+  void _openDetail(Kitap k) {
+    Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => BookDetailScreen(kitap: k),
+    ));
   }
 
   @override
@@ -78,7 +126,7 @@ class _BookListScreenState extends State<BookListScreen> {
               Expanded(
                 child: TextField(
                   controller: _searchController,
-                  onChanged: (_) => setState(() {}),
+                  onChanged: _onSearchChanged,
                   decoration: const InputDecoration(
                     hintText: 'Başlık, ISBN, yazar, kategori veya raf ara...',
                     prefixIcon: Icon(Icons.search),
@@ -91,7 +139,7 @@ class _BookListScreenState extends State<BookListScreen> {
               IconButton.filledTonal(
                 tooltip: 'Yenile',
                 icon: const Icon(Icons.refresh),
-                onPressed: _loading ? null : _load,
+                onPressed: _initialLoading ? null : () => _load(reset: true),
               ),
             ],
           ),
@@ -100,11 +148,8 @@ class _BookListScreenState extends State<BookListScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Align(
             alignment: Alignment.centerLeft,
-            child: Builder(builder: (context) {
-              final nusha = _filtered.fold<int>(0, (s, k) => s + k.nushaSayisi);
-              return Text('${_filtered.length} kitap ($nusha nüsha)',
-                  style: Theme.of(context).textTheme.bodySmall);
-            }),
+            child: Text('$_total kitap',
+                style: Theme.of(context).textTheme.bodySmall),
           ),
         ),
         Expanded(child: _buildBody()),
@@ -113,31 +158,35 @@ class _BookListScreenState extends State<BookListScreen> {
   }
 
   Widget _buildBody() {
-    if (_loading) {
+    if (_initialLoading) {
       return const Center(child: CircularProgressIndicator());
     }
-    if (_error != null) {
+    if (_error != null && _items.isEmpty) {
       return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(_error!, style: const TextStyle(color: Colors.red)),
             const SizedBox(height: 8),
-            FilledButton.tonal(onPressed: _load, child: const Text('Tekrar Dene')),
+            FilledButton.tonal(
+                onPressed: () => _load(reset: true),
+                child: const Text('Tekrar Dene')),
           ],
         ),
       );
     }
-    if (_all.isEmpty) {
-      return const Center(child: Text('Kayıtlı kitap bulunamadı.'));
-    }
-    final filtered = _filtered;
-    if (filtered.isEmpty) {
-      return const Center(child: Text('Aranan kriterde kitap yok.'));
+    if (_items.isEmpty) {
+      return Center(
+        child: Text(_query.isEmpty
+            ? 'Kayıtlı kitap bulunamadı.'
+            : 'Aranan kriterde kitap yok.'),
+      );
     }
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
       child: RowTable(
+        controller: _scrollController,
+        footer: _footer(),
         minWidth: 1050,
         columns: const [
           RowTableColumn('Kitap', flex: 4),
@@ -149,7 +198,7 @@ class _BookListScreenState extends State<BookListScreen> {
           RowTableColumn('', flex: 0),
         ],
         rows: [
-          for (final k in filtered)
+          for (final k in _items)
             RowTableRow(
               selected: _selectedId == k.id,
               onSelected: () {
@@ -174,6 +223,20 @@ class _BookListScreenState extends State<BookListScreen> {
               ],
             ),
         ],
+      ),
+    );
+  }
+
+  Widget _footer() {
+    if (!_loadingMore) return const SizedBox(height: 8);
+    return const Padding(
+      padding: EdgeInsets.all(16),
+      child: Center(
+        child: SizedBox(
+          height: 20,
+          width: 20,
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
       ),
     );
   }
