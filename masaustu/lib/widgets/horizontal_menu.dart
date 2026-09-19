@@ -9,6 +9,7 @@ import 'radial_menu.dart' show RadialMenuItem;
 /// açıkken başka bir satıra tıklanınca eski menü kapanır, satır seçilir ve
 /// yeni menü açılır. Kapatma ve seçim yönetimi çağıran tarafa aittir.
 OverlayEntry buildHorizontalRowMenu({
+  required BuildContext context,
   required Offset globalPosition,
   required List<RadialMenuItem> items,
   required void Function(String value) onSelect,
@@ -16,27 +17,27 @@ OverlayEntry buildHorizontalRowMenu({
   const itemW = 94.0;
   const height = 56.0;
   final totalW = itemW * items.length;
+  // Konumu overlay builder içinde değil, burada hesapla (MediaQuery bağımlılığı
+  // overlay entry içinde kalmasın).
+  final size = MediaQuery.of(context).size;
+  var left = globalPosition.dx - 12;
+  if (left + totalW > size.width - 8) left = size.width - totalW - 8;
+  if (left < 8) left = 8;
+
+  var top = globalPosition.dy + 10;
+  if (top + height > size.height - 8) {
+    top = globalPosition.dy - height - 10;
+  }
+  if (top < 8) top = 8;
+
   return OverlayEntry(
-    builder: (ctx) {
-      final size = MediaQuery.of(ctx).size;
-      var left = globalPosition.dx - 12;
-      if (left + totalW > size.width - 8) left = size.width - totalW - 8;
-      if (left < 8) left = 8;
-
-      var top = globalPosition.dy + 10;
-      if (top + height > size.height - 8) {
-        top = globalPosition.dy - height - 10;
-      }
-      if (top < 8) top = 8;
-
-      return Positioned(
-        left: left,
-        top: top,
-        width: totalW,
-        height: height,
-        child: _HorizontalMenu(items: items, onSelect: onSelect),
-      );
-    },
+    builder: (_) => Positioned(
+      left: left,
+      top: top,
+      width: totalW,
+      height: height,
+      child: _HorizontalMenu(items: items, onSelect: onSelect),
+    ),
   );
 }
 

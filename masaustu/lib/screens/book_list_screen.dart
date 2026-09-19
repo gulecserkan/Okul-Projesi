@@ -342,6 +342,7 @@ class _BookListScreenState extends State<BookListScreen> {
     scheduleMicrotask(() {
       if (!mounted) return;
       _menuEntry = buildHorizontalRowMenu(
+        context: context,
         globalPosition: globalPos,
         items: items,
         onSelect: (value) {

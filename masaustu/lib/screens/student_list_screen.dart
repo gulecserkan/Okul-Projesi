@@ -384,6 +384,7 @@ void _snack(String msg, {bool error = false}) {
     scheduleMicrotask(() {
       if (!mounted) return;
       _menuEntry = buildHorizontalRowMenu(
+        context: context,
         globalPosition: globalPos,
         items: items,
         onSelect: (value) {

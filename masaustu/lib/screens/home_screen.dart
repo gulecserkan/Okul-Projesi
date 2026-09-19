@@ -183,6 +183,14 @@ class _OverviewState extends State<_Overview> {
     _menuEntry = null;
   }
 
+  /// Odağı bir sonraki karede hızlı işlem alanına verir (diyalog kapanışı
+  /// sırasında odak değiştirmemek için ertelenir).
+  void _hizliOdakla() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _hizliFocus.canRequestFocus) _hizliFocus.requestFocus();
+    });
+  }
+
   Future<void> _load() async {
     setState(() {
       _loading = true;
@@ -238,7 +246,7 @@ class _OverviewState extends State<_Overview> {
     setState(() => _hizliBusy = false);
     if (data == null) {
       setState(() => _hizliMesaj = 'Eşleşme bulunamadı.');
-      _hizliFocus.requestFocus();
+      _hizliOdakla();
       return;
     }
     final type = data['type'];
@@ -259,14 +267,14 @@ class _OverviewState extends State<_Overview> {
           ipucu: 'Üye No',
         );
         if (uyeNo == null || uyeNo.trim().isEmpty) {
-          _hizliFocus.requestFocus();
+          _hizliOdakla();
           return;
         }
         await _hizliOdunc(uyeNo.trim(), barkod);
       } else {
         setState(
             () => _hizliMesaj = 'Bu nüsha ödünç verilemez (durum: $durum).');
-        _hizliFocus.requestFocus();
+        _hizliOdakla();
       }
       return;
     }
@@ -281,7 +289,7 @@ class _OverviewState extends State<_Overview> {
         ipucu: 'Barkod',
       );
       if (barkod == null || barkod.trim().isEmpty) {
-        _hizliFocus.requestFocus();
+        _hizliOdakla();
         return;
       }
       await _hizliOdunc(no, barkod.trim());
@@ -289,7 +297,7 @@ class _OverviewState extends State<_Overview> {
     }
     setState(
         () => _hizliMesaj = 'Bu arama için Ödünç / İade sayfasını kullanın.');
-    _hizliFocus.requestFocus();
+    _hizliOdakla();
   }
 
   /// İkinci veriyi (üye no / barkod) ayrı bir popup input'unda, açıklamayla ister.
@@ -297,47 +305,15 @@ class _OverviewState extends State<_Overview> {
     required String baslik,
     required String aciklama,
     required String ipucu,
-  }) async {
-    final controller = TextEditingController();
-    final sonuc = await showDialog<String>(
+  }) {
+    return showDialog<String>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(baslik),
-        content: SizedBox(
-          width: 380,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(aciklama),
-              const SizedBox(height: 12),
-              TextField(
-                controller: controller,
-                autofocus: true,
-                decoration: InputDecoration(
-                  labelText: ipucu,
-                  border: const OutlineInputBorder(),
-                  isDense: true,
-                ),
-                onSubmitted: (v) => Navigator.of(ctx).pop(v),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Vazgeç'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(ctx).pop(controller.text),
-            child: const Text('Tamam'),
-          ),
-        ],
+      builder: (_) => _HizliIkinciDialog(
+        baslik: baslik,
+        aciklama: aciklama,
+        ipucu: ipucu,
       ),
     );
-    controller.dispose();
-    return sonuc;
   }
 
   Future<void> _hizliIade(Map<String, dynamic> loan) async {
@@ -363,7 +339,7 @@ class _OverviewState extends State<_Overview> {
       error: !ok,
     );
     if (ok) _load();
-    _hizliFocus.requestFocus();
+    _hizliOdakla();
   }
 
   Future<void> _hizliOdunc(String uyeNo, String barkod) async {
@@ -383,7 +359,7 @@ class _OverviewState extends State<_Overview> {
       error: !ok,
     );
     if (ok) _load();
-    _hizliFocus.requestFocus();
+    _hizliOdakla();
   }
 
   /// Genel Bakış'tan hızlı iade: satıra çift tıklama.
@@ -637,6 +613,7 @@ class _OverviewState extends State<_Overview> {
     scheduleMicrotask(() {
       if (!mounted) return;
       _menuEntry = buildHorizontalRowMenu(
+        context: context,
         globalPosition: globalPos,
         items: items,
         onSelect: (value) {
@@ -952,6 +929,68 @@ class _SettingsScreenState extends State<SettingsScreen> {
               .bodySmall
               ?.copyWith(color: scheme.onSurfaceVariant),
         ),
+      ],
+    );
+  }
+}
+/// Hızlı işlemin ikinci adımı için ayrı, açıklamalı popup input'u.
+class _HizliIkinciDialog extends StatefulWidget {
+  final String baslik;
+  final String aciklama;
+  final String ipucu;
+
+  const _HizliIkinciDialog({
+    required this.baslik,
+    required this.aciklama,
+    required this.ipucu,
+  });
+
+  @override
+  State<_HizliIkinciDialog> createState() => _HizliIkinciDialogState();
+}
+
+class _HizliIkinciDialogState extends State<_HizliIkinciDialog> {
+  final _controller = TextEditingController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _tamam() => Navigator.of(context).pop(_controller.text);
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(widget.baslik),
+      content: SizedBox(
+        width: 380,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(widget.aciklama),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _controller,
+              autofocus: true,
+              decoration: InputDecoration(
+                labelText: widget.ipucu,
+                border: const OutlineInputBorder(),
+                isDense: true,
+              ),
+              onSubmitted: (_) => _tamam(),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Vazgeç'),
+        ),
+        FilledButton(onPressed: _tamam, child: const Text('Tamam')),
       ],
     );
   }
