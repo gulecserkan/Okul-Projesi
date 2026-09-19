@@ -33,7 +33,7 @@ Future<String?> showRadialRowMenu(
     barrierDismissible: true,
     barrierLabel: 'İşlem menüsü',
     barrierColor: Colors.black.withValues(alpha: 0.06),
-    transitionDuration: const Duration(milliseconds: 120),
+    transitionDuration: const Duration(milliseconds: 90),
     pageBuilder: (ctx, anim, sec) => Stack(
       children: [
         Positioned(

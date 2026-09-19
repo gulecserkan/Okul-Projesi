@@ -318,7 +318,7 @@ class _OverviewState extends State<_Overview> {
               onPressed: _loading ? null : _load,
             ),
             const SizedBox(width: 4),
-            Text('İade almak için satıra çift tıklayın.',
+            Text('İşlemler (İade / Kitap / Üye) için satıra tıklayın.',
                 style: theme.textTheme.bodySmall),
           ],
         ),
@@ -365,14 +365,13 @@ class _OverviewState extends State<_Overview> {
     );
   }
 
-  /// Satır hücresi: tek tık → seç + işlem menüsü, çift tık → iade.
+  /// Satır hücresi: tek tık → anında işlem menüsü (İade / Kitap / Üye).
   Widget _hucre(OduncKaydi l, Widget child) => GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTapUp: (d) {
           setState(() => _selectedLoanId = l.id);
           _satirMenu(l, d.globalPosition);
         },
-        onDoubleTap: () => _iadeAl(l),
         child: child,
       );
 
