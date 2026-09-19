@@ -18,7 +18,12 @@ class RowTableRow {
   final List<Widget> cells;
   final bool selected;
   final VoidCallback onSelected;
-  final VoidCallback onOpen;
+
+  /// Satıra tek tıklandığında çağrılır (global imleç konumu verilir).
+  final void Function(Offset globalPosition)? onTap;
+
+  /// (Opsiyonel) satırı açma; listede artık menüdeki "Detay" kullanılır.
+  final VoidCallback? onOpen;
 
   /// Satırın konum ölçümü için GlobalKey (yüzen aksiyon çubuğu).
   final Key? rowKey;
@@ -27,7 +32,8 @@ class RowTableRow {
     required this.cells,
     this.selected = false,
     required this.onSelected,
-    required this.onOpen,
+    this.onTap,
+    this.onOpen,
     this.rowKey,
   });
 }
@@ -159,33 +165,33 @@ class RowTable extends StatelessWidget {
 
   Widget _row(BuildContext context, RowTableRow row) {
     final theme = Theme.of(context);
-    return Listener(
+    return GestureDetector(
       key: row.rowKey,
-      onPointerDown: (_) => row.onSelected(),
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onDoubleTap: row.onOpen,
-        child: Material(
-          color: row.selected ? theme.colorScheme.primaryContainer : Colors.transparent,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            decoration: const BoxDecoration(
-              border: Border(
-                bottom: BorderSide(color: Color(0xFFE4E4E7), width: 0.5),
-              ),
+      behavior: HitTestBehavior.opaque,
+      onTapUp: (d) {
+        row.onSelected();
+        row.onTap?.call(d.globalPosition);
+      },
+      child: Material(
+        color: row.selected ? theme.colorScheme.primaryContainer : Colors.transparent,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          decoration: const BoxDecoration(
+            border: Border(
+              bottom: BorderSide(color: Color(0xFFE4E4E7), width: 0.5),
             ),
-            child: Row(
-              children: [
-                for (var i = 0; i < columns.length; i++)
-                  Expanded(
-                    flex: columns[i].flex,
-                    child: Align(
-                      alignment: Alignment.centerLeft,
-                      child: row.cells[i],
-                    ),
+          ),
+          child: Row(
+            children: [
+              for (var i = 0; i < columns.length; i++)
+                Expanded(
+                  flex: columns[i].flex,
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: row.cells[i],
                   ),
-              ],
-            ),
+                ),
+            ],
           ),
         ),
       ),

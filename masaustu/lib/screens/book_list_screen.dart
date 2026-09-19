@@ -6,7 +6,7 @@ import '../api/kutuphane_api.dart';
 import '../config.dart';
 import '../models.dart';
 import '../theme.dart';
-import '../widgets/floating_row_actions.dart';
+import '../widgets/radial_menu.dart';
 import '../widgets/row_table.dart';
 import 'book_detail_screen.dart';
 import 'book_form_dialog.dart';
@@ -35,12 +35,6 @@ class _BookListScreenState extends State<BookListScreen> {
   String _sortKey = 'baslik';
   bool _sortAsc = true;
   Timer? _debounce;
-  final Map<int, GlobalKey> _rowKeys = {};
-  final _stackKey = GlobalKey();
-  int _scrollTick = 0;
-
-  GlobalKey _rowKeyOf(Kitap k) =>
-      _rowKeys.putIfAbsent(k.id, () => GlobalObjectKey('kitap-${k.id}'));
 
   @override
   void initState() {
@@ -58,7 +52,6 @@ class _BookListScreenState extends State<BookListScreen> {
 
   void _onScroll() {
     if (!_scrollController.hasClients) return;
-    if (_selectedId != null) setState(() => _scrollTick++);
     final pos = _scrollController.position;
     if (pos.pixels >= pos.maxScrollExtent - 200) _load(reset: false);
   }
@@ -89,7 +82,6 @@ class _BookListScreenState extends State<BookListScreen> {
         _hasMore = res.nextPage != null;
         if (reset) {
           _items = res.items;
-          _scrollTick++;
         } else {
           _items.addAll(res.items);
         }
@@ -280,85 +272,70 @@ class _BookListScreenState extends State<BookListScreen> {
             : 'Aranan kriterde kitap yok.'),
       );
     }
-    final selectedIdx =
-        _selectedId == null ? -1 : _items.indexWhere((k) => k.id == _selectedId);
-    final selected = selectedIdx >= 0 ? _items[selectedIdx] : null;
-    return LayoutBuilder(
-      builder: (context, constraints) => Stack(
-        key: _stackKey,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
-            child: RowTable(
-              controller: _scrollController,
-              footer: _footer(),
-              minWidth: 1050,
-              sortKey: _sortKey,
-              sortAscending: _sortAsc,
-              onSort: _onSort,
-              columns: const [
-                RowTableColumn('Kitap', flex: 4, sortKey: 'baslik'),
-                RowTableColumn('Yazar', flex: 3, sortKey: 'yazar'),
-                RowTableColumn('Kategori', flex: 2, sortKey: 'kategori'),
-                RowTableColumn('Yıl', flex: 1, sortKey: 'yayin_yili'),
-                RowTableColumn('Nüsha', flex: 1, sortKey: 'nusha_sayisi'),
-                RowTableColumn('Raf', flex: 2),
-              ],
-              rows: [
-                for (final k in _items)
-                  RowTableRow(
-                    rowKey: _rowKeyOf(k),
-                    selected: _selectedId == k.id,
-                    onSelected: () {
-                      if (_selectedId != k.id) setState(() => _selectedId = k.id);
-                    },
-                    onOpen: () => _openDetail(k),
-                    cells: [
-                      Text(k.baslik,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontWeight: FontWeight.w500)),
-                      Text(k.yazar?.adSoyad ?? '—', overflow: TextOverflow.ellipsis),
-                      Text(k.kategori?.ad ?? '—'),
-                      Text(k.yayinYili?.toString() ?? '—'),
-                      Text('${k.nushaSayisi}'),
-                      Text(k.rafKodlari.join(', '), overflow: TextOverflow.ellipsis),
-                    ],
-                  ),
-              ],
-            ),
-          ),
-          if (selected != null)
-            AnchoredRowActions(
-              stackKey: _stackKey,
-              rowKey: _rowKeyOf(selected),
-              tick: _scrollTick,
-              viewportHeight: constraints.maxHeight,
-              onOutOfView: () => setState(() => _selectedId = null),
-              actions: [
-                IconButton(
-                  tooltip: 'Düzenle',
-                  visualDensity: VisualDensity.compact,
-                  icon: const Icon(Icons.edit_outlined),
-                  onPressed: () => _editBook(selected),
-                ),
-                if (_isAdmin)
-                  IconButton(
-                    tooltip: 'Sil',
-                    visualDensity: VisualDensity.compact,
-                    icon: const Icon(Icons.delete_outline),
-                    onPressed: () => _deleteBook(selected),
-                  ),
-                IconButton(
-                  tooltip: 'Detaylar',
-                  visualDensity: VisualDensity.compact,
-                  icon: const Icon(Icons.chevron_right),
-                  onPressed: () => _openDetail(selected),
-                ),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+      child: RowTable(
+        controller: _scrollController,
+        footer: _footer(),
+        minWidth: 1050,
+        sortKey: _sortKey,
+        sortAscending: _sortAsc,
+        onSort: _onSort,
+        columns: const [
+          RowTableColumn('Kitap', flex: 4, sortKey: 'baslik'),
+          RowTableColumn('Yazar', flex: 3, sortKey: 'yazar'),
+          RowTableColumn('Kategori', flex: 2, sortKey: 'kategori'),
+          RowTableColumn('Yıl', flex: 1, sortKey: 'yayin_yili'),
+          RowTableColumn('Nüsha', flex: 1, sortKey: 'nusha_sayisi'),
+          RowTableColumn('Raf', flex: 2),
+        ],
+        rows: [
+          for (final k in _items)
+            RowTableRow(
+              selected: _selectedId == k.id,
+              onSelected: () {
+                if (_selectedId != k.id) setState(() => _selectedId = k.id);
+              },
+              onTap: (pos) => _satirMenu(k, pos),
+              cells: [
+                Text(k.baslik,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontWeight: FontWeight.w500)),
+                Text(k.yazar?.adSoyad ?? '—',
+                    overflow: TextOverflow.ellipsis),
+                Text(k.kategori?.ad ?? '—'),
+                Text(k.yayinYili?.toString() ?? '—'),
+                Text('${k.nushaSayisi}'),
+                Text(k.rafKodlari.join(', '),
+                    overflow: TextOverflow.ellipsis),
               ],
             ),
         ],
       ),
     );
+  }
+
+  /// Satıra tıklanınca imleç yanında yuvarlak (dilimli) işlem menüsü.
+  Future<void> _satirMenu(Kitap k, Offset globalPos) async {
+    final items = <RadialMenuItem>[
+      const RadialMenuItem(
+          icon: Icons.edit_outlined, label: 'Düzenle', value: 'duzenle'),
+      const RadialMenuItem(
+          icon: Icons.chevron_right, label: 'Detay', value: 'detay'),
+      if (_isAdmin)
+        const RadialMenuItem(
+            icon: Icons.delete_outline, label: 'Sil', value: 'sil'),
+    ];
+    final secim = await showRadialRowMenu(context, globalPos, items);
+    if (!mounted || secim == null) return;
+    switch (secim) {
+      case 'duzenle':
+        await _editBook(k);
+      case 'detay':
+        _openDetail(k);
+      case 'sil':
+        await _deleteBook(k);
+    }
   }
 
   Widget _footer() {
