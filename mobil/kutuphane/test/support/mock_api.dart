@@ -23,6 +23,9 @@ MockClient routingClient({
   int loginStatus = 200,
   int changePasswordStatus = 200,
   int healthStatus = 200,
+  Map<String, dynamic>? fastQueryResponse,
+  int checkoutStatus = 201,
+  Map<String, dynamic>? checkoutError,
   void Function(http.Request request)? onRequest,
 }) {
   return MockClient((request) async {
@@ -52,6 +55,21 @@ MockClient routingClient({
     }
     if (path.endsWith('/api/change-password/')) {
       return jsonResponse({'ok': true}, status: changePasswordStatus);
+    }
+    if (path.endsWith('/api/fast-query/')) {
+      return jsonResponse(fastQueryResponse ?? {'type': 'not_found'});
+    }
+    if (path.endsWith('/api/checkout/')) {
+      if (checkoutStatus >= 200 && checkoutStatus < 300) {
+        return jsonResponse({'id': 1, 'durum': 'oduncte'}, status: checkoutStatus);
+      }
+      return jsonResponse(
+        checkoutError ?? {'error': 'Ödünç verilemedi'},
+        status: checkoutStatus,
+      );
+    }
+    if (RegExp(r'/api/oduncler/\d+/kapat/?$').hasMatch(path)) {
+      return jsonResponse({'id': 1, 'durum': 'teslim'});
     }
     if (path.endsWith('/api/kategoriler/')) return jsonResponse(categories);
     if (path.endsWith('/api/yazarlar/')) return jsonResponse(authors);
@@ -83,5 +101,68 @@ Map<String, dynamic> bookJson({
     'kategori': kategori == null ? null : {'ad': kategori},
     'yayin_yili': yayinYili,
     'image_count': 0,
+  };
+}
+
+Map<String, dynamic> studentResult({
+  String ad = 'Ayşe',
+  String soyad = 'Kaya',
+  String no = '70001',
+  bool aktif = true,
+  List<Map<String, dynamic>> activeLoans = const [],
+  Map<String, dynamic>? penaltySummary,
+}) {
+  return {
+    'type': 'student',
+    'student': {
+      'id': 1,
+      'ad': ad,
+      'soyad': soyad,
+      'no': no,
+      'sinif': '7-A',
+      'rol': 'Öğrenci',
+      'aktif': aktif,
+    },
+    'penalty_summary': penaltySummary ??
+        {
+          'outstanding_total': '0.00',
+          'outstanding_count': 0,
+          'entries': <Map<String, dynamic>>[],
+          'has_more': false,
+        },
+    'active_loans': activeLoans,
+    'history': <Map<String, dynamic>>[],
+  };
+}
+
+Map<String, dynamic> copyResult({
+  String baslik = 'Sefiller',
+  String barkod = 'KIT00001',
+  String durum = 'mevcut',
+  Map<String, dynamic>? loan,
+}) {
+  return {
+    'type': 'book_copy',
+    'copy': {'id': 5, 'barkod': barkod, 'durum': durum, 'raf_kodu': 'A-1'},
+    'book': {'id': 1, 'baslik': baslik},
+    'loan': loan,
+  };
+}
+
+Map<String, dynamic> loanJson({
+  int id = 1,
+  String baslik = 'Sefiller',
+  String barkod = 'KIT00001',
+  bool overdue = false,
+  String? penalty,
+}) {
+  return {
+    'id': id,
+    'kitap': baslik,
+    'barkod': barkod,
+    'iade_tarihi': '2026-01-15T10:00:00Z',
+    'is_overdue': overdue,
+    'penalty_preview': penalty,
+    'durum': 'oduncte',
   };
 }

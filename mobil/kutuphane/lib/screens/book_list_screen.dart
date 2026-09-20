@@ -6,6 +6,7 @@ import '../models/book.dart';
 import '../theme/app_theme.dart';
 import 'book_detail_screen.dart';
 import 'barcode_scanner_screen.dart';
+import 'loan_screen.dart';
 
 class BookListScreen extends StatefulWidget {
   const BookListScreen({
@@ -94,6 +95,13 @@ class _BookListScreenState extends State<BookListScreen> {
       appBar: AppBar(
         title: const Text("Kütüphane (Admin)"),
         actions: [
+          IconButton(
+            tooltip: "Ödünç / İade",
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => LoanScreen(api: _api)),
+            ),
+            icon: const Icon(Icons.assignment_turned_in_outlined),
+          ),
           IconButton(
             tooltip: "Barkod tara",
             onPressed: _scanBarcode,

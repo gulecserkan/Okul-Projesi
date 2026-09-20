@@ -30,6 +30,7 @@ mobil/
 | `screens/force_password_screen.dart` | İlk girişte şifre değiştirme (üye) |
 | `screens/uye_home_screen.dart` | Üye ekranı: **Kitaplar** (gezinti/arama) + **Ödünçlerim** |
 | `screens/book_list_screen.dart` | Personel ana ekranı: arama, filtre, menü, şifre değiştirme |
+| `screens/loan_screen.dart` | **Ödünç/İade**: barkod/üye no ile hızlı sorgu, ödünç ver, iade al |
 | `screens/book_detail_screen.dart` | Açıklama düzenleme + 5 resim slotu (yükleme/kırpma/silme) |
 | `screens/barcode_scanner_screen.dart` | Kamera ile barkod/QR tarama (mobile_scanner) |
 | `screens/image_gallery_screen.dart` | Tam ekran zoomlu galeri (photo_view) |
@@ -68,12 +69,19 @@ mobil/
 | PATCH | `/api/kitaplar/<id>/` | `updateBook()` — yalnız personel (üye 403 alır) |
 | GET | `/api/uye-gecmis/<no>/` | `fetchStudentHistory()` — üye yalnız kendi numarası |
 | GET | `/api/uye-ceza/<no>/` | `fetchStudentPenalties()` — üye yalnız kendi numarası |
+| GET | `/api/fast-query/?q=` | `fastQuery()` — barkod/üye no/ISBN/başlık hızlı sorgu (personel) |
+| POST | `/api/checkout/` | `checkout()` — ödünç ver (personel) |
+| POST | `/api/oduncler/<id>/kapat/` | `closeLoan()` — iade/kayıp/hasarlı kapat (personel) |
 
 ---
 
 ## Özellikler
 
 **Personel (`tip=personel`)**
+- **Ödünç / İade** (üst bardan): barkod veya üye no ile hızlı sorgu (`fast-query`).
+  - Üye sonucu: üye bilgisi + ceza özeti + aktif ödünçler (satır içi **İade**), ayrıca barkod girip **Ödünç Ver**.
+  - Nüsha sonucu: kitap/nüsha durumu; mevcutsa üye no ile **Ödünç Ver**, ödünçte ise **İade Al**.
+  - İade diyaloğu: teslim/kayıp/hasarlı, ceza (ön dolgulu), "ödendi", hasarlıda açıklama notu.
 - Kitap arama: metin + akıllı tür tespiti (rakam ağırlıklı ise ISBN/barkod gibi davranır).
 - Filtreler: kategori, yazar, raf kodu, "resim yok"/"açıklama yok", sıfırla, çek-yenile.
 - Barkod kamera tarama → arama tetikler.
@@ -93,6 +101,7 @@ mobil/
 - **Dil:** Türkçe arayüz.
 
 ### Tamamlanan iyileştirmeler
+- **Ödünç/İade** akışı (barkod/üye no hızlı sorgu, ödünç ver, iade al) — personel ve editör.
 - `firstOrNull` artık `collection` paketinden (yerel tanımlar kaldırıldı).
 - Varsayılan sunucu adresi `lib/app_config.dart` içinde; `--dart-define=KUTUPHANE_SERVER=...` ile değiştirilebilir.
 - Uygulama kimliği `com.example.kutuphane` (Android/iOS/macOS/Linux); web/windows/README adları `Kütüphane`.

@@ -74,10 +74,11 @@ Ayarlarda tanımlı ama işleyişe bağlanmamış alanlar (K10):
 
 ## 6. Mobil (devam eden)
 
-Ayrıntı: `04_MOBIL.md`. Kolay temizlikler bu fazda yapılıyor; kalanlar:
+Ayrıntı: `04_MOBIL.md`.
 
-- [ ] Mobilde **ödünç alma / iade** akışı (barkod tarayıcı + checkout/hızlı işlem).
+- [x] Kolay temizlikler: 401 bildirimi, sayfalama + debug satırı, `collection`, uygulama adı, sunucu adresi.
+- [x] **Ödünç/İade** akışı (barkod/üye no hızlı sorgu, ödünç ver, iade al) — personel/editör.
+- [x] Widget testleri (bağlantı/giriş/şifre/üye/kitap/ödünç-iade).
 - [ ] Üye **Ödünçlerim** iyileştirme (aktif/geçmiş, süre uyarısı, teslim tarihi).
 - [ ] Katalog gezintisi zenginleştirme (kategori/raf filtreli, favoriler, kapak büyütme).
-- [ ] Mobil widget/entegrasyon testlerinin genişletilmesi.
 - [ ] State yönetimi (provider/bloc/riverpod) değerlendirmesi.
