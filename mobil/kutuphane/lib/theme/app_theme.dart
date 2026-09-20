@@ -62,10 +62,10 @@ ThemeData _buildTheme({required Color seed, required Brightness brightness}) {
     ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
-      fillColor: scheme.primary.withOpacity(brightness == Brightness.dark ? 0.18 : 0.12),
+      fillColor: scheme.primary.withValues(alpha: brightness == Brightness.dark ? 0.18 : 0.12),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: scheme.primary.withOpacity(0.2)),
+        borderSide: BorderSide(color: scheme.primary.withValues(alpha: 0.2)),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
@@ -83,8 +83,8 @@ ThemeData _buildTheme({required Color seed, required Brightness brightness}) {
       ),
     ),
     chipTheme: ChipThemeData(
-      backgroundColor: scheme.surfaceVariant.withOpacity(0.7),
-      selectedColor: scheme.primary.withOpacity(0.16),
+      backgroundColor: scheme.surfaceContainerHighest.withValues(alpha: 0.7),
+      selectedColor: scheme.primary.withValues(alpha: 0.16),
       labelStyle: TextStyle(color: scheme.onSurface),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),

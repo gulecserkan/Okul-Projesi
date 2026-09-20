@@ -91,8 +91,14 @@ mobil/
 
 - **State yönetimi:** vanilya `StatefulWidget` + `setState` (provider/bloc/riverpod yok).
 - **Dil:** Türkçe arayüz.
-- `firstOrNull` genişletmesi iki yerde yeniden tanımlı (`library_api.dart`, `barcode_scanner_screen.dart`) — `collection` paketi kullanılabilir.
-- Varsayılan sunucu adresi hardcoded: `http://192.168.1.12:8000` (connection_screen.dart).
-- Android `applicationId/namespace` hâlâ `com.example.ogretmen` (klasör/paket `kutuphane` oldu; gerekirse uygulama kimliği de güncellenebilir).
-- Personel listesinde sayfalama ve debug sorgu satırının kaldırılması.
-- 401'de kullanıcıya bilgi; şu an sessiz token temizliği.
+
+### Tamamlanan iyileştirmeler
+- `firstOrNull` artık `collection` paketinden (yerel tanımlar kaldırıldı).
+- Varsayılan sunucu adresi `lib/app_config.dart` içinde; `--dart-define=KUTUPHANE_SERVER=...` ile değiştirilebilir.
+- Uygulama kimliği `com.example.kutuphane` (Android/iOS/macOS/Linux); web/windows/README adları `Kütüphane`.
+- Personel listesinde **sayfalama** (`page_size=50`, sonsuz kaydırma) ve debug sorgu satırı kaldırıldı.
+- **401** artık sessiz çıkış yerine kullanıcıya bildirilir ("Oturum süresi doldu, lütfen tekrar giriş yapın."), login ekranında bilgi olarak gösterilir.
+- Widget testleri: bağlantı, giriş, şifre değiştirme, üye ana ekran ve personel kitap listesi (`test/`).
+
+### Açık
+- Mobilde ödünç/iade akışı ve diğer işler: bkz. `08_YAPILACAKLAR.md` §6.

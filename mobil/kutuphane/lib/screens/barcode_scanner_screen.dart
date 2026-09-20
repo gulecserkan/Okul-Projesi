@@ -1,3 +1,4 @@
+import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
@@ -52,7 +53,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
               decoration: BoxDecoration(
                 border: Border.all(color: scheme.primary, width: 3),
                 borderRadius: BorderRadius.circular(16),
-                color: Colors.black.withOpacity(0.08),
+                color: Colors.black.withValues(alpha: 0.08),
               ),
             ),
           ),
@@ -64,7 +65,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                 decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.6),
+                  color: Colors.black.withValues(alpha: 0.6),
                   borderRadius: BorderRadius.circular(24),
                 ),
                 child: const Text(
@@ -78,8 +79,4 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
       ),
     );
   }
-}
-
-extension<T> on List<T> {
-  T? get firstOrNull => isEmpty ? null : first;
 }

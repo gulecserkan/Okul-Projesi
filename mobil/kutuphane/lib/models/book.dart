@@ -96,6 +96,7 @@ class BookDetail extends BookSummary {
   final String? aciklama;
   final List<BookImageSlot> resimler;
 
+  @override
   BookDetail copyWith({
     String? baslik,
     String? yazar,

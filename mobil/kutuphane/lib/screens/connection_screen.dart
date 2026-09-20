@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../api/library_api.dart';
+import '../app_config.dart';
 
 class ConnectionScreen extends StatefulWidget {
   const ConnectionScreen({
@@ -8,11 +9,15 @@ class ConnectionScreen extends StatefulWidget {
     required this.onConnected,
     this.initialError,
     this.lastKnownBaseUrl,
+    this.clientFactory,
   });
 
   final Future<void> Function(String baseUrl) onConnected;
   final String? initialError;
   final String? lastKnownBaseUrl;
+
+  /// Test/DI için: verilen adresle bir istemci üretir.
+  final LibraryApiClient Function(String baseUrl)? clientFactory;
 
   @override
   State<ConnectionScreen> createState() => _ConnectionScreenState();
@@ -30,7 +35,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
     if (widget.lastKnownBaseUrl != null && widget.lastKnownBaseUrl!.isNotEmpty) {
       _controller.text = widget.lastKnownBaseUrl!;
     } else {
-      _controller.text = "http://192.168.1.12:8000";
+      _controller.text = AppConfig.defaultServerUrl;
     }
   }
 
@@ -44,8 +49,8 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  colorScheme.primary.withOpacity(0.08),
-                  colorScheme.surfaceVariant.withOpacity(0.16),
+                  colorScheme.primary.withValues(alpha: 0.08),
+                  colorScheme.surfaceContainerHighest.withValues(alpha: 0.16),
                   colorScheme.surface,
                 ],
                 begin: Alignment.topLeft,
@@ -63,7 +68,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                 child: Center(
                   child: Card(
                     elevation: 10,
-                    shadowColor: colorScheme.primary.withOpacity(0.2),
+                    shadowColor: colorScheme.primary.withValues(alpha: 0.2),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
                     child: Padding(
                       padding: const EdgeInsets.all(24),
@@ -74,7 +79,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                           Row(
                             children: [
                               CircleAvatar(
-                                backgroundColor: colorScheme.primary.withOpacity(0.12),
+                                backgroundColor: colorScheme.primary.withValues(alpha: 0.12),
                                 child: Icon(Icons.wifi_tethering, color: colorScheme.primary),
                               ),
                               const SizedBox(width: 12),
@@ -171,7 +176,9 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
       _error = null;
     });
 
-    final api = LibraryApiClient(baseUrl: rawInput);
+    final factory = widget.clientFactory ??
+        (String baseUrl) => LibraryApiClient(baseUrl: baseUrl);
+    final api = factory(rawInput);
     final result = await api.handshake();
     if (!mounted) return;
 

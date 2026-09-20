@@ -28,6 +28,7 @@ class _KutuphaneAppState extends State<KutuphaneApp> {
   String? _rememberedBaseUrl;
   AuthTokens? _tokens;
   String? _handshakeError;
+  String? _sessionNotice;
   final Duration _maxAuthAge = const Duration(minutes: 15);
   AppTheme _currentTheme = AppTheme.defaultLight;
 
@@ -116,6 +117,7 @@ class _KutuphaneAppState extends State<KutuphaneApp> {
     await _storage.saveLastAuthAt(DateTime.now());
     setState(() {
       _tokens = tokens;
+      _sessionNotice = null;
     });
   }
 
@@ -135,6 +137,19 @@ class _KutuphaneAppState extends State<KutuphaneApp> {
     await _storage.saveLastAuthAt(DateTime.now());
     setState(() {
       _tokens = null;
+      _sessionNotice = null;
+    });
+  }
+
+  /// Yetkili bir istek 401 döndüğünde: oturumu kapat ve kullanıcıyı bilgilendir.
+  Future<void> _onSessionExpired() async {
+    if (_tokens == null) return;
+    await _storage.clearTokens();
+    await _storage.saveLastAuthAt(DateTime.now());
+    if (!mounted) return;
+    setState(() {
+      _tokens = null;
+      _sessionNotice = 'Oturum süresi doldu, lütfen tekrar giriş yapın.';
     });
   }
 
@@ -145,6 +160,7 @@ class _KutuphaneAppState extends State<KutuphaneApp> {
       _baseUrl = null;
       _tokens = null;
       _handshakeError = null;
+      _sessionNotice = null;
     });
   }
 
@@ -188,6 +204,7 @@ class _KutuphaneAppState extends State<KutuphaneApp> {
         onAuthenticated: _onLogin,
         onChangeServer: _resetServer,
         lastKnownBaseUrl: _rememberedBaseUrl,
+        initialMessage: _sessionNotice,
       );
     }
 
@@ -196,6 +213,7 @@ class _KutuphaneAppState extends State<KutuphaneApp> {
         baseUrl: _baseUrl!,
         tokens: _tokens!,
         onDone: _onPasswordChanged,
+        onSessionExpired: _onSessionExpired,
       );
     }
 
@@ -206,6 +224,7 @@ class _KutuphaneAppState extends State<KutuphaneApp> {
         tokens: _tokens!,
         onLogout: _logout,
         onChangeServer: _resetServer,
+        onSessionExpired: _onSessionExpired,
       );
     }
 
@@ -214,6 +233,7 @@ class _KutuphaneAppState extends State<KutuphaneApp> {
       tokens: _tokens!,
       onLogout: _logout,
       onChangeServer: _resetServer,
+      onSessionExpired: _onSessionExpired,
       currentTheme: _currentTheme,
       onThemeChange: _changeTheme,
     );

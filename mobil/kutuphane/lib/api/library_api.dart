@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:collection/collection.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 
@@ -30,6 +31,7 @@ class LibraryApiClient {
     required String baseUrl,
     AuthTokens? tokens,
     http.Client? httpClient,
+    this.onUnauthorized,
   })  : _baseUrl = _normalizeBaseUrl(baseUrl),
         _tokens = tokens,
         _client = httpClient ?? http.Client();
@@ -37,6 +39,9 @@ class LibraryApiClient {
   final http.Client _client;
   final String _baseUrl;
   AuthTokens? _tokens;
+
+  /// Yetkili bir istek 401 döndüğünde çağrılır (oturum süresi doldu).
+  final void Function()? onUnauthorized;
 
   String get baseUrl => _baseUrl;
   AuthTokens? get tokens => _tokens;
@@ -169,6 +174,7 @@ class LibraryApiClient {
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return;
     }
+    _maybeNotifyUnauthorized(response);
     _throwError(response);
   }
 
@@ -177,6 +183,7 @@ class LibraryApiClient {
     int? kategoriId,
     int? yazarId,
     int? page,
+    int? pageSize,
     int? minImageCount,
     int? maxImageCount,
     bool? hasDescription,
@@ -190,6 +197,7 @@ class LibraryApiClient {
     if (kategoriId != null) params["kategori"] = "$kategoriId";
     if (yazarId != null) params["yazar"] = "$yazarId";
     if (page != null) params["page"] = "$page";
+    if (pageSize != null) params["page_size"] = "$pageSize";
     if (minImageCount != null) params["min_image_count"] = "$minImageCount";
     if (maxImageCount != null) params["max_image_count"] = "$maxImageCount";
     if (hasDescription != null) params["aciklama_var"] = hasDescription ? "1" : "0";
@@ -253,6 +261,7 @@ class LibraryApiClient {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
         return BookDetail.fromJson(data);
       }
+      _maybeNotifyUnauthorized(response);
       _throwError(response);
       throw ApiException("Kitap güncellenemedi");
     }
@@ -275,6 +284,7 @@ class LibraryApiClient {
       final data = jsonDecode(response.body) as Map<String, dynamic>;
       return BookDetail.fromJson(data);
     }
+    _maybeNotifyUnauthorized(response);
     _throwError(response);
     throw ApiException("Kitap güncellenemedi");
   }
@@ -287,6 +297,7 @@ class LibraryApiClient {
     final uri = _uri(path, query);
     final response = await _client.get(uri, headers: _headers(jsonBody: false, authorized: true));
     if (response.statusCode == 401) {
+      onUnauthorized?.call();
       throw ApiException("Oturum süresi doldu, lütfen tekrar giriş yapın", statusCode: 401);
     }
     if (response.statusCode >= 200 && response.statusCode < 300) {
@@ -329,6 +340,12 @@ class LibraryApiClient {
     }
   }
 
+  void _maybeNotifyUnauthorized(http.Response response) {
+    if (response.statusCode == 401) {
+      onUnauthorized?.call();
+    }
+  }
+
   void _throwError(http.Response response) {
     try {
       final data = jsonDecode(response.body);
@@ -338,6 +355,8 @@ class LibraryApiClient {
           throw ApiException(detail.toString(), statusCode: response.statusCode, details: data);
         }
       }
+    } on ApiException {
+      rethrow;
     } catch (_) {
       // ignore parse errors
     }
@@ -367,8 +386,4 @@ class LibraryApiClient {
     }
     return "http://$trimmed";
   }
-}
-
-extension<T> on Iterable<T> {
-  T? get firstOrNull => isEmpty ? null : first;
 }

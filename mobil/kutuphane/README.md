@@ -1,6 +1,6 @@
-# ogretmen
+# Kütüphane (mobil)
 
-A new Flutter project.
+Flutter tabanlı kütüphane mobil uygulaması (personel + üye, rol bazlı).
 
 ## Getting Started
 

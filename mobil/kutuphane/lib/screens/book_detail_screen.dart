@@ -87,9 +87,9 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            scheme.primary.withOpacity(0.14),
-            scheme.secondary.withOpacity(0.12),
-            scheme.surfaceVariant.withOpacity(0.12),
+            scheme.primary.withValues(alpha: 0.14),
+            scheme.secondary.withValues(alpha: 0.12),
+            scheme.surfaceContainerHighest.withValues(alpha: 0.12),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -97,7 +97,7 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: scheme.shadow.withOpacity(0.06),
+            color: scheme.shadow.withValues(alpha: 0.06),
             blurRadius: 12,
             offset: const Offset(0, 10),
           ),
@@ -224,7 +224,7 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
                 border: Border.all(color: scheme.outlineVariant),
                 boxShadow: [
                   BoxShadow(
-                    color: scheme.shadow.withOpacity(0.04),
+                    color: scheme.shadow.withValues(alpha: 0.04),
                     blurRadius: 8,
                     offset: const Offset(0, 6),
                   ),
@@ -245,7 +245,7 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
                                   child: Image.network(
                                     slot.url!,
                                     fit: BoxFit.cover,
-                                    errorBuilder: (_, __, ___) => _placeholder(scheme),
+                                    errorBuilder: (_, _, _) => _placeholder(scheme),
                                   ),
                                 )
                               : _placeholder(scheme),
@@ -320,7 +320,7 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
 
   Widget _placeholder(ColorScheme scheme) {
     return Container(
-      color: scheme.primary.withOpacity(0.12),
+      color: scheme.primary.withValues(alpha: 0.12),
       child: Center(
         child: Icon(Icons.image_not_supported_outlined, color: scheme.outline),
       ),

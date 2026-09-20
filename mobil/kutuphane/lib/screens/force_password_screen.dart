@@ -10,11 +10,17 @@ class ForcePasswordScreen extends StatefulWidget {
     required this.baseUrl,
     required this.tokens,
     required this.onDone,
+    this.onSessionExpired,
+    this.api,
   });
 
   final String baseUrl;
   final AuthTokens tokens;
   final Future<void> Function() onDone;
+  final void Function()? onSessionExpired;
+
+  /// Test/DI için dışarıdan verilebilir.
+  final LibraryApiClient? api;
 
   @override
   State<ForcePasswordScreen> createState() => _ForcePasswordScreenState();
@@ -31,7 +37,12 @@ class _ForcePasswordScreenState extends State<ForcePasswordScreen> {
   @override
   void initState() {
     super.initState();
-    _api = LibraryApiClient(baseUrl: widget.baseUrl, tokens: widget.tokens);
+    _api = widget.api ??
+        LibraryApiClient(
+          baseUrl: widget.baseUrl,
+          tokens: widget.tokens,
+          onUnauthorized: widget.onSessionExpired,
+        );
   }
 
   @override
@@ -70,7 +81,7 @@ class _ForcePasswordScreenState extends State<ForcePasswordScreen> {
       if (!mounted) return;
       setState(() {
         _busy = false;
-        _error = e.toString();
+        _error = e is ApiException ? e.message : e.toString();
       });
     }
   }

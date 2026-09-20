@@ -13,12 +13,18 @@ class UyeHomeScreen extends StatefulWidget {
     required this.tokens,
     required this.onLogout,
     required this.onChangeServer,
+    this.onSessionExpired,
+    this.api,
   });
 
   final String baseUrl;
   final AuthTokens tokens;
   final Future<void> Function() onLogout;
   final Future<void> Function() onChangeServer;
+  final void Function()? onSessionExpired;
+
+  /// Test/DI için dışarıdan verilebilir.
+  final LibraryApiClient? api;
 
   @override
   State<UyeHomeScreen> createState() => _UyeHomeScreenState();
@@ -39,7 +45,12 @@ class _UyeHomeScreenState extends State<UyeHomeScreen> {
   @override
   void initState() {
     super.initState();
-    _api = LibraryApiClient(baseUrl: widget.baseUrl, tokens: widget.tokens);
+    _api = widget.api ??
+        LibraryApiClient(
+          baseUrl: widget.baseUrl,
+          tokens: widget.tokens,
+          onUnauthorized: widget.onSessionExpired,
+        );
     _loadBooks();
     _loadLoans();
   }
@@ -65,7 +76,7 @@ class _UyeHomeScreenState extends State<UyeHomeScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _booksError = e.toString();
+        _booksError = e is ApiException ? e.message : e.toString();
         _loadingBooks = false;
       });
     }
@@ -91,7 +102,7 @@ class _UyeHomeScreenState extends State<UyeHomeScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _loansError = e.toString();
+        _loansError = e is ApiException ? e.message : e.toString();
         _loadingLoans = false;
       });
     }

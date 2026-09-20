@@ -6,7 +6,6 @@ import '../models/book.dart';
 import '../theme/app_theme.dart';
 import 'book_detail_screen.dart';
 import 'barcode_scanner_screen.dart';
-import 'dart:developer' as dev;
 
 class BookListScreen extends StatefulWidget {
   const BookListScreen({
@@ -17,6 +16,8 @@ class BookListScreen extends StatefulWidget {
     required this.onChangeServer,
     required this.currentTheme,
     required this.onThemeChange,
+    this.onSessionExpired,
+    this.api,
   });
 
   final String baseUrl;
@@ -25,6 +26,10 @@ class BookListScreen extends StatefulWidget {
   final Future<void> Function() onChangeServer;
   final AppTheme currentTheme;
   final Future<void> Function(AppTheme) onThemeChange;
+  final void Function()? onSessionExpired;
+
+  /// Test/DI için dışarıdan verilebilir.
+  final LibraryApiClient? api;
 
   @override
   State<BookListScreen> createState() => _BookListScreenState();
@@ -33,6 +38,7 @@ class BookListScreen extends StatefulWidget {
 class _BookListScreenState extends State<BookListScreen> {
   late LibraryApiClient _api;
   final TextEditingController _searchController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
 
   List<BookSummary> _books = [];
   bool _loading = true;
@@ -45,15 +51,40 @@ class _BookListScreenState extends State<BookListScreen> {
   bool _onlyMissingImages = false;
   bool _missingDescription = false;
   String _shelfQuery = "";
-  String? _lastDebugInfo;
   bool _forceBarcodeSearch = false;
+
+  static const int _pageSize = 50;
+  int _page = 1;
+  bool _hasMore = true;
+  bool _loadingMore = false;
 
   @override
   void initState() {
     super.initState();
-    _api = LibraryApiClient(baseUrl: widget.baseUrl, tokens: widget.tokens);
+    _api = widget.api ??
+        LibraryApiClient(
+          baseUrl: widget.baseUrl,
+          tokens: widget.tokens,
+          onUnauthorized: widget.onSessionExpired,
+        );
+    _scrollController.addListener(_onScroll);
     _loadFilters();
     _loadBooks();
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (!_scrollController.hasClients) return;
+    final position = _scrollController.position;
+    if (position.pixels >= position.maxScrollExtent - 240) {
+      _loadMore();
+    }
   }
 
   @override
@@ -153,25 +184,24 @@ class _BookListScreenState extends State<BookListScreen> {
                   ],
                 ),
               ),
-            if (_lastDebugInfo != null && !_loading)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                child: Text(
-                  _lastDebugInfo!,
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(color: scheme.outline),
-                ),
-              ),
             Expanded(
               child: _loading
                   ? const Center(child: CircularProgressIndicator())
                   : _books.isEmpty
                       ? const Center(child: Text("Kriterlere uyan kitap bulunamadı."))
                       : ListView.separated(
+                          controller: _scrollController,
                           physics: const AlwaysScrollableScrollPhysics(),
-                          itemCount: _books.length,
+                          itemCount: _books.length + (_loadingMore ? 1 : 0),
                           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                          separatorBuilder: (_, __) => const SizedBox(height: 8),
+                          separatorBuilder: (_, _) => const SizedBox(height: 8),
                           itemBuilder: (context, index) {
+                            if (index >= _books.length) {
+                              return const Padding(
+                                padding: EdgeInsets.symmetric(vertical: 16),
+                                child: Center(child: CircularProgressIndicator()),
+                              );
+                            }
                             final book = _books[index];
                             return _BookCard(
                               book: book,
@@ -380,7 +410,7 @@ class _BookListScreenState extends State<BookListScreen> {
                         child: ListView.separated(
                           controller: scrollController,
                           itemCount: items.length + 1,
-                          separatorBuilder: (_, __) => const Divider(height: 1),
+                          separatorBuilder: (_, _) => const Divider(height: 1),
                           itemBuilder: (context, index) {
                             if (index == 0) {
                               return ListTile(
@@ -461,24 +491,26 @@ class _BookListScreenState extends State<BookListScreen> {
       builder: (context) {
         return AlertDialog(
           title: const Text("Tema seç"),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: appThemes.entries.map((entry) {
-              final theme = entry.key;
-              final config = entry.value;
-              return RadioListTile<AppTheme>(
-                value: theme,
-                groupValue: widget.currentTheme,
-                onChanged: (value) {
-                  if (value != null) {
-                    widget.onThemeChange(value);
-                    Navigator.of(context).pop();
-                  }
-                },
-                title: Text(config.label),
-                secondary: Icon(config.icon),
-              );
-            }).toList(),
+          content: RadioGroup<AppTheme>(
+            groupValue: widget.currentTheme,
+            onChanged: (value) {
+              if (value != null) {
+                widget.onThemeChange(value);
+                Navigator.of(context).pop();
+              }
+            },
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: appThemes.entries.map((entry) {
+                final theme = entry.key;
+                final config = entry.value;
+                return RadioListTile<AppTheme>(
+                  value: theme,
+                  title: Text(config.label),
+                  secondary: Icon(config.icon),
+                );
+              }).toList(),
+            ),
           ),
           actions: [
             TextButton(
@@ -646,7 +678,7 @@ class _BookListScreenState extends State<BookListScreen> {
                               newPassword: newPass,
                               newPasswordConfirm: confirm,
                             );
-                            if (!mounted) return;
+                            if (!context.mounted) return;
                             Navigator.of(context).pop();
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(content: Text("Şifre güncellendi.")),
@@ -693,74 +725,72 @@ class _BookListScreenState extends State<BookListScreen> {
     }
   }
 
+  /// Arama metnini akıllı tür tespitiyle sorgu alanlarına böler.
+  ({String? title, String? isbn, String? barcode}) _searchQueries() {
+    final searchText = _searchController.text.trim();
+    String? isbnQuery;
+    String? barcodeQuery;
+    String? titleQuery = searchText.isEmpty ? null : searchText;
+
+    final isDigitsOnly = RegExp(r"^[0-9-]+$").hasMatch(searchText);
+    final looksLikeCode = searchText.isNotEmpty &&
+        !searchText.contains(" ") &&
+        searchText.contains(RegExp(r"[0-9]"));
+
+    if (_forceBarcodeSearch) {
+      titleQuery = null;
+      barcodeQuery = searchText;
+      if (isDigitsOnly) isbnQuery = searchText;
+    } else if (looksLikeCode) {
+      // Sayı ağırlıklı giriş: başlıkla AND yapmak yerine sadece ilgili alanlarda ara
+      titleQuery = null;
+      isbnQuery = searchText;
+      barcodeQuery = searchText;
+    }
+    return (title: titleQuery, isbn: isbnQuery, barcode: barcodeQuery);
+  }
+
+  Future<BookListResponse> _fetchPage(int page) {
+    final q = _searchQueries();
+    return _api.fetchBooks(
+      query: q.title,
+      isbnQuery: q.isbn,
+      barcodeQuery: q.barcode,
+      kategoriId: _selectedCategory?.id,
+      yazarId: _selectedAuthor?.id,
+      maxImageCount: _onlyMissingImages ? 0 : null,
+      hasDescription: _missingDescription ? false : null,
+      shelfQuery: _shelfQuery.isEmpty ? null : _shelfQuery,
+      page: page,
+      pageSize: _pageSize,
+    );
+  }
+
   Future<void> _loadBooks() async {
     setState(() {
       _loading = true;
       _error = null;
+      _page = 1;
+      _hasMore = true;
     });
     try {
-      final searchText = _searchController.text.trim();
-      String? isbnQuery;
-      String? barcodeQuery;
-      String? titleQuery = searchText.isEmpty ? null : searchText;
-
-      final isDigitsOnly = RegExp(r"^[0-9-]+$").hasMatch(searchText);
-      final looksLikeCode = searchText.isNotEmpty && !searchText.contains(" ") && searchText.contains(RegExp(r"[0-9]"));
-
-      if (_forceBarcodeSearch) {
-        titleQuery = null;
-        barcodeQuery = searchText;
-        if (isDigitsOnly) {
-          isbnQuery = searchText;
-        }
-      } else if (looksLikeCode) {
-        // Sayı ağırlıklı giriş: başlıkla AND yapmak yerine sadece ilgili alanlarda ara
-        titleQuery = null;
-        isbnQuery = searchText;
-        barcodeQuery = searchText;
-      }
-
-      final logParams = {
-        "q": titleQuery,
-        "kategori": _selectedCategory?.id,
-        "yazar": _selectedAuthor?.id,
-        "max_image_count": _onlyMissingImages ? 0 : null,
-        "aciklama_var": _missingDescription ? 0 : null,
-        "raf_query": _shelfQuery.isEmpty ? null : _shelfQuery,
-        "isbn": isbnQuery,
-        "barkod": barcodeQuery,
-      };
-      dev.log("Kitap sorgu parametreleri: $logParams");
-
-      final response = await _api.fetchBooks(
-        query: titleQuery,
-        isbnQuery: isbnQuery,
-        barcodeQuery: barcodeQuery,
-        kategoriId: _selectedCategory?.id,
-        yazarId: _selectedAuthor?.id,
-        maxImageCount: _onlyMissingImages ? 0 : null,
-        hasDescription: _missingDescription ? false : null,
-        shelfQuery: _shelfQuery.isEmpty ? null : _shelfQuery,
-      );
-      final items = response.books;
-      dev.log("Kitap sorgu sonucu: total=${response.totalCount}, items=${items.length}");
+      final response = await _fetchPage(1);
       if (!mounted) return;
       setState(() {
-        _books = items;
+        _books = response.books;
+        _hasMore = _books.length < response.totalCount;
         _loading = false;
-        _lastDebugInfo = "Son sorgu: toplam=${response.totalCount}, listelenen=${items.length}";
         _forceBarcodeSearch = false;
       });
     } on ApiException catch (e) {
       if (!mounted) return;
       if (e.statusCode == 401) {
-        await widget.onLogout();
+        _handleSessionExpired();
         return;
       }
       setState(() {
         _error = e.message;
         _loading = false;
-        _lastDebugInfo = "Hata: ${e.message}";
         _forceBarcodeSearch = false;
       });
     } catch (e) {
@@ -768,9 +798,40 @@ class _BookListScreenState extends State<BookListScreen> {
       setState(() {
         _error = e.toString();
         _loading = false;
-        _lastDebugInfo = "Hata: $e";
         _forceBarcodeSearch = false;
       });
+    }
+  }
+
+  Future<void> _loadMore() async {
+    if (_loading || _loadingMore || !_hasMore) return;
+    setState(() => _loadingMore = true);
+    final nextPage = _page + 1;
+    try {
+      final response = await _fetchPage(nextPage);
+      if (!mounted) return;
+      setState(() {
+        _page = nextPage;
+        _books = [..._books, ...response.books];
+        _hasMore = _books.length < response.totalCount;
+        _loadingMore = false;
+      });
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() => _loadingMore = false);
+      if (e.statusCode == 401) _handleSessionExpired();
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _loadingMore = false);
+    }
+  }
+
+  void _handleSessionExpired() {
+    final cb = widget.onSessionExpired;
+    if (cb != null) {
+      cb();
+    } else {
+      widget.onLogout();
     }
   }
 
@@ -810,16 +871,16 @@ class _BookCard extends StatelessWidget {
       child: Ink(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: scheme.primary.withOpacity(0.08),
+          color: scheme.primary.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(14),
           boxShadow: [
             BoxShadow(
-              color: scheme.primary.withOpacity(0.08),
+              color: scheme.primary.withValues(alpha: 0.08),
               blurRadius: 10,
               offset: const Offset(0, 6),
             ),
           ],
-          border: Border.all(color: scheme.primary.withOpacity(0.12)),
+          border: Border.all(color: scheme.primary.withValues(alpha: 0.12)),
         ),
         child: Row(
           children: [
@@ -827,7 +888,7 @@ class _BookCard extends StatelessWidget {
               width: 52,
               height: 52,
               decoration: BoxDecoration(
-                color: scheme.primary.withOpacity(0.12),
+                color: scheme.primary.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(
@@ -903,7 +964,7 @@ class _BookCard extends StatelessWidget {
                           label: const Text("Açıklama yok"),
                           avatar: Icon(Icons.notes_outlined, size: 16, color: scheme.error),
                           padding: EdgeInsets.zero,
-                          backgroundColor: scheme.errorContainer.withOpacity(0.3),
+                          backgroundColor: scheme.errorContainer.withValues(alpha: 0.3),
                         ),
                       if (missingImage)
                         Chip(
@@ -915,7 +976,7 @@ class _BookCard extends StatelessWidget {
                               Text("Resim yok"),
                             ],
                           ),
-                          backgroundColor: scheme.errorContainer.withOpacity(0.3),
+                          backgroundColor: scheme.errorContainer.withValues(alpha: 0.3),
                         ),
                     ],
                   ),
@@ -969,7 +1030,7 @@ class _SelectionSheet<T> extends StatelessWidget {
             child: ListView.separated(
               shrinkWrap: true,
               itemCount: items.length + 1,
-              separatorBuilder: (_, __) => const Divider(height: 1),
+              separatorBuilder: (_, _) => const Divider(height: 1),
               itemBuilder: (context, index) {
                 if (index == 0) {
                   return ListTile(

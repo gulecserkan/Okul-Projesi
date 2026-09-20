@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../api/library_api.dart';
 import '../models/auth.dart';
-import 'connection_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({
@@ -11,12 +10,20 @@ class LoginScreen extends StatefulWidget {
     required this.onAuthenticated,
     required this.onChangeServer,
     this.lastKnownBaseUrl,
+    this.initialMessage,
+    this.api,
   });
 
   final String baseUrl;
   final Future<void> Function(AuthTokens tokens) onAuthenticated;
   final Future<void> Function() onChangeServer;
   final String? lastKnownBaseUrl;
+
+  /// Oturum süresi dolduğunda gösterilecek bilgilendirme (varsa).
+  final String? initialMessage;
+
+  /// Test/DI için dışarıdan verilebilir; verilmezse kendi istemcisini kurar.
+  final LibraryApiClient? api;
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -41,7 +48,7 @@ class _LoginScreenState extends State<LoginScreen> {
               gradient: LinearGradient(
                 colors: [
                   scheme.surface,
-                  scheme.secondaryContainer.withOpacity(0.2),
+                  scheme.secondaryContainer.withValues(alpha: 0.2),
                 ],
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
@@ -66,7 +73,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           Row(
                             children: [
                               CircleAvatar(
-                                backgroundColor: scheme.primary.withOpacity(0.12),
+                                backgroundColor: scheme.primary.withValues(alpha: 0.12),
                                 child: Icon(Icons.lock_open_outlined, color: scheme.primary),
                               ),
                               const SizedBox(width: 12),
@@ -98,6 +105,24 @@ class _LoginScreenState extends State<LoginScreen> {
                                 ?.copyWith(color: scheme.outline),
                           ),
                           const SizedBox(height: 18),
+                          if (widget.initialMessage != null) ...[
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: scheme.secondaryContainer.withValues(alpha: 0.5),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(Icons.info_outline, size: 18, color: scheme.primary),
+                                  const SizedBox(width: 8),
+                                  Expanded(child: Text(widget.initialMessage!)),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                          ],
                           TextField(
                             controller: _usernameController,
                             decoration: const InputDecoration(
@@ -180,13 +205,14 @@ class _LoginScreenState extends State<LoginScreen> {
       _error = null;
     });
     try {
-      final api = LibraryApiClient(baseUrl: widget.baseUrl);
+      final api = widget.api ?? LibraryApiClient(baseUrl: widget.baseUrl);
       final tokens = await api.login(username, password);
       if (!mounted) return;
       await widget.onAuthenticated(tokens);
     } catch (e) {
+      if (!mounted) return;
       setState(() {
-        _error = e.toString();
+        _error = e is ApiException ? e.message : e.toString();
         _loading = false;
       });
     }

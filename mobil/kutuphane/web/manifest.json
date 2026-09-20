@@ -1,6 +1,6 @@
 {
-    "name": "ogretmen",
-    "short_name": "ogretmen",
+    "name": "Kütüphane",
+    "short_name": "Kütüphane",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
