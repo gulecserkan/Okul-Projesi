@@ -795,6 +795,15 @@ class OduncKapatView(APIView):
         if not ok:
             return Response({"error": error}, status=status.HTTP_400_BAD_REQUEST)
 
+        # K10: require_damage_note — kayıp/hasarlı kapatmada açıklama zorunlu.
+        kapanis_notu = (request.data.get("kapanis_notu") or "").strip()
+        if durum in ("kayip", "hasarli") and LoanPolicy.get_solo().require_damage_note:
+            if not kapanis_notu:
+                return Response(
+                    {"error": "Kayıp/hasarlı kapatma için açıklama (not) zorunludur."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
         teslim = None
         if durum != "iptal":
             teslim_val = request.data.get("teslim_tarihi") or now().isoformat()
@@ -833,6 +842,8 @@ class OduncKapatView(APIView):
         with transaction.atomic():
             loan.durum = durum
             loan.teslim_tarihi = teslim
+            if kapanis_notu:
+                loan.kapanis_notu = kapanis_notu
             if ceza_val is not None:
                 loan.gecikme_cezasi = ceza_val
             if odendi_val:

@@ -1286,3 +1286,111 @@ class AyarlarYetkiTests(APITestCase):
             "/api/settings/notifications/", {"email_enabled": True}, format="json"
         )
         self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN)
+
+
+class K10IsleyisEntegrasyonTests(APITestCase):
+    """K10: require_shelf_code / require_damage_note / quiet_hours işleyişe bağlandı."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(username="k10person", password="z1!")
+        self.client.force_authenticate(self.user)
+        make_policy()
+        self.sinif = Sinif.objects.create(ad="7-A")
+        self.rol = Rol.objects.create(ad="Öğrenci")
+        self.uye = Uye.objects.create(
+            ad="Ayşe", soyad="Kaya", uye_no="70001", sinif=self.sinif, rol=self.rol
+        )
+        self.kitap, self.nusha = make_book_and_copy(barkod="KIT0007001")
+
+    def _checkout(self):
+        resp = self.client.post(
+            "/api/checkout/", {"uye_no": "70001", "barkod": "KIT0007001"}, format="json"
+        )
+        self.assertEqual(resp.status_code, status.HTTP_201_CREATED, resp.content)
+        return OduncKaydi.objects.get(uye=self.uye)
+
+    # --- require_shelf_code ---
+    def test_shelf_code_blocks_copy_without_raf(self):
+        make_policy(require_shelf_code=True)
+        resp = self.client.post(
+            "/api/nushalar/", {"kitap_id": self.kitap.id}, format="json"
+        )
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST, resp.content)
+        self.assertIn("raf_id", resp.data)
+
+    def test_shelf_code_allows_copy_with_raf(self):
+        make_policy(require_shelf_code=True)
+        raf = Raf.objects.create(ad="A-1")
+        resp = self.client.post(
+            "/api/nushalar/", {"kitap_id": self.kitap.id, "raf_id": raf.id}, format="json"
+        )
+        self.assertEqual(resp.status_code, status.HTTP_201_CREATED, resp.content)
+        self.assertEqual(resp.data["raf_kodu"], "A-1")
+
+    def test_shelf_code_optional_when_disabled(self):
+        make_policy(require_shelf_code=False)
+        resp = self.client.post(
+            "/api/nushalar/", {"kitap_id": self.kitap.id}, format="json"
+        )
+        self.assertEqual(resp.status_code, status.HTTP_201_CREATED, resp.content)
+
+    # --- require_damage_note ---
+    def test_damage_close_requires_note(self):
+        make_policy(require_damage_note=True)
+        loan = self._checkout()
+        resp = self.client.post(
+            f"/api/oduncler/{loan.id}/kapat/",
+            {"durum": "kayip", "teslim_tarihi": timezone.now().isoformat()},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST, resp.content)
+        loan.refresh_from_db()
+        self.assertEqual(loan.durum, "oduncte")
+
+    def test_damage_close_with_note_stores_it(self):
+        make_policy(require_damage_note=True)
+        loan = self._checkout()
+        resp = self.client.post(
+            f"/api/oduncler/{loan.id}/kapat/",
+            {
+                "durum": "hasarli",
+                "teslim_tarihi": timezone.now().isoformat(),
+                "kapanis_notu": "Kapak yırtılmış",
+            },
+            format="json",
+        )
+        self.assertEqual(resp.status_code, status.HTTP_200_OK, resp.content)
+        loan.refresh_from_db()
+        self.assertEqual(loan.kapanis_notu, "Kapak yırtılmış")
+
+    def test_teslim_close_needs_no_note(self):
+        make_policy(require_damage_note=True)
+        loan = self._checkout()
+        resp = self.client.post(
+            f"/api/oduncler/{loan.id}/kapat/",
+            {"durum": "teslim", "teslim_tarihi": timezone.now().isoformat()},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, status.HTTP_200_OK, resp.content)
+
+    # --- quiet_hours ---
+    def test_quiet_hours_skips_notification_dispatch(self):
+        from datetime import time as dtime
+
+        from kutuphane_app.jobs import _in_quiet_hours, run_scheduled_jobs
+
+        make_policy(
+            quiet_hours_enabled=True,
+            quiet_hours_start=dtime(0, 0),
+            quiet_hours_end=dtime(23, 59),
+        )
+        self.assertTrue(_in_quiet_hours(LoanPolicy.get_solo()))
+        summary = run_scheduled_jobs()
+        self.assertTrue(summary.get("quiet_hours"))
+        self.assertNotIn("email_notifications", summary)
+
+    def test_quiet_hours_disabled_dispatches_normally(self):
+        from kutuphane_app.jobs import _in_quiet_hours
+
+        make_policy(quiet_hours_enabled=False)
+        self.assertFalse(_in_quiet_hours(LoanPolicy.get_solo()))

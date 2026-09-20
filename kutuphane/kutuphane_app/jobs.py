@@ -19,7 +19,7 @@ from .loan_policy import (
     get_snapshot,
     penalty_delay_for_role,
 )
-from .models import OduncKaydi, NotificationSettings
+from .models import OduncKaydi, NotificationSettings, LoanPolicy
 
 def iter_open_loans(lock=False):
     qs = (
@@ -286,6 +286,22 @@ def dispatch_notifications(channel: str, types: list[str], when=None):
     }
 
 
+def _in_quiet_hours(policy, reference=None) -> bool:
+    """K10: sessiz saatler açıksa ve şu an aralıkta ise True (bildirim ertelenir)."""
+    if not getattr(policy, "quiet_hours_enabled", False):
+        return False
+    now = reference or timezone.now()
+    local = now.astimezone(timezone.get_current_timezone())
+    t = local.time()
+    start = policy.quiet_hours_start
+    end = policy.quiet_hours_end
+    if start is None or end is None or start == end:
+        return False
+    if start < end:
+        return start <= t < end
+    return t >= start or t < end  # gece yarısını aşan aralık
+
+
 def run_scheduled_jobs(now=None):
     """
     Gecikmiş kayıt güncellemesi ve bildirim planlamalarını tek noktadan yürütür.
@@ -302,17 +318,21 @@ def run_scheduled_jobs(now=None):
         mark_overdue_ran(settings, now)
         fields_to_update.add("overdue_last_run")
 
-    schedules = get_notification_schedule()
-    for channel, schedule in schedules.items():
-        last_run = getattr(settings, f"{channel}_schedule_last_run")
-        if is_schedule_due(schedule, last_run, now):
-            types = _channel_message_types(settings, channel)
-            if not types:
-                continue
-            dispatch_result = dispatch_notifications(channel, types, when=now)
-            summary[f"{channel}_notifications"] = dispatch_result
-            mark_channel_run(settings, channel, now)
-            fields_to_update.add(f"{channel}_schedule_last_run")
+    # K10: sessiz saatlerde bildirim gönderimi ertelenir (gecikme güncellemesi yine çalışır).
+    if _in_quiet_hours(LoanPolicy.get_solo(), now):
+        summary["quiet_hours"] = True
+    else:
+        schedules = get_notification_schedule()
+        for channel, schedule in schedules.items():
+            last_run = getattr(settings, f"{channel}_schedule_last_run")
+            if is_schedule_due(schedule, last_run, now):
+                types = _channel_message_types(settings, channel)
+                if not types:
+                    continue
+                dispatch_result = dispatch_notifications(channel, types, when=now)
+                summary[f"{channel}_notifications"] = dispatch_result
+                mark_channel_run(settings, channel, now)
+                fields_to_update.add(f"{channel}_schedule_last_run")
 
     if fields_to_update:
         settings.save(update_fields=list(fields_to_update))

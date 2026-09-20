@@ -188,6 +188,9 @@ Not: Akıllı raf öneri sistemi (rafların program tarafından düzenli tutulma
 | K10.2 | **Kurum bilgileri** (kütüphane/okul adı, adres, telefon, e-posta, web, logo_url) tekil kayıt; fiş/etiketlerde kullanılır | `KurumAyarlari.get_solo`, `/api/settings/kurum/` |
 | K10.3 | Ödünç politikası ve rol bazlı ceza (süre/limit/tolerans/ceza gecikmesi/hafta sonu/günlük ceza/tavan) sunucudan yönetilir | `settings/loans`, `settings/loans/roles` |
 | K10.4 | Masaüstü **Ayarlar** sekmeli: Görünüm · Sunucu · Ödünç Politikası · Ceza (Rol) · Bildirim · Kurum · Hesap; admin değilse düzenleme alanları kapalı | `masaustu/lib/screens/settings_screen.dart` |
+| K10.5 | `require_shelf_code` açıkken **yeni nüshada raf kodu zorunlu** (raf seçilmeli); kapalıysa opsiyonel | `KitapNushaSerializer.validate` |
+| K10.6 | `require_damage_note` açıkken **kayıp/hasarlı kapatmada açıklama (not) zorunlu**; not `OduncKaydi.kapanis_notu`'na yazılır | `OduncKapatView`, `ReturnDialog` |
+| K10.7 | `quiet_hours_*` açıkken **sessiz saatlerde bildirim gönderimi ertelenir** (gecikme güncellemesi yine çalışır); aralık gece yarısını aşabilir | `jobs._in_quiet_hours`, `run_scheduled_jobs` |
 
 ---
 
@@ -202,4 +205,5 @@ Her kural için en az bir test:
 - K7.5: anahtar URL'de; ikinci arama önbellekten gelir (ağ yok); 429 yanıtı; ISBN önceliği (`isbn:` + Open Library `/isbn/`); kaynak birleştirme/tekilleştirme + kapak yedekleme (K7.5-K7.7).
 - K9: superuser token `role=admin`; üye girişi (`tip=uye`, `uye_no`, `parola_degistirilsin`); üye personel ucuna 403; editör kitap ekleyebilir / üye listesine 403; kendi/başkası geçmiş kapsamı; şifre değişince bayrak kalkar (K9.1-K9.6).
 - K10: kurum/ödünç/rol/bildirim GET personel 200; PUT/PATCH personel 403, admin 200 (K10.1-K10.2).
+- K10.5-K10.7: raf kodu zorunlu nüsha reddi/raf ile kabul; kayıp/hasarlı notsuz kapatma 400, notlu kapanış notu saklar; sessiz saatte bildirim atlanır, kapalıyken normal (K10IsleyisEntegrasyonTests).
 - E2E canlı smoke: checkout → kapat döngüsü.

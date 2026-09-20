@@ -231,6 +231,17 @@ class KitapNushaSerializer(serializers.ModelSerializer):
         fields["durum"].read_only = True
         return fields
 
+    def validate(self, attrs):
+        # K10: require_shelf_code — yeni nüshada raf kodu zorunlu.
+        if self.instance is None and LoanPolicy.get_solo().require_shelf_code:
+            raf = attrs.get("raf")
+            raf_kodu = (attrs.get("raf_kodu") or "").strip()
+            if not raf and not raf_kodu:
+                raise serializers.ValidationError(
+                    {"raf_id": "Raf kodu zorunludur (ayarlar)."}
+                )
+        return attrs
+
     def create(self, validated_data):
         barkod = validated_data.get("barkod")
         if barkod:

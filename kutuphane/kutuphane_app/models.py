@@ -326,6 +326,8 @@ class OduncKaydi(models.Model):
     gecikme_cezasi_odendi = models.BooleanField(default=False)
     gecikme_odeme_tarihi = models.DateTimeField(blank=True, null=True)
     gecikme_odeme_tutari = models.DecimalField(max_digits=6, decimal_places=2, blank=True, null=True)
+    # K10: kayıp/hasarlı kapatmada açıklama (require_damage_note)
+    kapanis_notu = models.TextField(blank=True, default="")
 
     def __str__(self):
         return f"{self.uye} - {self.kitap_nusha}"
