@@ -88,3 +88,5 @@ Masaüstü: bkz. `kutuphane_desktop/DESKTOP_SETUP.md`
 - `04_MOBIL.md` — mobil uygulamalar ve eksikleri
 - `05_YONETIM.md` — admin, deployment, güvenlik
 - `06_BILINEN_SORUNLAR.md` — tespit edilen sorunlar ve açık işler
+- `07_MIMARI.md` — kimlik/üye modeli ve mimari kararlar
+- `08_YAPILACAKLAR.md` — ertelenen işler / yol haritası (yazdırma, bildirim, rapor, altyapı)
