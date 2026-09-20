@@ -227,6 +227,7 @@ class KutuphaneApi {
     required String teslimTarihi,
     String? gecikmeCezasi,
     bool odendi = false,
+    String? kapanisNotu,
   }) {
     return _client.request(
       'POST',
@@ -238,6 +239,8 @@ class KutuphaneApi {
         if (gecikmeCezasi != null && gecikmeCezasi.trim().isNotEmpty)
           'gecikme_cezasi': gecikmeCezasi.trim(),
         if (odendi) 'gecikme_cezasi_odendi': true,
+        if (kapanisNotu != null && kapanisNotu.trim().isNotEmpty)
+          'kapanis_notu': kapanisNotu.trim(),
       },
     );
   }

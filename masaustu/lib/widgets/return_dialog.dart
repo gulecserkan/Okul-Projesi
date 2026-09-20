@@ -21,6 +21,7 @@ class ReturnDialog extends StatefulWidget {
 class _ReturnDialogState extends State<ReturnDialog> {
   late String _durum = 'teslim';
   final _penaltyController = TextEditingController();
+  final _notController = TextEditingController();
   bool _odendi = false;
   String? _suggestionNote;
 
@@ -47,6 +48,7 @@ class _ReturnDialogState extends State<ReturnDialog> {
   @override
   void dispose() {
     _penaltyController.dispose();
+    _notController.dispose();
     super.dispose();
   }
 
@@ -55,6 +57,7 @@ class _ReturnDialogState extends State<ReturnDialog> {
       'durum': _durum,
       'penalty': _penaltyController.text.trim().replaceAll(',', '.'),
       'odendi': _odendi ? 'true' : 'false',
+      'not': _notController.text.trim(),
     });
   }
 
@@ -143,6 +146,19 @@ class _ReturnDialogState extends State<ReturnDialog> {
                 '(düzenlenebilir)',
                 style: theme.textTheme.bodySmall
                     ?.copyWith(color: theme.colorScheme.primary),
+              ),
+            ],
+            if (_isDamageClose) ...[
+              const SizedBox(height: 12),
+              TextField(
+                controller: _notController,
+                maxLines: 2,
+                decoration: const InputDecoration(
+                  labelText: 'Açıklama (not)',
+                  hintText: 'Kayıp/hasarlı için açıklama (ayarlara göre zorunlu)',
+                  border: OutlineInputBorder(),
+                  isDense: true,
+                ),
               ),
             ],
             const SizedBox(height: 12),

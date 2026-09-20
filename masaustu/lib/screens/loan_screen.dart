@@ -104,6 +104,7 @@ class _LoanScreenState extends State<LoanScreen> {
       teslimTarihi: DateTime.now().toUtc().toIso8601String(),
       gecikmeCezasi: action['penalty'],
       odendi: action['odendi'] == 'true',
+      kapanisNotu: action['not'],
     );
     if (!mounted) return;
     setState(() => _busy = false);

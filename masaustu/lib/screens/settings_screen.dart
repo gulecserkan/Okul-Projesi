@@ -77,33 +77,59 @@ Widget _adminUyari(BuildContext context) {
   );
 }
 
+Widget _aciklama(String text) {
+  return Builder(
+    builder: (context) => Padding(
+      padding: const EdgeInsets.only(top: 2),
+      child: Text(
+        text,
+        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+      ),
+    ),
+  );
+}
+
 Widget _sayiAlan(String label, dynamic value, ValueChanged<String> onChanged,
-    {bool enabled = true}) {
-  return TextFormField(
+    {bool enabled = true, String? desc}) {
+  final field = TextFormField(
     initialValue: value == null ? '' : value.toString(),
     enabled: enabled,
     keyboardType: const TextInputType.numberWithOptions(decimal: true),
     decoration: InputDecoration(labelText: label, isDense: true),
     onChanged: onChanged,
   );
+  if (desc == null) return field;
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [field, _aciklama(desc)],
+  );
 }
 
 Widget _metinAlan(String label, dynamic value, ValueChanged<String> onChanged,
-    {bool enabled = true}) {
-  return TextFormField(
+    {bool enabled = true, String? desc}) {
+  final field = TextFormField(
     initialValue: value == null ? '' : value.toString(),
     enabled: enabled,
     decoration: InputDecoration(labelText: label, isDense: true),
     onChanged: onChanged,
   );
+  if (desc == null) return field;
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [field, _aciklama(desc)],
+  );
 }
 
 Widget _switchAlan(String label, bool value, ValueChanged<bool> onChanged,
-    {bool enabled = true}) {
+    {bool enabled = true, String? desc}) {
   return SwitchListTile(
     value: value,
     onChanged: enabled ? onChanged : null,
     title: Text(label),
+    subtitle: desc == null ? null : _aciklama(desc),
+    controlAffinity: ListTileControlAffinity.leading,
     dense: true,
     contentPadding: EdgeInsets.zero,
   );
@@ -323,44 +349,50 @@ class _OdoncPolitikasiTabState extends State<_OdoncPolitikasiTab> {
       padding: const EdgeInsets.all(24),
       children: [
         if (!widget.admin) ...[_adminUyari(context), const SizedBox(height: 12)],
-        Row(children: [
-          Expanded(child: _sayiAlan('Varsayılan süre (gün)', _data['default_duration'], (v) => _data['default_duration'] = v, enabled: widget.admin)),
+        Text(
+          'Genel varsayılan ödünç kuralları. Bir rol için (Ceza sekmesi) özel '
+          'değer tanımlıysa o rol için geçerli olan odur.',
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+        const SizedBox(height: 12),
+        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Expanded(child: _sayiAlan('Varsayılan süre (gün)', _data['default_duration'], (v) => _data['default_duration'] = v, enabled: widget.admin, desc: 'Ödünç verilen kitabın kaç gün sonra iade edilmesi gerektiği.')),
           const SizedBox(width: 12),
-          Expanded(child: _sayiAlan('Varsayılan maks. kitap', _data['default_max_items'], (v) => _data['default_max_items'] = v, enabled: widget.admin)),
+          Expanded(child: _sayiAlan('Varsayılan maks. kitap', _data['default_max_items'], (v) => _data['default_max_items'] = v, enabled: widget.admin, desc: 'Bir üyenin aynı anda alabileceği en fazla kitap sayısı.')),
         ]),
         const SizedBox(height: 12),
-        Row(children: [
-          Expanded(child: _sayiAlan('İade toleransı (gün)', _data['delay_grace_days'], (v) => _data['delay_grace_days'] = v, enabled: widget.admin)),
+        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Expanded(child: _sayiAlan('İade toleransı (gün)', _data['delay_grace_days'], (v) => _data['delay_grace_days'] = v, enabled: widget.admin, desc: 'İade tarihi bu kadar gün geçse de gecikme cezası uygulanmaz.')),
           const SizedBox(width: 12),
-          Expanded(child: _sayiAlan('Ceza gecikmesi (gün)', _data['penalty_delay_days'], (v) => _data['penalty_delay_days'] = v, enabled: widget.admin)),
+          Expanded(child: _sayiAlan('Ceza gecikmesi (gün)', _data['penalty_delay_days'], (v) => _data['penalty_delay_days'] = v, enabled: widget.admin, desc: 'Toleranstan sonra cezanın başlaması için geçmesi gereken ek gün.')),
         ]),
         const SizedBox(height: 12),
-        Row(children: [
-          Expanded(child: _sayiAlan('Ceza tavanı (kitap ₺)', _data['penalty_max_per_loan'], (v) => _data['penalty_max_per_loan'] = v, enabled: widget.admin)),
+        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Expanded(child: _sayiAlan('Ceza tavanı (kitap ₺)', _data['penalty_max_per_loan'], (v) => _data['penalty_max_per_loan'] = v, enabled: widget.admin, desc: 'Tek ödünç kaydı için alınabilecek en yüksek ceza (0 = sınırsız).')),
           const SizedBox(width: 12),
-          Expanded(child: _sayiAlan('Ceza tavanı (üye ₺)', _data['penalty_max_per_student'], (v) => _data['penalty_max_per_student'] = v, enabled: widget.admin)),
+          Expanded(child: _sayiAlan('Ceza tavanı (üye ₺)', _data['penalty_max_per_student'], (v) => _data['penalty_max_per_student'] = v, enabled: widget.admin, desc: 'Bir üyenin toplam cezasının üst sınırı (0 = sınırsız).')),
         ]),
         const SizedBox(height: 12),
-        _sayiAlan('Kayıp/hasarlı cezası (₺)', _data['kayip_hasar_cezasi'], (v) => _data['kayip_hasar_cezasi'] = v, enabled: widget.admin),
+        _sayiAlan('Kayıp/hasarlı cezası (₺)', _data['kayip_hasar_cezasi'], (v) => _data['kayip_hasar_cezasi'] = v, enabled: widget.admin, desc: 'Kayıp/hasarlı iade kapatılırken önerilen ceza; iade diyaloğunda önceden doldurulur.'),
         const SizedBox(height: 12),
-        Row(children: [
-          Expanded(child: _sayiAlan('Karantina (gün)', _data['quarantine_days'], (v) => _data['quarantine_days'] = v, enabled: widget.admin)),
+        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Expanded(child: _sayiAlan('Karantina (gün)', _data['quarantine_days'], (v) => _data['quarantine_days'] = v, enabled: widget.admin, desc: 'İade edilen nüshanın yeniden ödünç verilebilmesi için beklenecek gün.')),
           const SizedBox(width: 12),
-          Expanded(child: _sayiAlan('Oto. uzatma (gün)', _data['auto_extend_days'], (v) => _data['auto_extend_days'] = v, enabled: widget.admin)),
+          Expanded(child: _sayiAlan('Oto. uzatma (gün)', _data['auto_extend_days'], (v) => _data['auto_extend_days'] = v, enabled: widget.admin, desc: 'Otomatik uzatmada iade tarihinin kaç gün öteleneceği.')),
           const SizedBox(width: 12),
-          Expanded(child: _sayiAlan('Oto. uzatma limiti', _data['auto_extend_limit'], (v) => _data['auto_extend_limit'] = v, enabled: widget.admin)),
+          Expanded(child: _sayiAlan('Oto. uzatma limiti', _data['auto_extend_limit'], (v) => _data['auto_extend_limit'] = v, enabled: widget.admin, desc: 'Bir kaydın en fazla kaç kez uzatılabileceği.')),
         ]),
         const SizedBox(height: 8),
-        _switchAlan('Hafta sonu kaydırma', _data['shift_weekend'] == true, (v) => setState(() => _data['shift_weekend'] = v), enabled: widget.admin),
-        _switchAlan('Otomatik uzatma açık', _data['auto_extend_enabled'] == true, (v) => setState(() => _data['auto_extend_enabled'] = v), enabled: widget.admin),
-        _switchAlan('Hasarlı için not zorunlu', _data['require_damage_note'] == true, (v) => setState(() => _data['require_damage_note'] = v), enabled: widget.admin),
-        _switchAlan('Raf kodu zorunlu', _data['require_shelf_code'] == true, (v) => setState(() => _data['require_shelf_code'] = v), enabled: widget.admin),
-        _switchAlan('Sessiz saatler açık', _data['quiet_hours_enabled'] == true, (v) => setState(() => _data['quiet_hours_enabled'] = v), enabled: widget.admin),
+        _switchAlan('Hafta sonu kaydırma', _data['shift_weekend'] == true, (v) => setState(() => _data['shift_weekend'] = v), enabled: widget.admin, desc: 'İade tarihi hafta sonuna denk gelirse sonraki iş gününe kaydırılır.'),
+        _switchAlan('Otomatik uzatma açık', _data['auto_extend_enabled'] == true, (v) => setState(() => _data['auto_extend_enabled'] = v), enabled: widget.admin, desc: 'Süre dolarken ödünç otomatik uzatılır (yukarıdaki gün/limit kullanılır).'),
+        _switchAlan('Hasarlı için not zorunlu', _data['require_damage_note'] == true, (v) => setState(() => _data['require_damage_note'] = v), enabled: widget.admin, desc: 'Kayıp/hasarlı iade kapatılırken açıklama girilmesi zorunlu olur.'),
+        _switchAlan('Raf kodu zorunlu', _data['require_shelf_code'] == true, (v) => setState(() => _data['require_shelf_code'] = v), enabled: widget.admin, desc: 'Yeni nüsha eklerken raf seçilmesi zorunlu olur.'),
+        _switchAlan('Sessiz saatler açık', _data['quiet_hours_enabled'] == true, (v) => setState(() => _data['quiet_hours_enabled'] = v), enabled: widget.admin, desc: 'Belirtilen aralıkta bildirim gönderimi ertelenir.'),
         const SizedBox(height: 8),
-        Row(children: [
-          Expanded(child: _metinAlan('Sessiz başlangıç (SS:DD)', _data['quiet_hours_start'], (v) => _data['quiet_hours_start'] = v, enabled: widget.admin)),
+        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Expanded(child: _metinAlan('Sessiz başlangıç (SS:DD)', _data['quiet_hours_start'], (v) => _data['quiet_hours_start'] = v, enabled: widget.admin, desc: 'Sessiz saatlerin başlangıcı.')),
           const SizedBox(width: 12),
-          Expanded(child: _metinAlan('Sessiz bitiş (SS:DD)', _data['quiet_hours_end'], (v) => _data['quiet_hours_end'] = v, enabled: widget.admin)),
+          Expanded(child: _metinAlan('Sessiz bitiş (SS:DD)', _data['quiet_hours_end'], (v) => _data['quiet_hours_end'] = v, enabled: widget.admin, desc: 'Bitiş; başlangıçtan küçükse gece yarısını aşar (ör. 22:00–08:00).')),
         ]),
         const SizedBox(height: 16),
         _KaydetButonu(admin: widget.admin, busy: _busy, onSave: _kaydet),
@@ -370,6 +402,56 @@ class _OdoncPolitikasiTabState extends State<_OdoncPolitikasiTab> {
 }
 
 // ---------------------------------------------------------------- Ceza (Rol)
+
+/// Ceza sekmesindeki alanların ne işe yaradığını tek seferde açıklar.
+class _CezaAciklamaKarti extends StatelessWidget {
+  const _CezaAciklamaKarti();
+
+  static const _satirlar = <(String, String)>[
+    ('Süre (gün)', 'Bu roldeki üyelere kitabın kaç gün ödünç verileceği.'),
+    ('Maks. kitap', 'Bu roldeki bir üyenin aynı anda alabileceği en fazla kitap.'),
+    ('Günlük ceza (₺)', 'Gecikme başladıktan sonra her gün için uygulanan ceza (0 = ceza yok).'),
+    ('Tolerans (gün)', 'Bu rol için cezasız kabul edilen gecikme günü.'),
+    ('Ceza gecikmesi', 'Toleranstan sonra cezanın başlaması için geçmesi gereken ek gün.'),
+    ('Tavan (kitap ₺)', 'Bu rol için tek ödünç kaydındaki en yüksek ceza.'),
+    ('Tavan (üye ₺)', 'Bu rol için bir üyenin toplam cezasının üst sınırı.'),
+    ('Hafta sonu kaydır', 'İade tarihi hafta sonuna denk gelirse iş gününe kaydırılır.'),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Card(
+      color: layerColor(context, theme.colorScheme.primary),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Alanların anlamı', style: theme.textTheme.titleSmall),
+            const SizedBox(height: 6),
+            for (final s in _satirlar)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: RichText(
+                  text: TextSpan(
+                    style: theme.textTheme.bodySmall,
+                    children: [
+                      TextSpan(
+                        text: '${s.$1}: ',
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      TextSpan(text: s.$2),
+                    ],
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
 
 class _CezaRolTab extends StatefulWidget {
   final bool admin;
@@ -457,8 +539,13 @@ class _CezaRolTabState extends State<_CezaRolTab> {
       padding: const EdgeInsets.all(24),
       children: [
         if (!widget.admin) ...[_adminUyari(context), const SizedBox(height: 12)],
-        Text('Rol bazlı süre/limit/ceza. Boş alanlar o rol için tanımsız sayılır.',
-            style: Theme.of(context).textTheme.bodySmall),
+        Text(
+          'Rol bazlı süre/limit/ceza. Boş alanlar o rol için tanımsız sayılır ve '
+          'Ödünç Politikası sekmesindeki genel değer kullanılır.',
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+        const SizedBox(height: 8),
+        const _CezaAciklamaKarti(),
         const SizedBox(height: 8),
         for (final r in _roller)
           Card(

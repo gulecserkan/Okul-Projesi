@@ -343,6 +343,7 @@ class _OverviewState extends State<_Overview> {
     var durum = 'teslim';
     var ceza = loan.penaltyPreview;
     var odendi = false;
+    String? kapanisNotu;
 
     if (cezaVar) {
       final action = await showDialog<Map<String, String>>(
@@ -356,6 +357,7 @@ class _OverviewState extends State<_Overview> {
       durum = action['durum']!;
       ceza = action['penalty'];
       odendi = action['odendi'] == 'true';
+      kapanisNotu = action['not'];
     }
 
     setState(() => _hizliBusy = true);
@@ -365,6 +367,7 @@ class _OverviewState extends State<_Overview> {
       teslimTarihi: DateTime.now().toUtc().toIso8601String(),
       gecikmeCezasi: ceza,
       odendi: odendi,
+      kapanisNotu: kapanisNotu,
     );
     if (!mounted) return;
     setState(() {
@@ -470,6 +473,7 @@ class _OverviewState extends State<_Overview> {
       teslimTarihi: DateTime.now().toUtc().toIso8601String(),
       gecikmeCezasi: action['penalty'],
       odendi: action['odendi'] == 'true',
+      kapanisNotu: action['not'],
     );
     if (!mounted) return;
     final ok = resp.statusCode >= 200 && resp.statusCode < 300;
