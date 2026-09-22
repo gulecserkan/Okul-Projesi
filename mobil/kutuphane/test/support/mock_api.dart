@@ -18,14 +18,13 @@ MockClient routingClient({
   List<Map<String, dynamic>> authors = const [],
   List<String> shelfCodes = const [],
   List<Map<String, dynamic>> loans = const [],
+  Map<String, dynamic>? penalty,
   Map<String, dynamic>? bookDetail,
   Map<String, dynamic>? loginResponse,
   int loginStatus = 200,
   int changePasswordStatus = 200,
   int healthStatus = 200,
   Map<String, dynamic>? fastQueryResponse,
-  int checkoutStatus = 201,
-  Map<String, dynamic>? checkoutError,
   void Function(http.Request request)? onRequest,
 }) {
   return MockClient((request) async {
@@ -59,23 +58,11 @@ MockClient routingClient({
     if (path.endsWith('/api/fast-query/')) {
       return jsonResponse(fastQueryResponse ?? {'type': 'not_found'});
     }
-    if (path.endsWith('/api/checkout/')) {
-      if (checkoutStatus >= 200 && checkoutStatus < 300) {
-        return jsonResponse({'id': 1, 'durum': 'oduncte'}, status: checkoutStatus);
-      }
-      return jsonResponse(
-        checkoutError ?? {'error': 'Ödünç verilemedi'},
-        status: checkoutStatus,
-      );
-    }
-    if (RegExp(r'/api/oduncler/\d+/kapat/?$').hasMatch(path)) {
-      return jsonResponse({'id': 1, 'durum': 'teslim'});
-    }
     if (path.endsWith('/api/kategoriler/')) return jsonResponse(categories);
     if (path.endsWith('/api/yazarlar/')) return jsonResponse(authors);
     if (path.endsWith('/api/raf-kodlari/')) return jsonResponse(shelfCodes);
     if (path.contains('/api/uye-gecmis/')) return jsonResponse(loans);
-    if (path.contains('/api/uye-ceza/')) return jsonResponse({});
+    if (path.contains('/api/uye-ceza/')) return jsonResponse(penalty ?? {});
     if (RegExp(r'/api/kitaplar/\d+/?$').hasMatch(path)) {
       return jsonResponse(bookDetail ?? {'id': 1, 'baslik': 'Detay Kitap'});
     }

@@ -4,8 +4,9 @@ import '../api/library_api.dart';
 import '../models/auth.dart';
 import '../models/book.dart';
 
-/// K9: Üye (üye/öğretmen) ekranı — salt-okunur.
-/// Kitaplarda gezinti/arama + kendi ödünç geçmişi. Düzenleme yoktur.
+/// K9: Üye (öğrenci/öğretmen) ekranı — salt-okunur.
+/// Kitaplarda gezinti/arama + kendi ödünç geçmişi + ceza bakiyesi.
+/// Düzenleme ve ödünç/iade işlemleri yoktur.
 class UyeHomeScreen extends StatefulWidget {
   const UyeHomeScreen({
     super.key,
@@ -42,6 +43,10 @@ class _UyeHomeScreenState extends State<UyeHomeScreen> {
   bool _loadingLoans = false;
   String? _loansError;
 
+  Map<String, dynamic> _ceza = {};
+  bool _loadingCeza = false;
+  String? _cezaError;
+
   @override
   void initState() {
     super.initState();
@@ -53,6 +58,7 @@ class _UyeHomeScreenState extends State<UyeHomeScreen> {
         );
     _loadBooks();
     _loadLoans();
+    _loadCeza();
   }
 
   @override
@@ -104,6 +110,32 @@ class _UyeHomeScreenState extends State<UyeHomeScreen> {
       setState(() {
         _loansError = e is ApiException ? e.message : e.toString();
         _loadingLoans = false;
+      });
+    }
+  }
+
+  Future<void> _loadCeza() async {
+    final no = widget.tokens.uyeNo;
+    if (no == null || no.isEmpty) {
+      setState(() => _loadingCeza = false);
+      return;
+    }
+    setState(() {
+      _loadingCeza = true;
+      _cezaError = null;
+    });
+    try {
+      final data = await _api.fetchUyeCeza(no);
+      if (!mounted) return;
+      setState(() {
+        _ceza = data;
+        _loadingCeza = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _cezaError = e is ApiException ? e.message : e.toString();
+        _loadingCeza = false;
       });
     }
   }
@@ -167,10 +199,54 @@ class _UyeHomeScreenState extends State<UyeHomeScreen> {
     return s.isEmpty ? '—' : s;
   }
 
+  String _durumLabel(String d) {
+    switch (d) {
+      case 'oduncte':
+        return 'Ödünçte';
+      case 'gecikmis':
+        return 'Gecikmiş';
+      case 'teslim':
+        return 'Teslim';
+      case 'kayip':
+        return 'Kayıp';
+      case 'hasarli':
+        return 'Hasarlı';
+      case 'iptal':
+        return 'İptal';
+      case 'mevcut':
+        return 'Mevcut';
+      default:
+        return d.isEmpty ? '—' : d;
+    }
+  }
+
+  /// iade_tarihi'ne kalan gün / gecikme metni.
+  String _daysLeft(dynamic iso) {
+    final s = (iso ?? '').toString();
+    final due = DateTime.tryParse(s);
+    if (due == null) return '';
+    final diff = due.difference(DateTime.now());
+    final days = diff.inDays;
+    return days < 0 ? '${-days} gün gecikti' : '$days gün kaldı';
+  }
+
+  bool _isActiveLoan(Map<String, dynamic> r) {
+    final durum = (r['durum'] ?? '').toString();
+    return durum == 'oduncte' || durum == 'gecikmis';
+  }
+
+  bool _isOverdue(Map<String, dynamic> r) {
+    final durum = (r['durum'] ?? '').toString();
+    if (durum == 'gecikmis') return true;
+    final due = DateTime.tryParse((r['iade_tarihi'] ?? '').toString());
+    if (due == null) return false;
+    return due.isBefore(DateTime.now());
+  }
+
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 2,
+      length: 3,
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Kütüphane'),
@@ -190,6 +266,7 @@ class _UyeHomeScreenState extends State<UyeHomeScreen> {
             tabs: [
               Tab(icon: Icon(Icons.menu_book_outlined), text: 'Kitaplar'),
               Tab(icon: Icon(Icons.history), text: 'Ödünçlerim'),
+              Tab(icon: Icon(Icons.paid_outlined), text: 'Ceza'),
             ],
           ),
         ),
@@ -197,6 +274,7 @@ class _UyeHomeScreenState extends State<UyeHomeScreen> {
           children: [
             _buildBooksTab(),
             _buildLoansTab(),
+            _buildPenaltyTab(),
           ],
         ),
       ),
@@ -259,6 +337,42 @@ class _UyeHomeScreenState extends State<UyeHomeScreen> {
     );
   }
 
+  Widget _loanTile(Map<String, dynamic> r) {
+    final durum = (r['durum'] ?? '').toString();
+    final label = _durumLabel(durum);
+    final overdue = _isOverdue(r);
+    final scheme = Theme.of(context).colorScheme;
+
+    final subtitleParts = [
+      'Ödünç: ${_shortDate(r['odunc_tarihi'])} · '
+          'İade: ${_shortDate(r['iade_tarihi'])}',
+    ];
+    if (_isActiveLoan(r)) {
+      subtitleParts.add(_daysLeft(r['iade_tarihi']));
+    }
+
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      child: ListTile(
+        title: Text(_loanTitle(r)),
+        subtitle: Text(subtitleParts.join('\n')),
+        trailing: Chip(
+          label: Text(label),
+          visualDensity: VisualDensity.compact,
+          backgroundColor: overdue
+              ? scheme.errorContainer
+              : _isActiveLoan(r)
+                  ? scheme.primaryContainer
+                  : scheme.surfaceContainerHighest,
+          labelStyle: TextStyle(
+            color: overdue ? scheme.onErrorContainer : scheme.onSurface,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildLoansTab() {
     if (widget.tokens.uyeNo == null || widget.tokens.uyeNo!.isEmpty) {
       return const Center(child: Text('Ödünç bilgisi için hesabınızda numara yok.'));
@@ -272,28 +386,127 @@ class _UyeHomeScreenState extends State<UyeHomeScreen> {
     if (_loans.isEmpty) {
       return const Center(child: Text('Kayıtlı ödünç yok.'));
     }
+
+    final active = _loans.where(_isActiveLoan).toList();
+    final past = _loans.where((r) => !_isActiveLoan(r)).toList();
+
     return RefreshIndicator(
       onRefresh: _loadLoans,
-      child: ListView.builder(
-        itemCount: _loans.length,
-        itemBuilder: (context, i) {
-          final r = _loans[i];
-          final durum = (r['durum'] ?? '').toString();
-          return Card(
-            margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-            child: ListTile(
-              title: Text(_loanTitle(r)),
-              subtitle: Text(
-                'Ödünç: ${_shortDate(r['odunc_tarihi'])} · '
-                'İade: ${_shortDate(r['iade_tarihi'])}',
-              ),
-              trailing: Chip(
-                label: Text(durum.isEmpty ? '—' : durum),
-                visualDensity: VisualDensity.compact,
+      child: ListView(
+        children: [
+          if (active.isNotEmpty) ...[
+            _sectionHeader('Aktif'),
+            ...active.map(_loanTile),
+          ],
+          if (past.isNotEmpty) ...[
+            _sectionHeader('Geçmiş'),
+            ...past.map(_loanTile),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _sectionHeader(String text) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 4),
+      child: Text(
+        text,
+        style: Theme.of(context)
+            .textTheme
+            .titleSmall
+            ?.copyWith(fontWeight: FontWeight.bold),
+      ),
+    );
+  }
+
+  Widget _buildPenaltyTab() {
+    if (widget.tokens.uyeNo == null || widget.tokens.uyeNo!.isEmpty) {
+      return const Center(child: Text('Ceza bilgisi için hesabınızda numara yok.'));
+    }
+    if (_loadingCeza) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (_cezaError != null) {
+      return Center(child: Text('Ceza durumu yüklenemedi.\n$_cezaError'));
+    }
+
+    final entries = (_ceza['entries'] as List?) ?? const [];
+    final total = (_ceza['outstanding_total'] ?? '0.00').toString();
+    final count = _ceza['outstanding_count'] is int
+        ? (_ceza['outstanding_count'] as int)
+        : entries.length;
+
+    return RefreshIndicator(
+      onRefresh: _loadCeza,
+      child: entries.isEmpty
+          ? ListView(
+              children: [
+                _summaryCard(total, count),
+                const Padding(
+                  padding: EdgeInsets.all(24),
+                  child: Center(child: Text('Ödenmemiş ceza yok.')),
+                ),
+              ],
+            )
+          : ListView(
+              children: [
+                _summaryCard(total, count),
+                ...entries.map((raw) {
+                  final e = (raw as Map).cast<String, dynamic>();
+                  return Card(
+                    margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                    child: ListTile(
+                      title: Text((e['kitap'] ?? 'Kitap').toString()),
+                      subtitle: Text(
+                        'Barkod: ${e['barkod']} · '
+                        'İade: ${_shortDate(e['iade_tarihi'])} · '
+                        'Durum: ${_durumLabel((e['durum'] ?? '').toString())}',
+                      ),
+                      trailing: Text(
+                        '₺${e['gecikme_cezasi'] ?? '0.00'}',
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  );
+                }),
+              ],
+            ),
+    );
+  }
+
+  Widget _summaryCard(String total, int count) {
+    final scheme = Theme.of(context).colorScheme;
+    return Card(
+      margin: const EdgeInsets.all(12),
+      color: scheme.secondaryContainer,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Ödenmemiş ceza toplamı',
+              style: TextStyle(
+                color: scheme.onSecondaryContainer,
+                fontWeight: FontWeight.w600,
               ),
             ),
-          );
-        },
+            const SizedBox(height: 6),
+            Text(
+              '₺$total',
+              style: Theme.of(context)
+                  .textTheme
+                  .headlineSmall
+                  ?.copyWith(fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              '$count kayıt',
+              style: TextStyle(color: scheme.onSecondaryContainer),
+            ),
+          ],
+        ),
       ),
     );
   }

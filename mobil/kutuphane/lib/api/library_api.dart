@@ -296,47 +296,6 @@ class LibraryApiClient {
     return decoded is Map<String, dynamic> ? decoded : <String, dynamic>{};
   }
 
-  /// Ödünç ver: POST /api/checkout/ {uye_no, barkod}.
-  Future<void> checkout({required String uyeNo, required String barkod}) async {
-    _ensureAuthorized();
-    final response = await _client.post(
-      _uri("/api/checkout/"),
-      headers: _headers(),
-      body: jsonEncode({"uye_no": uyeNo.trim(), "barkod": barkod.trim()}),
-    );
-    if (response.statusCode >= 200 && response.statusCode < 300) return;
-    _maybeNotifyUnauthorized(response);
-    _throwError(response);
-  }
-
-  /// Ödünç kaydını kapatır (teslim/kayıp/hasarlı/iptal).
-  Future<void> closeLoan(
-    int loanId, {
-    required String durum,
-    required String teslimTarihi,
-    String? gecikmeCezasi,
-    bool odendi = false,
-    String? kapanisNotu,
-  }) async {
-    _ensureAuthorized();
-    final response = await _client.post(
-      _uri("/api/oduncler/$loanId/kapat/"),
-      headers: _headers(),
-      body: jsonEncode({
-        "durum": durum,
-        "teslim_tarihi": teslimTarihi,
-        if (gecikmeCezasi != null && gecikmeCezasi.trim().isNotEmpty)
-          "gecikme_cezasi": gecikmeCezasi.trim(),
-        if (odendi) "gecikme_cezasi_odendi": true,
-        if (kapanisNotu != null && kapanisNotu.trim().isNotEmpty)
-          "kapanis_notu": kapanisNotu.trim(),
-      }),
-    );
-    if (response.statusCode >= 200 && response.statusCode < 300) return;
-    _maybeNotifyUnauthorized(response);
-    _throwError(response);
-  }
-
   Future<http.Response> _authorizedGet(
     String path, {
     Map<String, String>? query,

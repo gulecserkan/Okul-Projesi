@@ -76,9 +76,13 @@ Ayarlarda tanımlı ama işleyişe bağlanmamış alanlar (K10):
 
 Ayrıntı: `04_MOBIL.md`.
 
+> **Kapsam kararı (mobil v2):** Mobil uygulama **salt-okunur asistan** olacak;
+> ödünç verme/iade, yönetim, rapor ve yazdırma masaüstünde kalır.
+
 - [x] Kolay temizlikler: 401 bildirimi, sayfalama + debug satırı, `collection`, uygulama adı, sunucu adresi.
-- [x] **Ödünç/İade** akışı (barkod/üye no hızlı sorgu, ödünç ver, iade al) — personel/editör.
-- [x] Widget testleri (bağlantı/giriş/şifre/üye/kitap/ödünç-iade).
-- [ ] Üye **Ödünçlerim** iyileştirme (aktif/geçmiş, süre uyarısı, teslim tarihi).
+- [x] **Mobil v2 kapsamı**: ödünç/iade mobilde kaldırıldı; personel için **Sorgu** (read-only).
+- [x] Üye **Ödünçlerim** iyileştirme (aktif/geçmiş, kalan gün, gecikme uyarısı) + **Ceza** sekmesi.
+- [x] Widget testleri (bağlantı/giriş/şifre/üye/ödünçlerim+ceza/kitap/**sorgu**).
 - [ ] Katalog gezintisi zenginleştirme (kategori/raf filtreli, favoriler, kapak büyütme).
+- [ ] **Kitap rezervasyonu/istek** (backend + `K` kuralı + masaüstü işleme + mobil görünüm) — Faz 2.
 - [ ] State yönetimi (provider/bloc/riverpod) değerlendirmesi.
