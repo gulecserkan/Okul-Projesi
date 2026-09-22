@@ -23,7 +23,7 @@ Django REST Framework. Tüm uçlar varsayılan olarak **JWT + IsAuthenticated** 
 |---|---|
 | `/api/roller/` | Rol CRUD |
 | `/api/siniflar/` | Sınıf CRUD |
-| `/api/uyeler/` | Üye CRUD (öğrenci/öğretmen/editör). Yazma personel; silme/durum admin. `sifre` alanı verilirse üye girişi oluşturulur. `/api/uyeler/ben-ekle/` → giriş yapan kullanıcı kendini üye yapar |
+| `/api/uyeler/` | Üye CRUD (öğrenci/öğretmen/editör). Yazma personel; silme/durum admin. `sifre` alanı verilirse üye girişi oluşturulur (kullanıcı adı = `uye_no`). Öğrenci dışı rol ataması yalnız admin (K9.5.2) |
 | `/api/yazarlar/` | Yazar CRUD |
 | `/api/kategoriler/` | Kategori CRUD |
 | `/api/kitaplar/` | Kitap CRUD (zengin filtrelerle) |

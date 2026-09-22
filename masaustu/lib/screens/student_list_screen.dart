@@ -11,6 +11,7 @@ import '../widgets/radial_menu.dart';
 import '../widgets/row_table.dart';
 import 'student_detail_screen.dart';
 import 'student_form_dialog.dart';
+import 'password_dialog.dart';
 
 class StudentListScreen extends StatefulWidget {
   const StudentListScreen({super.key});
@@ -369,6 +370,8 @@ void _snack(String msg, {bool error = false}) {
           icon: Icons.edit_outlined, label: 'Düzenle', value: 'duzenle'),
       const RadialMenuItem(
           icon: Icons.chevron_right, label: 'Detay', value: 'detay'),
+      const RadialMenuItem(
+          icon: Icons.key_outlined, label: 'Şifre Ver', value: 'sifre'),
       if (_isAdmin)
         RadialMenuItem(
           icon: o.aktif ? Icons.person_off_outlined : Icons.person_outline,
@@ -402,10 +405,22 @@ void _snack(String msg, {bool error = false}) {
         await _editStudent(o);
       case 'detay':
         _openDetail(o);
+      case 'sifre':
+        await _givePassword(o);
       case 'durum':
         await _toggleStatus(o);
       case 'sil':
         await _deleteStudent(o);
+    }
+  }
+
+  Future<void> _givePassword(Uye o) async {
+    final sifre = await showDialog<String>(
+      context: context,
+      builder: (_) => PasswordDialog(uye: o),
+    );
+    if (sifre != null && mounted) {
+      _snack('Şifre güncellendi: $sifre — öğrenci ilk girişte değiştirecek.');
     }
   }
 

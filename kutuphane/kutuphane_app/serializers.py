@@ -23,6 +23,7 @@ from .models import (
     InventorySession,
     InventoryItem,
 )
+from .rules import rol_degisikligi_izinli
 
 
 class RolSerializer(serializers.ModelSerializer):
@@ -47,14 +48,6 @@ class UyeSerializer(serializers.ModelSerializer):
     )
     # K9: personel, üye (öğrenci/öğretmen) için başlangıç/yeni şifre belirler.
     sifre = serializers.CharField(write_only=True, required=False, allow_blank=True)
-    # K9: mevcut bir User hesabına bağlama (ör. personel/öğretmen kendini üye yapar).
-    user_id = serializers.PrimaryKeyRelatedField(
-        source="user",
-        queryset=User.objects.all(),
-        write_only=True,
-        required=False,
-        allow_null=True,
-    )
 
     class Meta:
         model = Uye
@@ -74,6 +67,20 @@ class UyeSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 {"uye_no": "Öğrenci için numara zorunludur."}
             )
+        # K9.5.2: Öğrenci dışı rol (öğretmen/editör) ataması yalnız admin.
+        if "rol" in attrs:
+            request = self.context.get("request")
+            hedef_rol = attrs.get("rol")
+            if not rol_degisikligi_izinli(
+                hedef_rol.ad if hedef_rol is not None else None,
+                is_superuser=bool(request and request.user.is_superuser),
+            ):
+                raise serializers.ValidationError(
+                    {
+                        "rol": "Öğrenci dışı rol (öğretmen/editör) ataması "
+                        "yalnızca yönetici tarafından yapılabilir."
+                    }
+                )
         return attrs
 
     def create(self, validated_data):
@@ -94,6 +101,14 @@ class UyeSerializer(serializers.ModelSerializer):
         """Üye girişi: kullanıcı adı = uye_no; ilk girişte değiştirme zorunlu."""
         user = uye.user
         if user is None:
+            # K9.5.1: öğretmen/editörde kullanıcı adı = uye_no (TC kimlik no).
+            if not uye.uye_no:
+                raise serializers.ValidationError(
+                    {
+                        "sifre": "Şifre tanımlamak için önce üye numarası "
+                        "(öğretmen/editörde TC kimlik no) girilmelidir."
+                    }
+                )
             user, _ = User.objects.get_or_create(username=uye.uye_no)
         user.set_password(raw_password)
         user.is_staff = False

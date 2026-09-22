@@ -786,118 +786,48 @@ class _KurumTabState extends State<_KurumTab> {
 
 // ---------------------------------------------------------------- Hesap
 
-class _HesapTab extends StatefulWidget {
+/// Hesap sekmesi (salt-okunur): masaüstü hesabı yalnız User'dır (personel/admin);
+/// üye (öğrenci/öğretmen/editör) kayıtları mobildedir ve masaüstünden ayrı açılır (K9.6).
+class _HesapTab extends StatelessWidget {
   const _HesapTab();
 
-  @override
-  State<_HesapTab> createState() => _HesapTabState();
-}
-
-class _HesapTabState extends State<_HesapTab> {
-  final _api = KutuphaneApi();
-  bool _busy = false;
-
-  Future<void> _kendimiUyeEkle() async {
-    final ad = TextEditingController();
-    final soyad = TextEditingController();
-    final uyeNo = TextEditingController();
-    List<Map<String, dynamic>> roller = [];
-    try {
-      roller = await _api.roller();
-    } catch (_) {}
-    if (!mounted) return;
-    int? rolId = roller.isNotEmpty ? roller.first['id'] as int? : null;
-
-    final onay = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setLocal) => AlertDialog(
-          title: const Text('Kendimi üye olarak ekle'),
-          content: SizedBox(
-            width: 360,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                    controller: ad,
-                    autofocus: true,
-                    decoration:
-                        const InputDecoration(labelText: 'Ad', isDense: true)),
-                const SizedBox(height: 8),
-                TextField(
-                    controller: soyad,
-                    decoration: const InputDecoration(
-                        labelText: 'Soyad', isDense: true)),
-                const SizedBox(height: 8),
-                TextField(
-                    controller: uyeNo,
-                    decoration: const InputDecoration(
-                        labelText: 'Numara (opsiyonel)', isDense: true)),
-                const SizedBox(height: 8),
-                if (roller.isNotEmpty)
-                  DropdownButtonFormField<int>(
-                    initialValue: rolId,
-                    isExpanded: true,
-                    decoration: const InputDecoration(
-                        labelText: 'Rol', isDense: true),
-                    items: [
-                      for (final r in roller)
-                        DropdownMenuItem<int>(
-                          value: r['id'] as int,
-                          child: Text((r['ad'] ?? '').toString()),
-                        ),
-                    ],
-                    onChanged: (v) => setLocal(() => rolId = v),
-                  ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(false),
-              child: const Text('Vazgeç'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.of(ctx).pop(true),
-              child: const Text('Ekle'),
-            ),
-          ],
-        ),
-      ),
-    );
-    if (onay != true) return;
-    setState(() => _busy = true);
-    final res = await _api.uyeBenEkle(
-      ad: ad.text,
-      soyad: soyad.text,
-      rolId: rolId,
-      uyeNo: uyeNo.text,
-    );
-    ad.dispose();
-    soyad.dispose();
-    uyeNo.dispose();
-    if (!mounted) return;
-    setState(() => _busy = false);
-    showAppSnack(
-      context,
-      res.uye != null ? 'Üye kaydınız oluşturuldu.' : (res.error ?? 'Kayıt yapılamadı.'),
-      error: res.uye == null,
-    );
-  }
+  String _duz(String v) => v.trim().isEmpty ? '—' : v;
 
   @override
   Widget build(BuildContext context) {
+    final s = AppConfig.session;
     return ListView(
       padding: const EdgeInsets.all(24),
       children: [
         Card(
           child: ListTile(
-            leading: const Icon(Icons.person_add_alt_1),
-            title: const Text('Kendimi üye olarak ekle'),
-            subtitle: const Text(
-                'Personel/öğretmen de ödünç alabilsin diye size bir üye kaydı oluşturur.'),
-            enabled: !_busy,
-            onTap: _busy ? null : _kendimiUyeEkle,
+            leading: const Icon(Icons.person_outline),
+            title: const Text('Kullanıcı adı'),
+            subtitle: Text(_duz(s?.username ?? '')),
+          ),
+        ),
+        Card(
+          child: ListTile(
+            leading: const Icon(Icons.badge_outlined),
+            title: const Text('Rol'),
+            subtitle: Text(_duz(s?.role ?? '')),
+          ),
+        ),
+        Card(
+          child: ListTile(
+            leading: const Icon(Icons.account_circle_outlined),
+            title: const Text('Tam ad'),
+            subtitle: Text(_duz(s?.fullName ?? '')),
+          ),
+        ),
+        const Padding(
+          padding: EdgeInsets.fromLTRB(16, 8, 16, 0),
+          child: Text(
+            'Masaüstü hesabınız personel/admin yönetim erişimi içindir ve üye '
+            '(öğrenci/öğretmen/editör) kaydıyla bağlantılı değildir. Ödünç almak için '
+            'ayrı bir üye kaydı admin (öğretmen/editör) veya personel (öğrenci) '
+            'tarafından oluşturulur.',
+            style: TextStyle(fontSize: 12, color: Colors.grey),
           ),
         ),
       ],

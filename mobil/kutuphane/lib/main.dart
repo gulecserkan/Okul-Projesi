@@ -95,6 +95,12 @@ class _KutuphaneAppState extends State<KutuphaneApp> {
       }
     }
 
+    // K9: mobil uygulama üye hesaplarına açıktır; personel/admin hesabı varsa at.
+    if (refreshedTokens != null && !refreshedTokens.isUye) {
+      await _storage.clearTokens();
+      refreshedTokens = null;
+    }
+
     setState(() {
       _baseUrl = storedBaseUrl;
       _tokens = refreshedTokens;

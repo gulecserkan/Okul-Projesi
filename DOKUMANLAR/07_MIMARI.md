@@ -44,10 +44,10 @@ Bağlantı: `Uye.user` = **opsiyonel** 1:1 (`related_name="uye"`).
 
 ## Otomatik oluşturma kuralı
 - **Uye → User:** Yalnız bir üyeye **şifre verildiğinde** `User` oluşturulur/bağlanır
-  (`UyeSerializer.sifre`). Girişsiz üyede `user` boş kalır.
-- **User → Uye:** Otomatik **değil**. Personel/öğretmen kendini
-  **Ayarlar → "Kendimi üye olarak ekle"** (`POST /api/uyeler/ben-ekle/`) ile bağlar.
-  Alternatif: Django admin → Üye → `user` alanında mevcut kullanıcıyı seç.
+  (`UyeSerializer.sifre`, kullanıcı adı = `uye_no`). Girişsiz üyede `user` boş kalır.
+- **User → Uye:** Bağlantı **yok** (self-servis kaldırıldı). Masaüstü hesabı (personel/
+  admin) yalnız `User`'dır; ödünç alacak kişi **ayrı üye kaydı** ile açılır
+  (admin → öğretmen/editör, personel → öğrenci).
 
 ## Alan notları
 - `Uye.uye_no`: **opsiyonel + benzersiz** (öğrencide zorunlu; personel/editörde boş).
@@ -72,4 +72,4 @@ Bağlantı: `Uye.user` = **opsiyonel** 1:1 (`related_name="uye"`).
 - `/api/student-history/<no>/` → `/api/uye-gecmis/<no>/`
 - `/api/student-penalties/<no>/` → `/api/uye-ceza/<no>/`
 - `/api/personel/` **kaldırıldı**
-- Yeni: `POST /api/uyeler/ben-ekle/`
+- `/api/uyeler/ben-ekle/` **kaldırıldı** (self-servis yok)

@@ -646,6 +646,88 @@ class UyeCRUDAPITests(APITestCase):
         _ = kitap
 
 
+class UyeRolAtamaTests(APITestCase):
+    """K9.5.2: Öğrenci dışı rol (öğretmen/editör) ataması yalnız admin."""
+
+    def setUp(self):
+        self.admin_user = User.objects.create_superuser(username="admin", password="a1!")
+        self.personel_user = User.objects.create_user(username="person", password="p1!")
+        self.ogrenci, _ = Rol.objects.get_or_create(ad="Öğrenci")
+        self.ogretmen, _ = Rol.objects.get_or_create(ad="Öğretmen")
+        self.editor, _ = Rol.objects.get_or_create(ad="Editör")
+
+    def test_personel_cannot_assign_teacher_role(self):
+        self.client.force_authenticate(self.personel_user)
+        resp = self.client.post(
+            "/api/uyeler/",
+            {"ad": "Öğr", "soyad": "Öğretmen", "uye_no": "12345678910",
+             "rol_id": self.ogretmen.id},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST, resp.content)
+
+    def test_personel_cannot_promote_student_to_editor(self):
+        uye = Uye.objects.create(ad="Ali", soyad="Veli", uye_no="70001", rol=self.ogrenci)
+        self.client.force_authenticate(self.personel_user)
+        resp = self.client.patch(
+            f"/api/uyeler/{uye.id}/", {"rol_id": self.editor.id}, format="json"
+        )
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST, resp.content)
+        uye.refresh_from_db()
+        self.assertEqual(uye.rol, self.ogrenci)
+
+    def test_personel_cannot_demote_role_to_null(self):
+        uye = Uye.objects.create(
+            ad="Öğr", soyad="Öğretmen", uye_no="12345678910", rol=self.ogretmen
+        )
+        self.client.force_authenticate(self.personel_user)
+        resp = self.client.patch(f"/api/uyeler/{uye.id}/", {"rol_id": None}, format="json")
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST, resp.content)
+        uye.refresh_from_db()
+        self.assertEqual(uye.rol, self.ogretmen)
+        self.assertFalse(Uye.objects.filter(pk=uye.pk, rol__isnull=True).exists())
+
+    def test_personel_can_create_student_role(self):
+        self.client.force_authenticate(self.personel_user)
+        resp = self.client.post(
+            "/api/uyeler/",
+            {"ad": "Öğr", "soyad": "Öğrenci", "uye_no": "70002",
+             "rol_id": self.ogrenci.id},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, status.HTTP_201_CREATED, resp.content)
+
+    def test_admin_can_assign_teacher_role(self):
+        self.client.force_authenticate(self.admin_user)
+        resp = self.client.post(
+            "/api/uyeler/",
+            {"ad": "Öğr", "soyad": "Öğretmen", "uye_no": "12345678910",
+             "rol_id": self.ogretmen.id, "sinif_id": None},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, status.HTTP_201_CREATED, resp.content)
+
+    def test_admin_can_assign_editor_role(self):
+        self.client.force_authenticate(self.admin_user)
+        resp = self.client.post(
+            "/api/uyeler/",
+            {"ad": "Ed", "soyad": "Editör", "uye_no": "98765432100",
+             "rol_id": self.editor.id},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, status.HTTP_201_CREATED, resp.content)
+
+    def test_ben_ekle_endpoint_removed(self):
+        # K9.6: self-servis (ben-ekle) kaldırıldı → action yok (405).
+        self.client.force_authenticate(self.admin_user)
+        resp = self.client.post(
+            "/api/uyeler/ben-ekle/",
+            {"ad": "X", "soyad": "Y"},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+
+
 class KatalogAPITests(APITestCase):
     """Faz C: katalog CRUD (admin), raf modeli, nüsha durum düzeltme (K4.8),
     birleştirme (K6.2), çift kitap (K6.1), kitap/nüsha silme kuralları."""

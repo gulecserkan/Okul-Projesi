@@ -311,37 +311,6 @@ class UyeViewSet(viewsets.ModelViewSet):
         self.perform_destroy(uye)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
-    @action(detail=False, methods=["post"], permission_classes=[IsAuthenticated],
-            url_path="ben-ekle")
-    def ben_ekle(self, request):
-        """K9: giriş yapan kullanıcı kendisi için Uye kaydı oluşturur ve bağlar.
-
-        Personel/öğretmen/admin'in de ödünç alabilmesi için (self-servis).
-        """
-        if getattr(request.user, "uye", None) is not None:
-            return Response(
-                {"error": "Zaten bir üye kaydınız var."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        data = request.data or {}
-        ad = (data.get("ad") or "").strip()
-        soyad = (data.get("soyad") or "").strip()
-        if not ad or not soyad:
-            return Response(
-                {"error": "ad ve soyad zorunludur."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        rol_id = data.get("rol_id")
-        rol = Rol.objects.filter(pk=rol_id).first() if rol_id else Rol.objects.filter(ad="Editör").first()
-        uye = Uye.objects.create(
-            ad=ad,
-            soyad=soyad,
-            uye_no=(data.get("uye_no") or None),
-            rol=rol,
-            user=request.user,
-        )
-        return Response(UyeSerializer(uye).data, status=status.HTTP_201_CREATED)
-
     @action(detail=True, methods=["post"], permission_classes=[IsAuthenticated, IsAdminPersonel])
     def durum(self, request, pk=None):
         """K2.6: aktif/pasif değişimi — yalnızca admin."""

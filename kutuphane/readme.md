@@ -111,7 +111,7 @@ Ana URL: http://127.0.0.1:8000/api/
 
 /oduncler/ → Ödünç kayıtları
 
-/uyeler/ → Üye CRUD (+ /uyeler/ben-ekle/)
+/uyeler/ → Üye CRUD (öğrenci/öğretmen/editör)
 
 /istatistik/ → İstatistik raporları
 

@@ -33,12 +33,22 @@ class AuthApi {
           .timeout(const Duration(seconds: 8));
       if (resp.statusCode == 200) {
         final data = jsonDecode(resp.body) as Map<String, dynamic>;
+        // K9: masaüstü yalnız personel/admin hesabına açık (üye hesapları mobilde).
+        final tip = (data['tip'] ?? 'personel').toString();
+        if (tip != 'personel') {
+          return (
+            ok: false,
+            error: 'Bu hesap üye (öğrenci/öğretmen/editör) uygulamasına aittir; '
+                'masaüstüne yalnız personel/admin girişi yapabilir.',
+          );
+        }
         AppConfig.session = Session(
           accessToken: data['access'] as String? ?? '',
           refreshToken: data['refresh'] as String? ?? '',
           username: username,
           fullName: data['full_name'] as String? ?? '',
           role: data['role'] as String? ?? '',
+          tip: tip,
         );
         return (ok: true, error: '');
       }

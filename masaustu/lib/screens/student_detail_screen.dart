@@ -6,6 +6,7 @@ import '../formatters.dart';
 import '../models.dart';
 import '../theme.dart';
 import 'student_form_dialog.dart';
+import 'password_dialog.dart';
 
 const _deletedUye = Uye(id: -1, ad: '', soyad: '', uyeNo: '');
 
@@ -117,6 +118,16 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
     }
   }
 
+  Future<void> _givePassword() async {
+    final sifre = await showDialog<String>(
+      context: context,
+      builder: (_) => PasswordDialog(uye: widget.uye),
+    );
+    if (sifre != null && mounted) {
+      _snack('Şifre güncellendi: $sifre — öğrenci ilk girişte değiştirecek.');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final o = widget.uye;
@@ -124,6 +135,11 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
       appBar: AppBar(
         title: Text(o.adSoyad),
         actions: [
+          IconButton(
+            tooltip: 'Şifre Ver',
+            icon: const Icon(Icons.key_outlined),
+            onPressed: _givePassword,
+          ),
           IconButton(
             tooltip: 'Düzenle',
             icon: const Icon(Icons.edit_outlined),

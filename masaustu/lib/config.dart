@@ -74,6 +74,7 @@ class AppConfig {
       username: s['username'] as String? ?? '',
       fullName: s['full_name'] as String? ?? '',
       role: s['role'] as String? ?? '',
+      tip: s['tip'] as String? ?? 'personel',
     );
   }
 
@@ -88,6 +89,7 @@ class AppConfig {
         'username': session.username,
         'full_name': session.fullName,
         'role': session.role,
+        'tip': session.tip,
       };
     }
     _write(data);
@@ -101,13 +103,19 @@ class Session {
   final String fullName;
   final String role;
 
+  /// K9: hesap tipi — 'personel' (operatör/admin) veya 'uye'; masaüstü yalnız personel.
+  final String tip;
+
   const Session({
     required this.accessToken,
     required this.refreshToken,
     required this.username,
     this.fullName = '',
     this.role = '',
+    this.tip = 'personel',
   });
 
   bool get isValid => accessToken.isNotEmpty;
+
+  bool get isPersonel => tip != 'uye';
 }

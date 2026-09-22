@@ -84,6 +84,7 @@ class ApiClient {
         username: session.username,
         fullName: data['full_name'] as String? ?? session.fullName,
         role: data['role'] as String? ?? session.role,
+        tip: data['tip'] as String? ?? session.tip,
       );
       return true;
     } catch (_) {

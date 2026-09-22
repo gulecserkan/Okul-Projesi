@@ -57,7 +57,30 @@ void main() {
 
     expect(captured, isNotNull);
     expect(captured!.accessToken, 'acc');
-    expect(captured!.tip, 'personel');
+    expect(captured!.tip, 'uye');
+  });
+
+  testWidgets('personel hesabı mobilde reddedilir', (tester) async {
+    await tester.pumpWidget(_screen(
+      onAuthenticated: (_) async {},
+      mock: routingClient(
+        loginResponse: {
+          'access': 'acc',
+          'refresh': 'ref',
+          'full_name': 'Personel',
+          'role': 'personel',
+          'tip': 'personel',
+        },
+      ),
+    ));
+
+    await tester.enterText(find.byType(TextField).at(0), 'person');
+    await tester.enterText(find.byType(TextField).at(1), 'gizli');
+    await tester.tap(find.text('Giriş yap'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(find.textContaining('masaüstü'), findsOneWidget);
   });
 
   testWidgets('hatalı girişte sunucu mesajı gösterilir', (tester) async {
@@ -84,5 +107,17 @@ void main() {
     ));
 
     expect(find.textContaining('Oturum süresi doldu'), findsOneWidget);
+  });
+
+  testWidgets('Şifrem yok bilgilendirmesi gösterilir', (tester) async {
+    await tester.pumpWidget(_screen(onAuthenticated: (_) async {}));
+
+    expect(find.text('Şifrem yok'), findsOneWidget);
+
+    await tester.tap(find.text('Şifrem yok'));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('kütüphane sorumlusu'), findsOneWidget);
+    expect(find.text('Tamam'), findsOneWidget);
   });
 }

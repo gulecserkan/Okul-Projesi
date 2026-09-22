@@ -49,8 +49,10 @@ class _BootstrapHomeState extends State<_BootstrapHome> {
 
   Future<void> _restoreSession() async {
     final session = AppConfig.session;
-    if (session == null || !session.isValid) {
+    // K9: masaüstü yalnız personel/admin hesabına açıktır (üye hesapları mobilde).
+    if (session == null || !session.isValid || !session.isPersonel) {
       if (!mounted) return;
+      AppConfig.session = null;
       Navigator.of(context).pushReplacementNamed('/login');
       return;
     }
@@ -59,7 +61,7 @@ class _BootstrapHomeState extends State<_BootstrapHome> {
     if (!mounted) return;
     final current = AppConfig.session;
     // K9: eski token'larda `role` boş kalabilir; rol yoksa yeniden giriş zorunlu.
-    if (!ok || current == null || current.role.isEmpty) {
+    if (!ok || current == null || current.role.isEmpty || !current.isPersonel) {
       AppConfig.session = null;
       Navigator.of(context).pushReplacementNamed('/login');
       return;

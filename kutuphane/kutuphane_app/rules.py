@@ -167,3 +167,15 @@ def merge_referential(model, hedef, kaynak):
     else:
         raise ValueError(f"Birleştirilemeyen model: {model}")
     kaynak.delete()
+
+
+# --- Üye rol atama yetkisi (K9.5.2) ---
+def rol_degisikligi_izinli(hedef_rol_ad, *, is_superuser) -> bool:
+    """Öğrenci dışı rol (Öğretmen/Editör) ataması yalnız admin'dir.
+
+    Personel, üye kaydında/düzenlemesinde rolü boşaltamaz ve yalnız Öğrenci
+    atayabilir. `ben-ekle` kaldırıldı (K9.6); bu kural serializer katmanından
+    çağrılır ve self-servis bulunmadığından yalnız personel kayıtlarına uygulanır."""
+    if is_superuser:
+        return True
+    return hedef_rol_ad is not None and hedef_rol_ad == "Öğrenci"

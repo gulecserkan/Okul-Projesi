@@ -42,9 +42,10 @@ MockClient routingClient({
             {
               'access': 'acc',
               'refresh': 'ref',
-              'full_name': 'Test Kullanıcı',
-              'role': 'personel',
-              'tip': 'personel',
+              'full_name': 'Test Öğrenci',
+              'role': 'Öğrenci',
+              'tip': 'uye',
+              'uye_no': '70001',
             },
         status: loginStatus,
       );

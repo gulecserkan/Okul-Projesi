@@ -36,6 +36,10 @@ class _StudentFormDialogState extends State<StudentFormDialog> {
 
   bool get _editing => widget.uye != null;
 
+  /// Üye rolü henüz yüklenmediyse/Öğrenci ise öğrenci davranışı (üye no = öğrenci no).
+  bool get _ogrenciMi =>
+      _rolId == null || _ogrRolId == null || _rolId == _ogrRolId;
+
   @override
   void initState() {
     super.initState();
@@ -170,9 +174,13 @@ class _StudentFormDialogState extends State<StudentFormDialog> {
                 const SizedBox(height: 12),
                 TextFormField(
                   controller: _no,
-                  decoration: const InputDecoration(
-                    labelText: 'Üye No',
-                    border: OutlineInputBorder(),
+                  decoration: InputDecoration(
+                    // K9.5.1: öğretmen/editörde üye no = TC kimlik no (kullanıcı adı).
+                    labelText: _ogrenciMi ? 'Üye No' : 'Üye No (TC Kimlik No)',
+                    helperText: _ogrenciMi
+                        ? 'Öğrenci numarası — mobil girişte kullanıcı adı.'
+                        : 'TC kimlik no — mobil girişte kullanıcı adı.',
+                    border: const OutlineInputBorder(),
                     isDense: true,
                   ),
                   validator: (v) => (v == null || v.trim().isEmpty)
@@ -220,9 +228,13 @@ class _StudentFormDialogState extends State<StudentFormDialog> {
                     return DropdownButtonFormField<int>(
                       initialValue: _sinifId,
                       isExpanded: true,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: 'Sınıf',
-                        border: OutlineInputBorder(),
+                        // K9.5.1: öğretmen/editörde sınıf zorunlu değil.
+                        helperText: _ogrenciMi
+                            ? null
+                            : 'Öğretmen/editörde sınıf boş bırakılır.',
+                        border: const OutlineInputBorder(),
                         isDense: true,
                       ),
                       items: [

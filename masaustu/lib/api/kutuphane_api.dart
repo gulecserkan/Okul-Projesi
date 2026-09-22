@@ -329,29 +329,22 @@ class KutuphaneApi {
     }
   }
 
-  /// K9: giriş yapan kullanıcı kendisi için üye kaydı oluşturur (self-servis).
-  Future<({Uye? uye, String? error})> uyeBenEkle({
-    required String ad,
-    required String soyad,
-    int? rolId,
-    String? uyeNo,
-  }) async {
+  /// K9: üye mobil giriş şifresini verir/sıfırlar. Backend ilk girişte
+  /// değiştirme zorunluluğu getirir (parola_degistirilsin).
+  Future<({bool ok, String? error})> setPassword(int id, String sifre) async {
     try {
-      final resp = await _client.request('POST', 'uyeler/ben-ekle/', auth: true, body: {
-        'ad': ad.trim(),
-        'soyad': soyad.trim(),
-        'rol_id': ?rolId,
-        if (uyeNo != null && uyeNo.trim().isNotEmpty) 'uye_no': uyeNo.trim(),
-      });
+      final resp = await _client.request(
+        'PATCH',
+        'uyeler/$id/',
+        auth: true,
+        body: {'sifre': sifre.trim()},
+      );
       if (resp.statusCode >= 200 && resp.statusCode < 300) {
-        return (
-          uye: Uye.fromJson(jsonDecode(utf8.decode(resp.bodyBytes))),
-          error: null,
-        );
+        return (ok: true, error: null);
       }
-      return (uye: null, error: extractError(resp));
+      return (ok: false, error: extractError(resp));
     } catch (_) {
-      return (uye: null, error: 'İşlem yapılamadı.');
+      return (ok: false, error: 'Şifre güncellenemedi.');
     }
   }
 

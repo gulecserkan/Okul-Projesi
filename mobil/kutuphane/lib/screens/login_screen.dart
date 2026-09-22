@@ -79,7 +79,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               const SizedBox(width: 12),
                               Expanded(
                                 child: Text(
-                                  "Personel girişi",
+                                  "Kütüphane Girişi",
                                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                                         fontWeight: FontWeight.w700,
                                       ),
@@ -146,7 +146,15 @@ class _LoginScreenState extends State<LoginScreen> {
                             obscureText: _obscurePassword,
                             onSubmitted: (_) => _login(),
                           ),
-                          const SizedBox(height: 12),
+                          const SizedBox(height: 4),
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: TextButton(
+                              onPressed: _loading ? null : _showForgotPassword,
+                              child: const Text("Şifrem yok"),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
                           if (_error != null)
                             Padding(
                               padding: const EdgeInsets.only(bottom: 8),
@@ -193,6 +201,27 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
+  void _showForgotPassword() {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text("Şifrem yok"),
+        content: const Text(
+          "Şifreler okul kütüphanesindeki kütüphane sorumlusu tarafından "
+          "tanımlanır. Üye numaranızla şifre almak için kütüphane sorumlusuyla "
+          "iletişime geçin.\n\nİlk girişinizde kendinize yeni bir şifre "
+          "belirleyeceksiniz.",
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text("Tamam"),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _login() async {
     final username = _usernameController.text.trim();
     final password = _passwordController.text.trim();
@@ -207,6 +236,17 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       final api = widget.api ?? LibraryApiClient(baseUrl: widget.baseUrl);
       final tokens = await api.login(username, password);
+      // K9: mobil uygulama yalnız üye (öğrenci/öğretmen/editör) hesaplarına açıktır;
+      // personel/admin masaüstü uygulamasını kullanır.
+      if (!tokens.isUye) {
+        if (!mounted) return;
+        setState(() {
+          _error = 'Bu hesap masaüstü (personel/admin) uygulamasına aittir; '
+              'mobil uygulama öğrenci, öğretmen ve editör içindir.';
+          _loading = false;
+        });
+        return;
+      }
       if (!mounted) return;
       await widget.onAuthenticated(tokens);
     } catch (e) {
