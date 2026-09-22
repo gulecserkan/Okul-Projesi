@@ -110,7 +110,7 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
   Future<void> _edit() async {
     final saved = await showDialog<Uye>(
       context: context,
-      builder: (_) => StudentFormDialog(uye: widget.uye),
+      builder: (_) => StudentFormDialog(uye: widget.uye, isAdmin: _isAdmin),
     );
     if (saved != null && mounted) {
       Navigator.of(context).pop(saved);

@@ -155,7 +155,7 @@ class _StudentListScreenState extends State<StudentListScreen> {
   Future<void> _newStudent() async {
     final saved = await showDialog<Uye>(
       context: context,
-      builder: (_) => const StudentFormDialog(),
+      builder: (_) => StudentFormDialog(isAdmin: _isAdmin),
     );
     if (saved != null && mounted) _load(reset: true);
   }
@@ -163,7 +163,7 @@ class _StudentListScreenState extends State<StudentListScreen> {
   Future<void> _editStudent(Uye o) async {
     final saved = await showDialog<Uye>(
       context: context,
-      builder: (_) => StudentFormDialog(uye: o),
+      builder: (_) => StudentFormDialog(uye: o, isAdmin: _isAdmin),
     );
     if (saved != null && mounted) _load(reset: true);
   }

@@ -281,6 +281,7 @@ class KutuphaneApi {
     String? telefon,
     String? eposta,
     String? sifre,
+    int? rolId,
   }) async {
     final trimmedTel = telefon?.trim();
     final trimmedEposta = eposta?.trim();
@@ -290,6 +291,7 @@ class KutuphaneApi {
       'soyad': soyad.trim(),
       'uye_no': uyeNo.trim(),
       'sinif_id': ?sinifId,
+      'rol_id': ?rolId,
       if (trimmedTel != null && trimmedTel.isNotEmpty) 'telefon': trimmedTel,
       if (trimmedEposta != null && trimmedEposta.isNotEmpty)
         'eposta': trimmedEposta,

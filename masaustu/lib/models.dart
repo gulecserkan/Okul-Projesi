@@ -38,6 +38,7 @@ class Uye {
   final String? eposta;
   final bool aktif;
   final String? kayitTarihi;
+  final int? rolId;
 
   const Uye({
     required this.id,
@@ -49,6 +50,7 @@ class Uye {
     this.eposta,
     this.aktif = true,
     this.kayitTarihi,
+    this.rolId,
   });
 
   String get adSoyad => '$ad $soyad';
@@ -65,6 +67,7 @@ class Uye {
         eposta: json['eposta'] as String?,
         aktif: json['aktif'] as bool? ?? true,
         kayitTarihi: json['kayit_tarihi'] as String?,
+        rolId: json['rol'] as int?,
       );
 }
 
