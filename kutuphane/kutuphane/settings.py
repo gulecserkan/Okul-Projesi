@@ -15,7 +15,7 @@ from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
-ENV_FILE = Path("/etc/kutuphane/.env")
+ENV_FILE = Path(os.environ.get("KUTUPHANE_ENV_FILE", "/etc/kutuphane/.env"))
 LOCAL_ENV_FILE = BASE_DIR / ".env"
 
 

@@ -33,3 +33,17 @@ Monorepo bölümleri:
 - Login yanıtı `role` içerir (`admin`/`personel`); hassas aksiyonlar admin'e açık.
 - Eski masaüstündeki silme/durum mantığı yeni katmanla senkron tutulmaz;
   kuralların kaynağı `docs/IS_KURALLARI.md` + `rules.py`'dir.
+
+## Geliştirme ortamı ve yayın akışı
+
+- **Veritabanı:** Geliştirme yalnız bu makinedeki yerel PostgreSQL ile yapılır
+  (`127.0.0.1:5432`, DB `kutuphane`, `DB_PASSWORD=kutuphane_dev`). Prod/staging
+  DB'sine bu makineden **bağlanılmaz**; istemciler DB'ye değil API'ye bağlanır.
+- **Sırlar:** Yerel `.env` (gitignored) ↔ sunucu `/etc/kutuphane/.env`
+  (`KUTUPHANE_ENV_FILE` ile staging'e ayrılır). Sırlar git'e girmez.
+- **Yayınlama:** testler yeşil → `VERSION` + `docs/CHANGELOG.md` güncelle →
+  `git tag vX.Y.Z` + push → staging'e al → doğrula → prod'a al:
+  `sudo bash kutuphane/scripts/deploy.sh <prod|staging> <tag>`
+  (geri dönüş: `rollback.sh`). Ayrıntı: `docs/DEPLOY_CLOUD.md` (12-13).
+- **İlkeler:** her değişiklikte `docs/IS_KURALLARI.md` gözden geçirilir; yeni
+  kural varsa önce doküman, sonra kod. Commit/push yalnız kullanıcı isterse.
