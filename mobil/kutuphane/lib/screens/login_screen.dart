@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../api/library_api.dart';
@@ -11,6 +13,8 @@ class LoginScreen extends StatefulWidget {
     required this.onChangeServer,
     this.lastKnownBaseUrl,
     this.initialMessage,
+    this.initialRememberMe = false,
+    this.onRememberMeChanged,
     this.api,
   });
 
@@ -21,6 +25,12 @@ class LoginScreen extends StatefulWidget {
 
   /// Oturum süresi dolduğunda gösterilecek bilgilendirme (varsa).
   final String? initialMessage;
+
+  /// K9.11: "Beni hatırla" (şifresiz otomatik giriş) anahtarının ilk değeri.
+  final bool initialRememberMe;
+
+  /// Anahtar değiştiğinde üst katmana bildirir (kalıcı kayıt için).
+  final Future<void> Function(bool value)? onRememberMeChanged;
 
   /// Test/DI için dışarıdan verilebilir; verilmezse kendi istemcisini kurar.
   final LibraryApiClient? api;
@@ -35,6 +45,43 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _loading = false;
   String? _error;
   bool _obscurePassword = true;
+  late bool _rememberMe;
+
+  /// Kayıtlı sunucuya erişilebilir mi? (null = kontrol sürüyor)
+  bool? _serverReachable;
+  Timer? _healthTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _rememberMe = widget.initialRememberMe;
+    _checkServer();
+    // K9.10: sunucu belirdiği ekranda o anda erişimsizse ayar belirginleşir.
+    _healthTimer = Timer.periodic(
+      const Duration(seconds: 5),
+      (_) => _checkServer(),
+    );
+  }
+
+  @override
+  void dispose() {
+    _healthTimer?.cancel();
+    _usernameController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _checkServer() async {
+    final api = widget.api ?? LibraryApiClient(baseUrl: widget.baseUrl);
+    try {
+      final result = await api.handshake();
+      if (!mounted) return;
+      setState(() => _serverReachable = result.ok);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _serverReachable = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -85,26 +132,66 @@ class _LoginScreenState extends State<LoginScreen> {
                                       ),
                                 ),
                               ),
-                              TextButton.icon(
-                                onPressed: _loading
-                                    ? null
-                                    : () {
-                                        widget.onChangeServer();
-                                      },
-                                icon: const Icon(Icons.settings_ethernet),
-                                label: const Text("Sunucu değiştir"),
-                              ),
                             ],
                           ),
                           const SizedBox(height: 8),
-                          Text(
-                            "Sunucu: ${widget.baseUrl}",
-                            style: Theme.of(context)
-                                .textTheme
-                                .labelMedium
-                                ?.copyWith(color: scheme.outline),
-                          ),
+                          if (_serverReachable != false)
+                            Text(
+                              "Sunucu: ${widget.baseUrl}",
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .labelMedium
+                                  ?.copyWith(color: scheme.outline),
+                            ),
                           const SizedBox(height: 18),
+                          if (_serverReachable == false) ...[
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: scheme.errorContainer.withValues(alpha: 0.5),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: scheme.error.withValues(alpha: 0.4),
+                                ),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Icon(Icons.cloud_off_outlined, color: scheme.error),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          "Kayıtlı sunucuya erişilemiyor",
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.w700,
+                                            color: scheme.error,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    "Sunucu: ${widget.baseUrl}",
+                                    style: TextStyle(color: scheme.onErrorContainer),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  SizedBox(
+                                    width: double.infinity,
+                                    child: FilledButton.icon(
+                                      onPressed: _loading ? null : () => widget.onChangeServer(),
+                                      icon: const Icon(Icons.settings_ethernet),
+                                      label: const Text("Sunucu değiştir"),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                          ],
                           if (widget.initialMessage != null) ...[
                             Container(
                               width: double.infinity,
@@ -147,6 +234,23 @@ class _LoginScreenState extends State<LoginScreen> {
                             onSubmitted: (_) => _login(),
                           ),
                           const SizedBox(height: 4),
+                          CheckboxListTile(
+                            contentPadding: EdgeInsets.zero,
+                            controlAffinity: ListTileControlAffinity.leading,
+                            dense: true,
+                            value: _rememberMe,
+                            onChanged: _loading
+                                ? null
+                                : (value) {
+                                    final v = value ?? false;
+                                    setState(() => _rememberMe = v);
+                                    widget.onRememberMeChanged?.call(v);
+                                  },
+                            title: const Text("Beni hatırla"),
+                            subtitle: const Text(
+                              "Bu cihazda şifre sormadan açılır (oturum yenilenir)",
+                            ),
+                          ),
                           Align(
                             alignment: Alignment.center,
                             child: TextButton(
@@ -250,6 +354,8 @@ class _LoginScreenState extends State<LoginScreen> {
       if (!mounted) return;
       await widget.onAuthenticated(tokens);
     } catch (e) {
+      // K9.10: giriş ağ hatası veriyorsa sunucu erişim bozukluğunu da yansıt.
+      _checkServer();
       if (!mounted) return;
       setState(() {
         _error = e is ApiException ? e.message : e.toString();

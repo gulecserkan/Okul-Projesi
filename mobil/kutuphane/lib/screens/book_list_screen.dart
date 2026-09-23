@@ -14,7 +14,6 @@ class BookListScreen extends StatefulWidget {
     required this.baseUrl,
     required this.tokens,
     required this.onLogout,
-    required this.onChangeServer,
     required this.currentTheme,
     required this.onThemeChange,
     this.onSessionExpired,
@@ -24,7 +23,6 @@ class BookListScreen extends StatefulWidget {
   final String baseUrl;
   final AuthTokens tokens;
   final Future<void> Function() onLogout;
-  final Future<void> Function() onChangeServer;
   final AppTheme currentTheme;
   final Future<void> Function(AppTheme) onThemeChange;
   final void Function()? onSessionExpired;
@@ -118,9 +116,6 @@ class _BookListScreenState extends State<BookListScreen> {
                 case "password":
                   _showChangePasswordDialog();
                   break;
-                case "server":
-                  widget.onChangeServer();
-                  break;
                 case "theme":
                   _showThemeDialog();
                   break;
@@ -143,13 +138,6 @@ class _BookListScreenState extends State<BookListScreen> {
                 child: ListTile(
                   leading: Icon(Icons.key),
                   title: Text("Şifre değiştir"),
-                ),
-              ),
-              const PopupMenuItem(
-                value: "server",
-                child: ListTile(
-                  leading: Icon(Icons.settings_ethernet),
-                  title: Text("Sunucuyu değiştir"),
                 ),
               ),
               const PopupMenuItem(

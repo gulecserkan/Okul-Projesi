@@ -338,6 +338,21 @@ class SearchFilterAPITests(APITestCase):
         row = self._as_list(resp.data)[0]
         self.assertNotIn("arama", row)
 
+    def test_kitap_liste_goruntu_alanlari(self):
+        # K9.9: liste (üye gezintisi) kapak, ilk görsel ve görüş alanlarını içerir.
+        Kitap.objects.filter(pk=self.kitap.pk).update(
+            kapak_url="https://example.net/kapak.jpg",
+            aciklama="Öğretmen görüşü: sınıfa tavsiye edilir.",
+        )
+        resp = self.client.get("/api/kitaplar/")
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        row = next(k for k in self._as_list(resp.data) if k["baslik"] == "Osmanlı Tarihi")
+        self.assertEqual(row["kapak_url"], "https://example.net/kapak.jpg")
+        self.assertEqual(row["aciklama"], "Öğretmen görüşü: sınıfa tavsiye edilir.")
+        self.assertTrue(row["aciklama_var"])
+        self.assertIn("resim1", row)
+        self.assertIn("image_count", row)
+
 
 class RulesUnitTests(TestCase):
     """rules.py saf kurallar — geçiş matrisi, pasif_tarihi, silme, ceza önerisi."""

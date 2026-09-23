@@ -32,9 +32,9 @@ class LibraryApiClient {
     AuthTokens? tokens,
     http.Client? httpClient,
     this.onUnauthorized,
-  })  : _baseUrl = _normalizeBaseUrl(baseUrl),
-        _tokens = tokens,
-        _client = httpClient ?? http.Client();
+  }) : _baseUrl = _normalizeBaseUrl(baseUrl),
+       _tokens = tokens,
+       _client = httpClient ?? http.Client();
 
   final http.Client _client;
   final String _baseUrl;
@@ -62,7 +62,10 @@ class LibraryApiClient {
         if (status == "ok") {
           return const HandshakeResult(ok: true, message: "Sunucu hazır");
         }
-        return HandshakeResult(ok: false, message: "Health endpoint beklenen yanıtı döndürmedi.");
+        return HandshakeResult(
+          ok: false,
+          message: "Health endpoint beklenen yanıtı döndürmedi.",
+        );
       }
 
       return HandshakeResult(
@@ -70,7 +73,10 @@ class LibraryApiClient {
         message: "Sunucu yanıtı ${response.statusCode}",
       );
     } on TimeoutException {
-      return const HandshakeResult(ok: false, message: "Sunucuya ulaşılamıyor (zaman aşımı)");
+      return const HandshakeResult(
+        ok: false,
+        message: "Sunucuya ulaşılamıyor (zaman aşımı)",
+      );
     } catch (e) {
       return HandshakeResult(ok: false, message: e.toString());
     }
@@ -128,7 +134,9 @@ class LibraryApiClient {
       return decoded.whereType<Map<String, dynamic>>().toList();
     }
     if (decoded is Map<String, dynamic> && decoded["results"] is List) {
-      return (decoded["results"] as List).whereType<Map<String, dynamic>>().toList();
+      return (decoded["results"] as List)
+          .whereType<Map<String, dynamic>>()
+          .toList();
     }
     return const [];
   }
@@ -191,6 +199,7 @@ class LibraryApiClient {
     String? shelfPrefix,
     String? isbnQuery,
     String? barcodeQuery,
+    String? ordering,
   }) async {
     final params = <String, String>{};
     if (query != null && query.isNotEmpty) params["q"] = query;
@@ -200,11 +209,20 @@ class LibraryApiClient {
     if (pageSize != null) params["page_size"] = "$pageSize";
     if (minImageCount != null) params["min_image_count"] = "$minImageCount";
     if (maxImageCount != null) params["max_image_count"] = "$maxImageCount";
-    if (hasDescription != null) params["aciklama_var"] = hasDescription ? "1" : "0";
-    if (shelfQuery != null && shelfQuery.isNotEmpty) params["raf_query"] = shelfQuery;
-    if (shelfPrefix != null && shelfPrefix.isNotEmpty) params["raf_prefix"] = shelfPrefix;
+    if (hasDescription != null) {
+      params["aciklama_var"] = hasDescription ? "1" : "0";
+    }
+    if (shelfQuery != null && shelfQuery.isNotEmpty) {
+      params["raf_query"] = shelfQuery;
+    }
+    if (shelfPrefix != null && shelfPrefix.isNotEmpty) {
+      params["raf_prefix"] = shelfPrefix;
+    }
     if (isbnQuery != null && isbnQuery.isNotEmpty) params["isbn"] = isbnQuery;
-    if (barcodeQuery != null && barcodeQuery.isNotEmpty) params["barkod"] = barcodeQuery;
+    if (barcodeQuery != null && barcodeQuery.isNotEmpty) {
+      params["barkod"] = barcodeQuery;
+    }
+    if (ordering != null && ordering.isNotEmpty) params["ordering"] = ordering;
 
     final response = await _authorizedGet("/api/kitaplar/", query: params);
     final decoded = jsonDecode(response.body);
@@ -214,7 +232,9 @@ class LibraryApiClient {
     if (decoded is Map<String, dynamic>) {
       items = (decoded["results"] as List?) ?? (decoded["data"] as List? ?? []);
       count = decoded["count"] is int ? decoded["count"] as int : null;
-      if (items.isEmpty && decoded["results"] == null && decoded["data"] == null) {
+      if (items.isEmpty &&
+          decoded["results"] == null &&
+          decoded["data"] == null) {
         items = decoded.values.whereType<List>().firstOrNull ?? [];
       }
     } else if (decoded is List) {
@@ -223,7 +243,9 @@ class LibraryApiClient {
       throw ApiException("Beklenmeyen kitap listesi yanıtı");
     }
 
-    final books = items.map((e) => BookSummary.fromJson(e as Map<String, dynamic>)).toList();
+    final books = items
+        .map((e) => BookSummary.fromJson(e as Map<String, dynamic>))
+        .toList();
     return BookListResponse(books: books, totalCount: count ?? books.length);
   }
 
@@ -253,7 +275,9 @@ class LibraryApiClient {
       }
       final slot = imageSlot.clamp(1, 5);
       final fieldName = "resim$slot";
-      request.files.add(await http.MultipartFile.fromPath(fieldName, imageFile.path));
+      request.files.add(
+        await http.MultipartFile.fromPath(fieldName, imageFile.path),
+      );
 
       final streamed = await request.send();
       final response = await http.Response.fromStream(streamed);
@@ -302,10 +326,16 @@ class LibraryApiClient {
   }) async {
     _ensureAuthorized();
     final uri = _uri(path, query);
-    final response = await _client.get(uri, headers: _headers(jsonBody: false, authorized: true));
+    final response = await _client.get(
+      uri,
+      headers: _headers(jsonBody: false, authorized: true),
+    );
     if (response.statusCode == 401) {
       onUnauthorized?.call();
-      throw ApiException("Oturum süresi doldu, lütfen tekrar giriş yapın", statusCode: 401);
+      throw ApiException(
+        "Oturum süresi doldu, lütfen tekrar giriş yapın",
+        statusCode: 401,
+      );
     }
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return response;
@@ -314,10 +344,11 @@ class LibraryApiClient {
     throw ApiException("İstek başarısız");
   }
 
-  Map<String, String> _headers({bool jsonBody = true, bool authorized = false}) {
-    final headers = <String, String>{
-      "Accept": "application/json",
-    };
+  Map<String, String> _headers({
+    bool jsonBody = true,
+    bool authorized = false,
+  }) {
+    final headers = <String, String>{"Accept": "application/json"};
     if (jsonBody) {
       headers["Content-Type"] = "application/json";
     }
@@ -359,7 +390,11 @@ class LibraryApiClient {
       if (data is Map<String, dynamic>) {
         final detail = data["detail"] ?? data["error"] ?? data["message"];
         if (detail != null) {
-          throw ApiException(detail.toString(), statusCode: response.statusCode, details: data);
+          throw ApiException(
+            detail.toString(),
+            statusCode: response.statusCode,
+            details: data,
+          );
         }
       }
     } on ApiException {
@@ -367,7 +402,10 @@ class LibraryApiClient {
     } catch (_) {
       // ignore parse errors
     }
-    throw ApiException("Sunucu hatası (${response.statusCode})", statusCode: response.statusCode);
+    throw ApiException(
+      "Sunucu hatası (${response.statusCode})",
+      statusCode: response.statusCode,
+    );
   }
 
   List<Map<String, dynamic>> _unwrapList(http.Response response) {

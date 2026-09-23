@@ -81,6 +81,9 @@ Map<String, dynamic> bookJson({
   String? yazar = 'Victor Hugo',
   String? kategori = 'Roman',
   int yayinYili = 1862,
+  String? kapakUrl,
+  int imageCount = 0,
+  bool aciklamaVar = false,
 }) {
   return {
     'id': id,
@@ -88,7 +91,9 @@ Map<String, dynamic> bookJson({
     'yazar': yazar == null ? null : {'ad_soyad': yazar},
     'kategori': kategori == null ? null : {'ad': kategori},
     'yayin_yili': yayinYili,
-    'image_count': 0,
+    'image_count': imageCount,
+    'aciklama_var': aciklamaVar,
+    'kapak_url': kapakUrl,
   };
 }
 

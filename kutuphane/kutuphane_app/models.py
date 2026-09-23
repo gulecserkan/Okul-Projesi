@@ -189,9 +189,15 @@ class Kitap(models.Model):
     kategori = models.ForeignKey(Kategori, on_delete=models.SET_NULL, null=True)
     yayin_yili = models.IntegerField(blank=True, null=True)
     isbn = models.CharField(max_length=20, blank=True, null=True)
-    aciklama = models.TextField(blank=True)
+    # Öğretmen görüşü / uzman değerlendirmesi; üye inceleme ekranında görüntülenir.
+    aciklama = models.TextField(
+        blank=True,
+        help_text="Öğretmen görüşü: kitap hakkında uzman değerlendirmesi; üye inceleme ekranında gösterilir.",
+    )
     # İnternetten çekilen kapak görseli (Google Books vb.) — açık URL.
     kapak_url = models.CharField(max_length=500, blank=True, null=True)
+    # Kitap inceleme görselleri (kullanıcı yüklü): resim1 = ön kapak,
+    # resim2 = arka kapak, resim3..5 = önsöz/giriş/tanıtım sayfaları.
     resim1 = models.ImageField(upload_to="kitap_resimleri/", blank=True, null=True)
     resim2 = models.ImageField(upload_to="kitap_resimleri/", blank=True, null=True)
     resim3 = models.ImageField(upload_to="kitap_resimleri/", blank=True, null=True)

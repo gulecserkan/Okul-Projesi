@@ -13,6 +13,7 @@ class BookSummary {
     this.aciklamaVar = false,
     this.shelfCodes = const [],
     this.kapakUrl,
+    this.resim1Url,
   });
 
   final int id;
@@ -28,6 +29,14 @@ class BookSummary {
 
   /// Dış kaynaktan çekilen kapak görseli URL'si (Google Books vb.).
   final String? kapakUrl;
+
+  /// Listenin taşıdığı ilk kitap görseli (resim1) — kapak URL'si yokken kapak olarak kullanılır.
+  final String? resim1Url;
+
+  /// Kapak olarak gösterilecek URL: önce dış kapak (Google), yoksa ilk yüklenen görsel.
+  String? get kapakGorseli => (kapakUrl != null && kapakUrl!.isNotEmpty)
+      ? kapakUrl
+      : (resim1Url != null && resim1Url!.isNotEmpty ? resim1Url : null);
 
   factory BookSummary.fromJson(Map<String, dynamic> json) {
     final yazarRaw = json["yazar"];
@@ -53,6 +62,7 @@ class BookSummary {
       aciklamaVar: _toBool(json["aciklama_var"]),
       shelfCodes: rafListe,
       kapakUrl: json["kapak_url"]?.toString(),
+      resim1Url: json["resim1"]?.toString(),
     );
   }
 
@@ -67,6 +77,7 @@ class BookSummary {
     bool? aciklamaVar,
     List<String>? shelfCodes,
     String? kapakUrl,
+    String? resim1Url,
   }) {
     return BookSummary(
       id: id,
@@ -80,6 +91,7 @@ class BookSummary {
       aciklamaVar: aciklamaVar ?? this.aciklamaVar,
       shelfCodes: shelfCodes ?? this.shelfCodes,
       kapakUrl: kapakUrl ?? this.kapakUrl,
+      resim1Url: resim1Url ?? this.resim1Url,
     );
   }
 }
@@ -97,6 +109,7 @@ class BookDetail extends BookSummary {
     super.aciklamaVar = false,
     super.shelfCodes = const [],
     super.kapakUrl,
+    super.resim1Url,
     this.aciklama,
     this.resimler = const [],
   });
@@ -118,6 +131,7 @@ class BookDetail extends BookSummary {
     String? aciklama,
     List<BookImageSlot>? resimler,
     String? kapakUrl,
+    String? resim1Url,
   }) {
     return BookDetail(
       id: id,
@@ -133,6 +147,7 @@ class BookDetail extends BookSummary {
       aciklama: aciklama ?? this.aciklama,
       resimler: resimler ?? this.resimler,
       kapakUrl: kapakUrl ?? this.kapakUrl,
+      resim1Url: resim1Url ?? this.resim1Url,
     );
   }
 
@@ -157,6 +172,7 @@ class BookDetail extends BookSummary {
       aciklama: json["aciklama"]?.toString(),
       resimler: images,
       kapakUrl: summary.kapakUrl,
+      resim1Url: summary.resim1Url,
     );
   }
 }
@@ -237,5 +253,8 @@ bool _toBool(dynamic value) {
   if (value is bool) return value;
   if (value == null) return false;
   final normalized = value.toString().toLowerCase().trim();
-  return normalized == "1" || normalized == "true" || normalized == "yes" || normalized == "evet";
+  return normalized == "1" ||
+      normalized == "true" ||
+      normalized == "yes" ||
+      normalized == "evet";
 }

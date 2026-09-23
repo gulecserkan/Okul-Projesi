@@ -25,7 +25,6 @@ Widget _screen({
       baseUrl: 'http://test.local',
       tokens: _tokens,
       onLogout: () async {},
-      onChangeServer: () async {},
       currentTheme: AppTheme.defaultLight,
       onThemeChange: (_) async {},
       api: LibraryApiClient(

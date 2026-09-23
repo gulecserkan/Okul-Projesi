@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 
 import 'package:kutuphane/api/library_api.dart';
 import 'package:kutuphane/models/auth.dart';
@@ -14,6 +15,8 @@ LibraryApiClient _client(http.Client mock) =>
 Widget _screen({
   required Future<void> Function(AuthTokens) onAuthenticated,
   String? initialMessage,
+  bool initialRememberMe = false,
+  Future<void> Function(bool)? onRememberMeChanged,
   http.Client? mock,
 }) {
   return MaterialApp(
@@ -22,6 +25,8 @@ Widget _screen({
       onAuthenticated: onAuthenticated,
       onChangeServer: () async {},
       initialMessage: initialMessage,
+      initialRememberMe: initialRememberMe,
+      onRememberMeChanged: onRememberMeChanged,
       api: _client(mock ?? routingClient()),
     ),
   );
@@ -119,5 +124,66 @@ void main() {
 
     expect(find.textContaining('kütüphane sorumlusu'), findsOneWidget);
     expect(find.text('Tamam'), findsOneWidget);
+  });
+
+  testWidgets('sunucu erişilebilirse sunucu değiştir ayarı belirgin değildir', (tester) async {
+    await tester.pumpWidget(_screen(onAuthenticated: (_) async {}));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Sunucu değiştir'), findsNothing);
+    expect(find.textContaining('Sunucu: '), findsOneWidget);
+  });
+
+  testWidgets('kayıtlı sunucuya erişilemezse ayar belirginleşir', (tester) async {
+    await tester.pumpWidget(_screen(
+      onAuthenticated: (_) async {},
+      mock: routingClient(healthStatus: 500),
+    ));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Kayıtlı sunucuya erişilemiyor'), findsOneWidget);
+    expect(find.text('Sunucu değiştir'), findsOneWidget);
+  });
+
+  testWidgets('sunucu açıkken kapanırsa ayar belirginleşir', (tester) async {
+    var down = false;
+    final client = MockClient((request) async {
+      if (request.url.path.endsWith('/api/health/')) {
+        return down
+            ? jsonResponse({'detail': 'hata'}, status: 500)
+            : jsonResponse({'status': 'ok'});
+      }
+      return jsonResponse({'detail': 'bulunamadı'}, status: 404);
+    });
+
+    await tester.pumpWidget(_screen(onAuthenticated: (_) async {}, mock: client));
+    await tester.pumpAndSettle();
+    expect(find.text('Sunucu değiştir'), findsNothing);
+
+    down = true;
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Kayıtlı sunucuya erişilemiyor'), findsOneWidget);
+    expect(find.text('Sunucu değiştir'), findsOneWidget);
+  });
+
+  testWidgets('Beni hatırla anahtarı varsayılan ve değişince bildirilir (K9.11)', (tester) async {
+    bool? reported;
+    await tester.pumpWidget(_screen(
+      onAuthenticated: (_) async {},
+      initialRememberMe: true,
+      onRememberMeChanged: (v) async => reported = v,
+    ));
+
+    expect(find.byType(CheckboxListTile), findsOneWidget);
+
+    await tester.tap(find.byType(CheckboxListTile));
+    await tester.pumpAndSettle();
+    expect(reported, isFalse);
+
+    await tester.tap(find.byType(CheckboxListTile));
+    await tester.pumpAndSettle();
+    expect(reported, isTrue);
   });
 }

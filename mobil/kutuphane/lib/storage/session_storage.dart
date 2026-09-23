@@ -13,6 +13,7 @@ class SessionStorage {
   static const _parolaDegistirKey = "user_parola_degistirilsin";
   static const _lastAuthKey = "last_auth_at";
   static const _themeKey = "app_theme";
+  static const _rememberKey = "remember_me";
 
   Future<String?> loadBaseUrl() async {
     final prefs = await SharedPreferences.getInstance();
@@ -96,5 +97,15 @@ class SessionStorage {
   Future<String?> loadTheme() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString(_themeKey);
+  }
+
+  Future<bool?> loadRememberMe() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_rememberKey);
+  }
+
+  Future<void> saveRememberMe(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_rememberKey, value);
   }
 }

@@ -183,6 +183,7 @@ class KitapBaseSerializer(serializers.ModelSerializer):
     image_count = serializers.IntegerField(read_only=True)
     aciklama_var = serializers.BooleanField(read_only=True)
     raf_kodlari = serializers.ListField(child=serializers.CharField(), read_only=True)
+    resim1 = serializers.ImageField(read_only=True)
 
     class Meta:
         model = Kitap
@@ -193,6 +194,7 @@ class KitapBaseSerializer(serializers.ModelSerializer):
             "isbn",
             "aciklama",
             "kapak_url",
+            "resim1",
             "yazar",
             "kategori",
             "yazar_id",
@@ -217,7 +219,6 @@ class KitapSerializer(KitapBaseSerializer):
 class KitapDetailSerializer(KitapBaseSerializer):
     class Meta(KitapBaseSerializer.Meta):
         fields = KitapBaseSerializer.Meta.fields + [
-            "resim1",
             "resim2",
             "resim3",
             "resim4",
