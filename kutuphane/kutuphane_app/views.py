@@ -18,6 +18,8 @@ from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
+from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
+from django.views.generic import TemplateView
 
 from .book_lookup import lookup_books
 
@@ -1594,6 +1596,33 @@ class HealthCheckView(APIView):
             "timestamp": now().isoformat(),
         }
         return Response(data)
+
+
+class BookCatalogView(TemplateView):
+    """K11: kök adres (`/`) kimliksiz, salt-okunur genel kitap kataloğu.
+
+    Arka planda `/api/*` aynı sunucuda hizmet vermeye devam eder.
+    Arama `?q=` ile (başlık/yazar/kategori/isbn — Türkçe harf duyarsız).
+    """
+
+    template_name = "katalog.html"
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        q = (self.request.GET.get("q") or "").strip()
+        books = Kitap.objects.select_related("yazar", "kategori").order_by("baslik")
+        if q:
+            books = books.filter(arama__icontains=fold(q))
+        paginator = Paginator(books, 24)
+        page_no = self.request.GET.get("page", "1")
+        try:
+            page = paginator.page(page_no)
+        except (PageNotAnInteger, EmptyPage):
+            page = paginator.page(1)
+        ctx["page"] = page
+        ctx["q"] = q
+        ctx["total"] = paginator.count
+        return ctx
 
 
 class ChangePasswordView(APIView):

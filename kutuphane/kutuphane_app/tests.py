@@ -10,6 +10,7 @@ from django.contrib.auth.models import User
 from django.core.cache import cache
 from django.db import connection
 from django.test import TestCase, override_settings
+from django.urls import reverse
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APITestCase
@@ -1491,3 +1492,40 @@ class K10IsleyisEntegrasyonTests(APITestCase):
 
         make_policy(quiet_hours_enabled=False)
         self.assertFalse(_in_quiet_hours(LoanPolicy.get_solo()))
+
+
+class KatalogWebTests(TestCase):
+    """K11: kök adres kimliksiz, salt-okunur genel kitap kataloğudur."""
+
+    @classmethod
+    def setUpTestData(cls):
+        kategori = Kategori.objects.create(ad="Roman")
+        yazar = Yazar.objects.create(ad_soyad="Victor Hugo")
+        cls.kitap1 = Kitap.objects.create(
+            baslik="Sefiller", yazar=yazar, kategori=kategori, yayin_yili=1862
+        )
+        cls.kitap2 = Kitap.objects.create(
+            baslik="Kral Olan Çocuk", kategori=kategori, yayin_yili=1950
+        )
+
+    def test_kok_adres_kataloğu_sunar(self):
+        resp = self.client.get(reverse("katalog"))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Sefiller")
+        self.assertContains(resp, "Kral Olan Çocuk")
+
+    def test_katalog_kimlik_gerektirmez(self):
+        resp = self.client.get("/")
+        self.assertEqual(resp.status_code, 200)
+
+    def test_arama_turkce_harf_duyarsizdir(self):
+        resp = self.client.get(reverse("katalog"), {"q": "SeFiL"})
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Sefiller")
+        self.assertNotContains(resp, "Kral Olan Çocuk")
+
+    def test_arama_sonuc_yoksa_bos_mesaji(self):
+        resp = self.client.get(reverse("katalog"), {"q": "olmayan kitap"})
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Sonuç bulunamadı.")
+        self.assertNotContains(resp, "Sefiller")

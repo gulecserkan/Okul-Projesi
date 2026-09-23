@@ -201,7 +201,16 @@ Not: Akıllı raf öneri sistemi (rafların program tarafından düzenli tutulma
 
 ---
 
-## 11. Test Sorumlulukları
+## 11. GENEL WEB KATALOG (K11)
+
+| # | Kural | İşlenir |
+|---|---|---|
+| K11.1 | Kök adres (`/`) **kimliksiz, salt-okunur genel kitap kataloğu** sunar: kapak (kapak_url; yoksa resim1), başlık, yazar, kategori, yıl, varsa öğretmen görüşü (`aciklama`) listelenir; `?q=` ile Türkçe harf duyarsız arama (başlık/yazar/kategori/isbn → `arama` alanı) ve sayfalama vardır | `BookCatalogView` + `templates/katalog.html` |
+| K11.2 | Katalog ile API aynı sunucuda birlikte çalışır: katalog kimlik istemez, `/api/*` (DRF, JWT) arka planda hizmet vermeye devam eder; katalogda hassas veri sunulmaz | `kutuphane/urls.py` |
+
+---
+
+## 12. Test Sorumlulukları
 
 Her kural için en az bir test:
 - `rules.py` birim testleri (matris K3.1, çift yazım K3.2, pasif_tarihi K2.1-2).
@@ -213,4 +222,5 @@ Her kural için en az bir test:
 - K9: superuser token `role=admin`; üye girişi (`tip=uye`, `uye_no`, `parola_degistirilsin`); üye personel ucuna 403; editör kitap ekleyebilir / üye listesine 403; kendi/başkası geçmiş kapsamı; şifre değişince bayrak kalkar (K9.1-K9.6).
 - K10: kurum/ödünç/rol/bildirim GET personel 200; PUT/PATCH personel 403, admin 200 (K10.1-K10.2).
 - K10.5-K10.7: raf kodu zorunlu nüsha reddi/raf ile kabul; kayıp/hasarlı notsuz kapatma 400, notlu kapanış notu saklar; sessiz saatte bildirim atlanır, kapalıyken normal (K10IsleyisEntegrasyonTests).
+- K11: kök adres 200 + kitap başlıkları; kimlik gerektirmeme; büyük/küçük harfle arama; sonuç-yok mesajı (KatalogWebTests).
 - E2E canlı smoke: checkout → kapat döngüsü.

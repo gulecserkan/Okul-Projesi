@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Katalog — Kütüphane</title>
+<style>
+  :root {
+    --renk-bg: #f4f2ec;
+    --renk-kart: #ffffff;
+    --renk-metin: #2c2a26;
+    --renk-soluk: #6f6a5e;
+    --renk-vurgu: #7a3e2e;
+    --renk-cizgi: #e4dfd3;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background: var(--renk-bg);
+    color: var(--renk-metin);
+  }
+  header {
+    background: linear-gradient(135deg, #6d3527, #8a4b36);
+    color: #fff;
+    padding: 32px 16px;
+    text-align: center;
+  }
+  header h1 { margin: 0 0 6px; font-size: 26px; letter-spacing: .5px; }
+  header p { margin: 0; opacity: .85; }
+  .arama {
+    max-width: 560px;
+    margin: -22px auto 0;
+    padding: 0 16px;
+  }
+  .arama form {
+    display: flex;
+    background: var(--renk-kart);
+    border: 1px solid var(--renk-cizgi);
+    border-radius: 12px;
+    box-shadow: 0 6px 18px rgba(0,0,0,.10);
+    overflow: hidden;
+  }
+  .arama input {
+    flex: 1;
+    border: 0;
+    padding: 14px 16px;
+    font-size: 15px;
+    outline: none;
+  }
+  .arama button {
+    border: 0;
+    background: var(--renk-vurgu);
+    color: #fff;
+    padding: 0 22px;
+    font-size: 15px;
+    cursor: pointer;
+  }
+  .sayac {
+    max-width: 1100px;
+    margin: 22px auto 6px;
+    padding: 0 16px;
+    color: var(--renk-soluk);
+    font-size: 13.5px;
+  }
+  .katalog {
+    max-width: 1100px;
+    margin: 12px auto 40px;
+    padding: 0 16px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 16px;
+  }
+  .kitap {
+    background: var(--renk-kart);
+    border: 1px solid var(--renk-cizgi);
+    border-radius: 12px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 2px 8px rgba(0,0,0,.05);
+  }
+  .kapak {
+    aspect-ratio: 3 / 4;
+    background: #ece7db;
+    display: block;
+    width: 100%;
+    object-fit: cover;
+  }
+  .kapak-bos {
+    aspect-ratio: 3 / 4;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #ece7db;
+    color: #b3aa93;
+    font-size: 12px;
+  }
+  .kitap-bilgi { padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 4px; flex: 1; }
+  .baslik { font-weight: 600; font-size: 14.5px; line-height: 1.3; }
+  .kunya { font-size: 12.5px; color: var(--renk-soluk); }
+  .gorus { font-size: 12px; color: #5b5346; border-top: 1px dashed var(--renk-cizgi); margin-top: auto; padding-top: 8px; }
+  .gorus em { color: var(--renk-vurgu); font-style: italic; }
+  .sayfalama {
+    max-width: 1100px;
+    margin: 0 auto 40px;
+    padding: 0 16px;
+    text-align: center;
+  }
+  .sayfalama a, .sayfalama span {
+    display: inline-block;
+    padding: 8px 14px;
+    margin: 0 4px;
+    border-radius: 8px;
+    background: var(--renk-kart);
+    border: 1px solid var(--renk-cizgi);
+    text-decoration: none;
+    color: var(--renk-metin);
+  }
+  .sayfalama span.aktif { background: var(--renk-vurgu); color: #fff; border-color: var(--renk-vurgu); }
+  .bos { max-width: 560px; margin: 40px auto; text-align: center; color: var(--renk-soluk); }
+  footer { text-align: center; color: var(--renk-soluk); font-size: 12.5px; padding: 18px; }
+  footer a { color: var(--renk-soluk); }
+</style>
+</head>
+<body>
+<header>
+  <h1>Kütüphane Kataloğu</h1>
+  <p>Okul kütüphanesindeki kitaplar — göz atın, seçin, kütüphaneden alın.</p>
+</header>
+
+<div class="arama">
+  <form method="get" action="/">
+    <input type="search" name="q" value="{{ q }}" placeholder="Başlık, yazar, kategori ara..." autofocus>
+    <button type="submit">Ara</button>
+  </form>
+</div>
+
+<p class="sayac">{{ page.paginator.count }} kitap{% if q %} — "{{ q }}" için{% endif %}</p>
+
+<div class="katalog">
+  {% for k in page.object_list %}
+  <div class="kitap">
+    {% if k.kapak_url %}
+      <img class="kapak" src="{{ k.kapak_url }}" alt="{{ k.baslik }}" loading="lazy"
+           onerror="this.style.display='none';this.insertAdjacentHTML('afterend','<div class=&quot;kapak-bos&quot;>Kapak yok</div>')">
+    {% elif k.resim1 %}
+      <img class="kapak" src="{{ k.resim1.url }}" alt="{{ k.baslik }}" loading="lazy"
+           onerror="this.style.display='none';this.insertAdjacentHTML('afterend','<div class=&quot;kapak-bos&quot;>Kapak yok</div>')">
+    {% else %}
+      <div class="kapak-bos">Kapak yok</div>
+    {% endif %}
+    <div class="kitap-bilgi">
+      <span class="baslik">{{ k.baslik }}</span>
+      <span class="kunya">
+        {% if k.yazar %}{{ k.yazar.ad_soyad }}{% endif %}
+        {% if k.kategori %}({{ k.kategori.ad }}){% endif %}
+        {% if k.yayin_yili %} · {{ k.yayin_yili }}{% endif %}
+      </span>
+      {% if k.aciklama %}
+      <span class="gorus"><em>Öğretmen görüşü:</em> {{ k.aciklama|truncatechars:130 }}</span>
+      {% endif %}
+    </div>
+  </div>
+  {% empty %}
+  <p class="bos">Sonuç bulunamadı.</p>
+  {% endfor %}
+</div>
+
+{% if page.paginator.num_pages > 1 %}
+<div class="sayfalama">
+  {% if page.has_previous %}
+    <a href="?{% if q %}q={{ q|urlencode }}&amp;{% endif %}page={{ page.previous_page_number }}">‹ Önceki</a>
+  {% endif %}
+  {% for num in page.paginator.page_range %}
+    {% if num == page.number %}
+      <span class="aktif">{{ num }}</span>
+    {% else %}
+      <a href="?{% if q %}q={{ q|urlencode }}&amp;{% endif %}page={{ num }}">{{ num }}</a>
+    {% endif %}
+  {% endfor %}
+  {% if page.has_next %}
+    <a href="?{% if q %}q={{ q|urlencode }}&amp;{% endif %}page={{ page.next_page_number }}">Sonraki ›</a>
+  {% endif %}
+</div>
+{% endif %}
+
+<footer>Kütüphane Yönetim Sistemi · <a href="/admin/">Yönetim</a></footer>
+</body>
+</html>
