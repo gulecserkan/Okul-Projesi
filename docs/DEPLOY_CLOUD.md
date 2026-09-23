@@ -76,19 +76,27 @@ GOOGLE_BOOKS_API_KEY=
 ALLOWED_HOSTS=${SERVER_IP}
 CSRF_TRUSTED_ORIGINS=http://${SERVER_IP}
 SECURE_SSL_REDIRECT=false
+SESSION_COOKIE_SECURE=false
+CSRF_COOKIE_SECURE=false
 DB_NAME=kutuphane
 DB_USER=kutuphane
 DB_PASSWORD=${DB_PASSWORD}
 DB_HOST=127.0.0.1
 DB_PORT=5432
 EOF
-chown root:root /etc/kutuphane/.env
-chmod 600 /etc/kutuphane/.env
+chown root:kutuphane /etc/kutuphane/.env
+chmod 640 /etc/kutuphane/.env
 ```
 
 - `DEBUG=false` → ayarlar `SECRET_KEY` zorlar (yukarıda ürettik).
 - `FIELD_ENCRYPTION_KEY` yalnız ilk kurulumda üret; sonradan değiştirilirse şifreli alanlar okunamaz.
 - `GOOGLE_BOOKS_API_KEY` varsa doldur (K7.5, isteğe bağlı).
+- `SESSION_COOKIE_SECURE` / `CSRF_COOKIE_SECURE`: Faz A (IP+HTTP) için **false**
+  (secure çerezler HTTP üzerinden gönderilmez → admin oturumu açılmaz). Faz B'de
+  **true** yapılır (bkz. 11). Varsayılan kod `not DEBUG`'dır; `.env` ile ezilir.
+- `.env` sahipliği `root:kutuphane 640`: gunicorn `kutuphane` kullanıcısıyla çalışır
+  ve `settings.py` dosyayı `read_text()` ile okur (root-only `600` olursa servis
+  `SECRET_KEY` hatasıyla açılmaz). Dizin `/etc/kutuphane` root'a ait kalır.
 - `KUTUPHANE_ENV_FILE` ortam değişkeniyle başka bir sır dosyası gösterilebilir
   (staging için `/etc/kutuphane/staging.env`, bkz. 13). Verilmezse bu dosya okunur.
 - Faz B'de bu dosya güncellenecek (bkz. 11).
@@ -340,12 +348,14 @@ certbot --nginx -d "$DOMAIN" --redirect     # 80→443 otomatik
 sed -i "s/^ALLOWED_HOSTS=.*/ALLOWED_HOSTS=${SERVER_IP},${DOMAIN}/" /etc/kutuphane/.env
 sed -i "s/^CSRF_TRUSTED_ORIGINS=.*/CSRF_TRUSTED_ORIGINS=https:\/\/${DOMAIN}/" /etc/kutuphane/.env
 sed -i "s/^SECURE_SSL_REDIRECT=.*/SECURE_SSL_REDIRECT=true/" /etc/kutuphane/.env
+sed -i "s/^SESSION_COOKIE_SECURE=.*/SESSION_COOKIE_SECURE=true/" /etc/kutuphane/.env
+sed -i "s/^CSRF_COOKIE_SECURE=.*/CSRF_COOKIE_SECURE=true/" /etc/kutuphane/.env
 systemctl restart kutuphane-backend
 ```
 
 > `SECURE_SSL_REDIRECT=true` + nginx `--redirect` birlikte çalışır (X-Forwarded-Proto
-> ayarı proxy'de hazır). `SESSION_COOKIE_SECURE`/`CSRF_COOKIE_SECURE` zaten `DEBUG=false`
-> olduğundan açıktır.
+> ayarı proxy'de hazır). `SESSION_COOKIE_SECURE`/`CSRF_COOKIE_SECURE` yukarıda
+> `false` değilken (Faz A) burada **true**'ya çekilir.
 
 Doğrulama: `curl -sI https://$DOMAIN/` → 200; mobil/ masaüstü adresi `https://$DOMAIN`'e çevrilir.
 

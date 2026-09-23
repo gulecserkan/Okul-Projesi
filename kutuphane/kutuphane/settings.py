@@ -168,9 +168,10 @@ SECURE_HSTS_SECONDS = 0
 SECURE_HSTS_INCLUDE_SUBDOMAINS = False
 SECURE_HSTS_PRELOAD = False
 
-# Çerez güvenliği (yalnızca HTTPS üzerinde anlamlı; DEBUG dışında aktif)
-SESSION_COOKIE_SECURE = not DEBUG
-CSRF_COOKIE_SECURE = not DEBUG
+# Çerez güvenliği (.env ile ezilebilir; varsayılan DEBUG dışında aktif).
+# Faz A (IP+HTTP) admin oturumunun çalışması için .env'de false; Faz B'de true yapılır.
+SESSION_COOKIE_SECURE = os.environ.get("SESSION_COOKIE_SECURE", str(not DEBUG)).lower() == "true"
+CSRF_COOKIE_SECURE = os.environ.get("CSRF_COOKIE_SECURE", str(not DEBUG)).lower() == "true"
 
 SECURE_CONTENT_TYPE_NOSNIFF = True
 SECURE_REFERRER_POLICY = "same-origin"
