@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../api/kutuphane_api.dart';
 import '../models.dart';
 import '../theme.dart';
+import 'password_dialog.dart';
 
 /// Yeni üye oluşturmak / mevcut üyeyi düzenlemek için form diyaloğu.
 /// Kaydedilen üyeyi `Navigator.pop` ile döndürür; iptalde null.
@@ -26,7 +27,6 @@ class _StudentFormDialogState extends State<StudentFormDialog> {
   late final TextEditingController _no;
   late final TextEditingController _telefon;
   late final TextEditingController _eposta;
-  final _sifre = TextEditingController();
   late Future<List<Sinif>> _siniflarFuture;
   late Future<List<Map<String, dynamic>>> _rollarFuture;
   int? _sinifId;
@@ -102,7 +102,6 @@ class _StudentFormDialogState extends State<StudentFormDialog> {
     _no.dispose();
     _telefon.dispose();
     _eposta.dispose();
-    _sifre.dispose();
     super.dispose();
   }
 
@@ -125,16 +124,46 @@ class _StudentFormDialogState extends State<StudentFormDialog> {
       sinifId: _sinifId,
       telefon: _telefon.text,
       eposta: _eposta.text,
-      sifre: _sifre.text,
+      // K9.5.3: şifre kayıt sonrası sorulur; burada gönderilmez.
+      sifre: null,
       rolId: gonderilecekRolId,
     );
     if (!mounted) return;
-    if (res.uye != null) {
-      Navigator.of(context).pop(res.uye);
-    } else {
+    if (res.uye == null) {
       setState(() => _busy = false);
       showAppSnack(context, res.error ?? 'Kayıt yapılamadı.', error: true);
+      return;
     }
+    final uye = res.uye!;
+    // Yeni üye kaydında "şifre eklensin mi?" sorulur; Evet → şifre penceresi,
+    // Şimdi değil → üye şifresiz kalır (sonradan "Şifre Ver" ile tanımlanır).
+    if (!_editing) {
+      final ekle = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Text('${uye.ad} ${uye.soyad} kaydedildi'),
+          content: const Text('Bu üye için mobil giriş şifresi tanımlansın mı?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Şimdi değil'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: const Text('Evet, şifre ekle'),
+            ),
+          ],
+        ),
+      );
+      if (ekle == true && mounted) {
+        await showDialog<void>(
+          context: context,
+          builder: (_) => PasswordDialog(uye: uye),
+        );
+      }
+      if (!mounted) return;
+    }
+    Navigator.of(context).pop(uye);
   }
 
   @override
@@ -269,20 +298,6 @@ class _StudentFormDialogState extends State<StudentFormDialog> {
                     isDense: true,
                   ),
                   keyboardType: TextInputType.emailAddress,
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _sifre,
-                  obscureText: true,
-                  decoration: InputDecoration(
-                    labelText: 'Giriş şifresi (üye uygulaması)',
-                    helperText: _editing
-                        ? 'Boş bırakılırsa mevcut şifre değişmez.'
-                        : 'Boş bırakılırsa giriş hesabı oluşturulmaz.',
-                    helperMaxLines: 2,
-                    border: const OutlineInputBorder(),
-                    isDense: true,
-                  ),
                 ),
               ],
             ),

@@ -12,6 +12,7 @@ class BookSummary {
     this.imageCount = 0,
     this.aciklamaVar = false,
     this.shelfCodes = const [],
+    this.kapakUrl,
   });
 
   final int id;
@@ -24,6 +25,9 @@ class BookSummary {
   final int imageCount;
   final bool aciklamaVar;
   final List<String> shelfCodes;
+
+  /// Dış kaynaktan çekilen kapak görseli URL'si (Google Books vb.).
+  final String? kapakUrl;
 
   factory BookSummary.fromJson(Map<String, dynamic> json) {
     final yazarRaw = json["yazar"];
@@ -48,6 +52,7 @@ class BookSummary {
       imageCount: _toNullableInt(json["image_count"]) ?? 0,
       aciklamaVar: _toBool(json["aciklama_var"]),
       shelfCodes: rafListe,
+      kapakUrl: json["kapak_url"]?.toString(),
     );
   }
 
@@ -61,6 +66,7 @@ class BookSummary {
     int? imageCount,
     bool? aciklamaVar,
     List<String>? shelfCodes,
+    String? kapakUrl,
   }) {
     return BookSummary(
       id: id,
@@ -73,6 +79,7 @@ class BookSummary {
       imageCount: imageCount ?? this.imageCount,
       aciklamaVar: aciklamaVar ?? this.aciklamaVar,
       shelfCodes: shelfCodes ?? this.shelfCodes,
+      kapakUrl: kapakUrl ?? this.kapakUrl,
     );
   }
 }
@@ -89,6 +96,7 @@ class BookDetail extends BookSummary {
     super.imageCount = 0,
     super.aciklamaVar = false,
     super.shelfCodes = const [],
+    super.kapakUrl,
     this.aciklama,
     this.resimler = const [],
   });
@@ -109,6 +117,7 @@ class BookDetail extends BookSummary {
     List<String>? shelfCodes,
     String? aciklama,
     List<BookImageSlot>? resimler,
+    String? kapakUrl,
   }) {
     return BookDetail(
       id: id,
@@ -123,6 +132,7 @@ class BookDetail extends BookSummary {
       shelfCodes: shelfCodes ?? this.shelfCodes,
       aciklama: aciklama ?? this.aciklama,
       resimler: resimler ?? this.resimler,
+      kapakUrl: kapakUrl ?? this.kapakUrl,
     );
   }
 
@@ -146,6 +156,7 @@ class BookDetail extends BookSummary {
       shelfCodes: summary.shelfCodes,
       aciklama: json["aciklama"]?.toString(),
       resimler: images,
+      kapakUrl: summary.kapakUrl,
     );
   }
 }

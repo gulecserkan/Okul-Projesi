@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../api/library_api.dart';
 import '../models/auth.dart';
 import '../models/book.dart';
+import 'image_gallery_screen.dart';
 
 /// K9: Üye (öğrenci/öğretmen) ekranı — salt-okunur.
 /// Kitaplarda gezinti/arama + kendi ödünç geçmişi + ceza bakiyesi.
@@ -153,6 +154,7 @@ class _UyeHomeScreenState extends State<UyeHomeScreen> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                _imageStrip(d),
                 if ((d.yazar ?? '').isNotEmpty) Text('Yazar: ${d.yazar}'),
                 if ((d.kategori ?? '').isNotEmpty) Text('Kategori: ${d.kategori}'),
                 if (d.yayinYili != null) Text('Yayın yılı: ${d.yayinYili}'),
@@ -179,6 +181,101 @@ class _UyeHomeScreenState extends State<UyeHomeScreen> {
         SnackBar(content: Text('Kitap açılamadı: $e')),
       );
     }
+  }
+
+  /// Kitabın gösterilecek resimleri: dış kapak (varsa) + yüklenen resimler.
+  List<BookImageSlot> _bookImages(BookDetail d) {
+    final list = <BookImageSlot>[];
+    if ((d.kapakUrl ?? '').isNotEmpty) {
+      list.add(BookImageSlot(index: 0, url: d.kapakUrl));
+    }
+    list.addAll(d.resimler.where((s) => s.hasImage));
+    return list;
+  }
+
+  Widget _imageStrip(BookDetail d) {
+    final images = _bookImages(d);
+    if (images.isEmpty) return const SizedBox.shrink();
+    final scheme = Theme.of(context).colorScheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(Icons.photo_library_outlined, size: 18, color: scheme.primary),
+            const SizedBox(width: 6),
+            Text(
+              'Resimler',
+              style: Theme.of(context)
+                  .textTheme
+                  .titleSmall
+                  ?.copyWith(fontWeight: FontWeight.bold),
+            ),
+            const Spacer(),
+            Text(
+              '${images.length}',
+              style: TextStyle(fontSize: 12, color: scheme.outline),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              for (var i = 0; i < images.length; i++) ...[
+                if (i > 0) const SizedBox(width: 8),
+                _imageThumb(images[i], images, scheme),
+              ],
+            ],
+          ),
+        ),
+        const SizedBox(height: 10),
+      ],
+    );
+  }
+
+  GestureDetector _imageThumb(
+    BookImageSlot slot,
+    List<BookImageSlot> images,
+    ColorScheme scheme,
+  ) {
+    return GestureDetector(
+      onTap: () {
+        Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => ImageGalleryScreen(
+              images: images,
+              initialIndex: slot.index,
+            ),
+          ),
+        );
+      },
+      child: Container(
+        width: 100,
+        height: 150,
+        clipBehavior: Clip.antiAlias,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(8),
+          color: scheme.surfaceContainerHighest,
+        ),
+        child: Image.network(
+          slot.url!,
+          fit: BoxFit.cover,
+          errorBuilder: (_, _, _) => _imagePlaceholder(scheme),
+        ),
+      ),
+    );
+  }
+
+  Widget _imagePlaceholder(ColorScheme scheme) {
+    return Container(
+      width: 100,
+      color: scheme.surfaceContainerHighest,
+      child: Center(
+        child: Icon(Icons.image_not_supported_outlined, color: scheme.outline),
+      ),
+    );
   }
 
   String _loanTitle(Map<String, dynamic> r) {
@@ -243,22 +340,209 @@ class _UyeHomeScreenState extends State<UyeHomeScreen> {
     return due.isBefore(DateTime.now());
   }
 
+  /// K9.8: üye ekranındaki küçük aksiyon — ikon + metin.
+  /// AppBar başlığı: üye adı+soyadı (üye no); "Kütüphane" arka planda (alt satır)
+  /// uygulama adı olarak görünür.
+  Widget _buildAppBarTitle() {
+    final t = widget.tokens;
+    final name = (t.fullName ?? '').trim();
+    final no = (t.uyeNo ?? '').trim();
+    final mainLabel = name.isNotEmpty
+        ? (no.isNotEmpty ? '$name ($no)' : name)
+        : (no.isNotEmpty ? no : 'Kütüphane');
+    final scheme = Theme.of(context).colorScheme;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          mainLabel,
+          overflow: TextOverflow.ellipsis,
+          style: Theme.of(context)
+              .textTheme
+              .titleMedium
+              ?.copyWith(fontWeight: FontWeight.w600),
+        ),
+        Text(
+          'Kütüphane',
+          style: Theme.of(context)
+              .textTheme
+              .labelSmall
+              ?.copyWith(color: scheme.onSurfaceVariant),
+        ),
+      ],
+    );
+  }
+
+  Widget _actionButton({
+    required IconData icon,
+    required String label,
+    required VoidCallback onPressed,
+  }) {
+    final scheme = Theme.of(context).colorScheme;
+    return InkWell(
+      onTap: onPressed,
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 20, color: scheme.onSurfaceVariant),
+            const SizedBox(height: 2),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 10,
+                color: scheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showChangePasswordDialog() async {
+    final currentCtrl = TextEditingController();
+    final newCtrl = TextEditingController();
+    final confirmCtrl = TextEditingController();
+    String? error;
+    bool loading = false;
+
+    await showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setStateDialog) {
+            return AlertDialog(
+              title: const Text('Şifre değiştir'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: currentCtrl,
+                    decoration: const InputDecoration(
+                      labelText: 'Mevcut şifre',
+                      prefixIcon: Icon(Icons.lock_clock_outlined),
+                    ),
+                    obscureText: true,
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: newCtrl,
+                    decoration: const InputDecoration(
+                      labelText: 'Yeni şifre',
+                      prefixIcon: Icon(Icons.lock_outline),
+                    ),
+                    obscureText: true,
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: confirmCtrl,
+                    decoration: const InputDecoration(
+                      labelText: 'Yeni şifre (tekrar)',
+                      prefixIcon: Icon(Icons.lock_outline),
+                    ),
+                    obscureText: true,
+                  ),
+                  if (error != null) ...[
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        const Icon(Icons.error_outline, color: Colors.red),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            error!,
+                            style: const TextStyle(color: Colors.red),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed:
+                      loading ? null : () => Navigator.of(context).pop(),
+                  child: const Text('Vazgeç'),
+                ),
+                ElevatedButton(
+                  onPressed: loading
+                      ? null
+                      : () async {
+                          final current = currentCtrl.text.trim();
+                          final newPass = newCtrl.text.trim();
+                          final confirm = confirmCtrl.text.trim();
+                          if (current.isEmpty || newPass.isEmpty || confirm.isEmpty) {
+                            setStateDialog(() => error = 'Tüm alanlar zorunlu.');
+                            return;
+                          }
+                          if (newPass != confirm) {
+                            setStateDialog(() => error = 'Yeni şifreler uyuşmuyor.');
+                            return;
+                          }
+                          setStateDialog(() {
+                            loading = true;
+                            error = null;
+                          });
+                          try {
+                            await _api.changePassword(
+                              currentPassword: current,
+                              newPassword: newPass,
+                              newPasswordConfirm: confirm,
+                            );
+                            if (!context.mounted) return;
+                            Navigator.of(context).pop();
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Şifre güncellendi.')),
+                            );
+                          } catch (e) {
+                            setStateDialog(() {
+                              error = e.toString();
+                              loading = false;
+                            });
+                          }
+                        },
+                  child: loading
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Text('Kaydet'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
       length: 3,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Kütüphane'),
+          title: _buildAppBarTitle(),
           actions: [
-            IconButton(
-              tooltip: 'Sunucu değiştir',
-              icon: const Icon(Icons.dns_outlined),
+            _actionButton(
+              icon: Icons.key_outlined,
+              label: 'Şifre',
+              onPressed: _showChangePasswordDialog,
+            ),
+            _actionButton(
+              icon: Icons.dns_outlined,
+              label: 'Sunucu',
               onPressed: () => widget.onChangeServer(),
             ),
-            IconButton(
-              tooltip: 'Çıkış',
-              icon: const Icon(Icons.logout),
+            _actionButton(
+              icon: Icons.logout,
+              label: 'Çıkış',
               onPressed: () => widget.onLogout(),
             ),
           ],
