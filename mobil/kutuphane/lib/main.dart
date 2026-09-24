@@ -4,6 +4,7 @@ import 'api/library_api.dart';
 import 'models/auth.dart';
 import 'screens/book_list_screen.dart';
 import 'screens/uye_home_screen.dart';
+import 'screens/editor_home_screen.dart';
 import 'screens/connection_screen.dart';
 import 'screens/force_password_screen.dart';
 import 'screens/login_screen.dart';
@@ -241,8 +242,20 @@ class _KutuphaneAppState extends State<KutuphaneApp> {
       );
     }
 
-    // Editör hem düzenler hem ödünç alır → yönetim ekranı (BookListScreen).
-    if (_tokens!.isUye && !_tokens!.isEditor) {
+    // K9.12: Editör iki bölümlü ekran (Editör + Üye'nin aynısı).
+    if (_tokens!.isEditor) {
+      return EditorHomeScreen(
+        baseUrl: _baseUrl!,
+        tokens: _tokens!,
+        onLogout: _logout,
+        onSessionExpired: _onSessionExpired,
+        currentTheme: _currentTheme,
+        onThemeChange: _changeTheme,
+      );
+    }
+
+    // Üye (editör olmayan) → salt-okunur üye ekranı.
+    if (_tokens!.isUye) {
       return UyeHomeScreen(
         baseUrl: _baseUrl!,
         tokens: _tokens!,

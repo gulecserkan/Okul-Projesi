@@ -110,9 +110,6 @@ class _BookListScreenState extends State<BookListScreen> {
             icon: const Icon(Icons.more_vert),
             onSelected: (value) {
               switch (value) {
-                case "loans":
-                  _showMyLoans();
-                  break;
                 case "password":
                   _showChangePasswordDialog();
                   break;
@@ -125,14 +122,6 @@ class _BookListScreenState extends State<BookListScreen> {
               }
             },
             itemBuilder: (context) => [
-              if ((widget.tokens.uyeNo ?? '').isNotEmpty)
-                const PopupMenuItem(
-                  value: "loans",
-                  child: ListTile(
-                    leading: Icon(Icons.history),
-                    title: Text("Ödünçlerim"),
-                  ),
-                ),
               const PopupMenuItem(
                 value: "password",
                 child: ListTile(
@@ -528,61 +517,6 @@ class _BookListScreenState extends State<BookListScreen> {
     _searchController.text = code;
     _forceBarcodeSearch = true;
     await _loadBooks();
-  }
-
-  Future<void> _showMyLoans() async {
-    final no = widget.tokens.uyeNo;
-    if (no == null || no.isEmpty) return;
-    try {
-      final list = await _api.fetchUyeGecmis(no);
-      if (!mounted) return;
-      showDialog<void>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: const Text('Ödünçlerim'),
-          content: SizedBox(
-            width: 420,
-            height: 360,
-            child: list.isEmpty
-                ? const Center(child: Text('Kayıtlı ödünç yok.'))
-                : ListView.builder(
-                    itemCount: list.length,
-                    itemBuilder: (c, i) {
-                      final r = list[i];
-                      final nusha = r['kitap_nusha'];
-                      var baslik = 'Kitap';
-                      if (nusha is Map<String, dynamic> &&
-                          nusha['kitap'] is Map) {
-                        baslik =
-                            ((nusha['kitap'] as Map)['baslik'] ?? 'Kitap')
-                                .toString();
-                      }
-                      final odunc =
-                          (r['odunc_tarihi'] ?? '').toString().split('T').first;
-                      final iade =
-                          (r['iade_tarihi'] ?? '').toString().split('T').first;
-                      return ListTile(
-                        dense: true,
-                        title: Text(baslik),
-                        subtitle: Text('Ödünç: $odunc · İade: $iade'),
-                        trailing: Text((r['durum'] ?? '').toString()),
-                      );
-                    },
-                  ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text('Kapat'),
-            ),
-          ],
-        ),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Ödünçler alınamadı: $e')));
-    }
   }
 
   Future<void> _showChangePasswordDialog() async {
