@@ -2,7 +2,7 @@
 
 Bu rehber, sıfır (boş) bir Ubuntu sunucusuna kütüphane sistemini kurar:
 
-- **PostgreSQL** yalnız Docker konteynerı olarak (internete kapalı, `127.0.0.1:5432`)
+- **PostgreSQL** native (apt) olarak (internete kapalı, yalnız `127.0.0.1:5432`)
 - **Django + API** native: venv + Gunicorn + systemd (nginx arkasında, `127.0.0.1:8000`)
 - **Nginx** ters proxy; kök adres (`/`) → **genel kitap kataloğu web sayfası** (K11),
   `/api/*` → arka planda DRF/JWT API'si
@@ -41,7 +41,7 @@ apt -y upgrade
 apt -y install \
   python3 python3-venv python3-dev build-essential libpq-dev \
   nginx curl ufw git fail2ban unattended-upgrades \
-  docker.io docker-compose-v2 rsync
+  postgresql rsync
 
 # otomatik güvenlik güncellemelerini etkinleştir (sessiz)
 systemctl enable --now unattended-upgrades
@@ -101,44 +101,34 @@ chmod 640 /etc/kutuphane/.env
   (staging için `/etc/kutuphane/staging.env`, bkz. 13). Verilmezse bu dosya okunur.
 - Faz B'de bu dosya güncellenecek (bkz. 11).
 
-## 4. PostgreSQL — Docker
+## 4. PostgreSQL — native (apt)
 
-`docker-compose.yml`'ı `/etc/kutuphane/` içine koy:
+> Docker/daemon yükü ve bellek israfı olmasın diye dağıtımın kendi
+> PostgreSQL'i kullanılır (geliştirme ortamıyla da aynıdır). Sunucu yalnız
+> `127.0.0.1:5432` dinler — internete **kapalı**.
 
 ```bash
-cat > /etc/kutuphane/docker-compose.yml <<'YML'
-services:
-  db:
-    image: postgres:16-alpine
-    container_name: kutuphane-postgres
-    restart: unless-stopped
-    env_file: /etc/kutuphane/.env
-    environment:
-      POSTGRES_DB: ${DB_NAME}
-      POSTGRES_USER: ${DB_USER}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
-      TZ: Europe/Istanbul
-    ports:
-      - "127.0.0.1:5432:5432"
-    volumes:
-      - kutuphane_pgdata:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
-      interval: 5s
-      timeout: 3s
-      retries: 10
+# postgresql paketi Bölüm 1'de kuruldu; servisi başlat
+systemctl enable --now postgresql
+pg_isready                 # "accepting connections" görene kadar bekleyin
 
-volumes:
-  kutuphane_pgdata:
-YML
+# DB kullanıcısı + veritabanı (.env'deki DB_USER/DB_NAME/DB_PASSWORD ile uyumlu)
+sudo -u postgres psql -v ON_ERROR_STOP=1 <<SQL
+CREATE USER kutuphane WITH PASSWORD '${DB_PASSWORD}';
+CREATE DATABASE kutuphane OWNER kutuphane;
+SQL
 
-cd /etc/kutuphane
-docker compose up -d
-docker compose ps          # healthy görene kadar bekleyin (~10 sn)
+# Dinleme adresi varsayılanı localhost'tur (127.0.0.1) — teyit:
+grep -E '^\s*#?\s*listen_addresses' /etc/postgresql/*/main/postgresql.conf || echo "varsayilan: localhost (127.0.0.1)"
+
+# Doğrulama: Django'nun kullanacağı bağlantı yolu (şifreyle)
+PGPASSWORD='${DB_PASSWORD}' psql -h 127.0.0.1 -U kutuphane -d kutuphane -c 'select 1'
 ```
 
-> Port **yalnız 127.0.0.1**'e bağlı → veritabanı internete kapalı.
-> Her yeniden başlatmada veri volume'da kalır.
+> Varsayılan `pg_hba.conf` (Ubuntu 24.04/postgres 16): yerel socket bağlantısı
+> `peer`, `127.0.0.1` üzeri `scram-sha-256`. Yani Django şifreyle bağlanır,
+> yedek betikleri de `postgres` kullanıcısıyla (peer) çalışır — parola betik
+> içine yazılmaz. Veriler doğrudan diskte (`/var/lib/postgresql`), ayrıca swap/gereksiz katman yok.
 
 ## 5. Kodu içeri al (git)
 
@@ -205,7 +195,7 @@ sudo -u kutuphane env -C "$APP" "$VENV/bin/python" manage.py shell -c \
 cat > /etc/systemd/system/kutuphane-backend.service <<'SVC'
 [Unit]
 Description=Kutuphane Django Backend (Gunicorn)
-After=network.target docker.service
+After=network.target postgresql.service
 
 [Service]
 User=kutuphane
@@ -277,7 +267,7 @@ nginx -t && systemctl reload nginx
 ```bash
 cat > /etc/cron.d/kutuphane-backup <<'EOF'
 # PostgreSQL + media yedeği (günlük 02:30), 14 gün tut
-30 2 * * * root mkdir -p /var/backups/kutuphane && docker exec kutuphane-postgres pg_dump -U kutuphane kutuphane -Fc | gzip > /var/backups/kutuphane/pg_$(date +\%F).dump.gz && find /var/backups/kutuphane -name 'pg_*' -mtime +14 -delete
+30 2 * * * root mkdir -p /var/backups/kutuphane && sudo -u postgres pg_dump kutuphane -Fc | gzip > /var/backups/kutuphane/pg_$(date +\%F).dump.gz && find /var/backups/kutuphane -name 'pg_*' -mtime +14 -delete
 40 2 * * * root tar -czf /var/backups/kutuphane/media_$(date +\%F).tar.gz -C /srv/kutuphane/kutuphane media && find /var/backups/kutuphane -name 'media_*' -mtime +14 -delete
 EOF
 chmod 644 /etc/cron.d/kutuphane-backup
@@ -287,7 +277,7 @@ Geri yükleme (`-Fc` özel format → `pg_restore`):
 
 ```bash
 zcat /var/backups/kutuphane/pg_2026-09-24.dump.gz \
-  | docker exec -i kutuphane-postgres pg_restore -U kutuphane -d kutuphane --clean --if-exists
+  | sudo -u postgres pg_restore -d kutuphane --clean --if-exists
 ```
 
 ## 9. Firewall ve SSH güvenliği
@@ -328,7 +318,7 @@ curl -s "http://<SERVER_IP>/?q=sefiller" | grep -c sefiller   # arama
 - Masaüstü: Ayarlar → Sunucu → `http://<SERVER_IP>`.
 - `/admin/` ile yönetime giriş.
 
-Sorun giderme: `journalctl -u kutuphane-backend --no-pager -n 100`, `tail /var/log/kutuphane/gunicorn.log`, `docker compose -f /etc/kutuphane/docker-compose.yml ps`.
+Sorun giderme: `journalctl -u kutuphane-backend --no-pager -n 100`, `tail /var/log/kutuphane/gunicorn.log`, `systemctl status postgresql`.
 
 ---
 
@@ -413,8 +403,8 @@ Prod'u etkilemeden yeni sürümü denemek için. Kod: `/srv/kutuphane-staging`
 (ayrı klon), uygulama `/srv/kutuphane-staging/kutuphane`, venv aynı yapıda.
 
 ```bash
-# 1) İkinci veritabanı (aynı konteyner)
-docker exec kutuphane-postgres psql -U kutuphane -d postgres -c 'CREATE DATABASE kutuphane_staging;'
+# 1) İkinci veritabanı (aynı PostgreSQL servisi)
+sudo -u postgres psql -c "CREATE DATABASE kutuphane_staging OWNER kutuphane;"
 
 # 2) Ayrı .env (sırlar ayrı; DB hedefi staging)
 cp /etc/kutuphane/.env /etc/kutuphane/staging.env
@@ -441,7 +431,7 @@ systemd servisi (8001):
 cat > /etc/systemd/system/kutuphane-staging.service <<'SVC'
 [Unit]
 Description=Kutuphane Staging (Gunicorn)
-After=network.target docker.service
+After=network.target postgresql.service
 
 [Service]
 User=kutuphane
@@ -471,7 +461,7 @@ systemctl enable --now kutuphane-staging
 
 | Katman | Port | Nerede |
 |---|---|---|
-| PostgreSQL (Docker) | 127.0.0.1:5432 | `kutuphane-postgres`; DB: `kutuphane` (prod) + `kutuphane_staging` |
+| PostgreSQL (native) | 127.0.0.1:5432 | `postgresql.service`; DB: `kutuphane` (prod) + `kutuphane_staging` |
 | Django/Gunicorn — prod | 127.0.0.1:8000 | `kutuphane-backend.service` · `/srv/kutuphane` |
 | Django/Gunicorn — staging | 127.0.0.1:8001 | `kutuphane-staging.service` · `/srv/kutuphane-staging` |
 | Nginx | 80 → (443 Faz B) | `/etc/nginx/sites-available/kutuphane` |
@@ -496,7 +486,7 @@ gerektiğinde prod'dan kopya alınır; **kurallar:**
 
 ```bash
 # SUNUCU: kopyayı al
-docker exec kutuphane-postgres pg_dump -U kutuphane kutuphane -Fc | gzip > /tmp/prod_kopya.dump.gz
+sudo -u postgres pg_dump kutuphane -Fc | gzip > /tmp/prod_kopya.dump.gz
 
 # (YEREL) dosyayı indir
 scp kutuphane@<SERVER_IP>:/tmp/prod_kopya.dump.gz /tmp/

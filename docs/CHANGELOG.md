@@ -36,6 +36,8 @@ ve mobil istemciler.
 - Sunucu ayarı yalnızca giriş akışında; erişilemezse belirgin uyarı
 
 ### Altyapı / Dokümantasyon
-- Bulut Ubuntu kurulum rehberi (`docs/DEPLOY_CLOUD.md`)
+- Bulut Ubuntu kurulum rehberi (`docs/DEPLOY_CLOUD.md`); PostgreSQL **native**
+  (apt, Docker yok) — düşük kaynaklı VPS için tercih edildi
+- Sunucu işletim güvenlik protokolü (`docs/SUNUCU_ISLETIM_SAFETY.md`)
 - Yayın/güncelleme betikleri (`kutuphane/scripts/deploy.sh`,
   `rollback.sh`) ve iş kuralları (`docs/IS_KURALLARI.md`)

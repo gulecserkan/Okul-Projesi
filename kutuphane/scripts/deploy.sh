@@ -86,7 +86,7 @@ runuser -u kutuphane -- git checkout --force "$TAG"
 runuser -u kutuphane -- "$VENV/bin/pip" install -q -r "$APP/requirements.txt"
 
 log "Migration öncesi yedek alınıyor ($DB_NAME)"
-docker exec kutuphane-postgres pg_dump -U "$DB_USER" "$DB_NAME" -Fc \
+sudo -u postgres pg_dump "$DB_NAME" -Fc \
   | gzip > "$BACKUP_DIR/pre_${ORTAM}_${TAG}_$(date +%F_%H%M%S).dump.gz"
 
 runuser -u kutuphane -- env -C "$APP" "$VENV/bin/python" manage.py migrate --noinput

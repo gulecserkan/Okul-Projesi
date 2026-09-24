@@ -68,7 +68,7 @@ for _ in 1 2 3 4 5; do
     log "BAŞARILI — $ORTAM $TAG sürümüne dönüldü"
     echo "Şema sorunu yaşıyorsan yedeği geri yükle:"
     echo "  ls -t $BACKUP_DIR/pre_${ORTAM}_*.dump.gz | head -1"
-    echo "  zcat <yedek> | docker exec -i kutuphane-postgres pg_restore -U <DB_USER> -d <DB_NAME> --clean --if-exists"
+    echo "  zcat <yedek> | sudo -u postgres pg_restore -d <DB_NAME> --clean --if-exists"
     exit 0
   fi
 done
