@@ -11,8 +11,8 @@ Bu dosya, backend tarafında (Faz 1 iyileştirmeleri sonrası) kalan geliştirme
 - [x] N+1 sorgular (select_related) + büyük listelerde sayfalama
 - [x] Barkod üretimi tek MAX sorgusu + IntegrityError retry
 - [x] Kişisel veri alan şifrelemesi (telefon/e-posta/bildirim kredileri)
-- [x] Yedekler diskte şifreli (.json.enc), restore yol denetimli
-- [x] CSV içe aktarmada yanlış pasifleştirme engellendi (bilinçli bayrak)
+- [x] Yedekler: sunucu tarafı pg_dump + openssl şifreli (scripts/yedekle.sh), cron
+- [x] Toplu öğrenci aktarımı masaüstü K9.13; admin içe/dışa aktarma kaldırıldı
 - [x] Çekirdek testler (16)
 
 ## Güvenlik & Kimlik

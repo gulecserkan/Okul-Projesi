@@ -2,31 +2,31 @@
 
 ## 1. Admin Paneli (`/admin/`)
 
-Özel `CustomAdminSite` (`kutuphane_app/admin.py:118`) — `/admin/` adresinde çalışır. Başlık: "Kütüphane Yönetim Sistemi".
+Özel `CustomAdminSite` (`kutuphane_app/admin.py`) — `/admin/` adresinde çalışır. Başlık: "Kütüphane Yönetim Sistemi".
 
-### Sistem Araçları (özel URL'ler)
-| Rota | Fonksiyon |
-|---|---|
-| `/admin/system/ayarlar/` | Hub sayfası: Yedekle / Geri Yükle butonları (`admin/system_settings.html`) |
-| `/admin/system/backup/` | `dumpdata` (contenttypes, auth.permission, admin.logentry, sessions hariç) → şifreli `backups/backup_YYYYMMDD_HHMMSS.json.enc` (FerNet; kişisel veriler düz metin içerdiği için) → aynı şifreli dosya indirilir |
-| `/admin/system/restore/` | Geri yükleme akışı: `EVET` + 6 haneli güvenlik kodu; `.json.enc` (şifresi çözülür) veya eski düz metin `.json` yüklenir/seçilir → `flush` + `loaddata` (**tüm veri silinir**). Seçilen dosya `backups/` diziniyle sınırlıdır (path traversal koruması) |
+### Yedekleme (pg_dump + cron)
+Admin panelde yedekle/geri yükle arayüzü **yoktur**; yedekleme sunucu tarafında `pg_dump` ile yapılır:
+- `scripts/yedekle.sh [prod|staging]` → `pg_dump -Fc` + `openssl` (AES-256-CBC/PBKDF2) → `/var/backups/kutuphane/kutuphane_<ortam>_<zaman>.dump.enc`; varsayılan 14 gün saklama.
+- Zamanlama: `/etc/cron.d/kutuphane-yedek` (kaynak: `scripts/cron.d/kutuphane-yedek`) → her gün 03:30.
+- Geri yükleme: `scripts/geri-yukle.sh <yedek.dump.enc> [prod|staging]` → `pg_restore --clean --if-exists --no-owner`.
+- Gereksinim: `/etc/kutuphane/.env` içinde `DB_*` ve `YEDEK_SIFRE` tanımlı olmalı.
 
 ### Kayıtlı Modeller ve Özel Alanlar
 - **Rol** listesi: bağlı `loan_policy` değerlerini gösterir (süre, max kitap, günlük ceza).
-- **Üye** (`ImportExportModelAdmin`): CSV/JSON içe-dışa aktarma (`uye_no,ad,soyad,sinif,rol`; UTF-8; başlık satırı zorunlu; virgül ayraçlı, tırnaksız). CSV'de olmayan üyeleri pasife çekmek **varsayılan olarak kapalıdır**; yalnızca "tam yoklama senkronu" bilinçli yapılırken `UyeResource.pasiflestir=True` ile açılır (kısmi CSV yüklerken sınıf listesi dışındakiler silinmesin diye).
+- **Üye**: liste/arama/filtre + kayıt düzenleme. Toplu öğrenci girişi **masaüstü K9.13** ile yapılır; admin panelde içe/dışa aktarma **yoktur** (tek aktarım yolu K9.13).
 - **Arşivleme** (Öğrenci değişiklik listesinden): kriter = `aktif=False` VE (pasif_tarihi 3+ yıl önce VEYA pasif_tarihi boşsa kayıt_tarihi 3+ yıl önce). Onayda transaction içinde `ArsivBatch` + `ArsivUye` + `ArsivOdunc` oluşturulur, JSON paket kaydedilir, **canlı öğrenci ve ödünç kayıtları silinir**.
 - **Kullanıcılar (User)**: Personel/operatör hesapları standart Django **Users** admin'inden yönetilir; admin = `is_superuser`. `Personel` tablosu kaldırılmıştır.
 - **Sayım Oturumu**: kalemleri salt-okunur inline.
 - **LoanPolicy / RoleLoanPolicy / NotificationSettings**: listelenir, sistem ayarları olmayan alanlar düzenlenebilir.
 
 ### Şablonlar (`kutuphane/templates/admin/`)
-- `index.html` — Sistem Araçları modülü ekler.
-- `ogrenci_change_list.html` — "Arşive Taşı (ön izleme)" butonu.
-- `system_settings.html`, `system_restore_form.html` — backup/restore arayüzü.
-- `ogrenci_arsiv_onizleme.html` — arşiv ön izleme + onay.
-- `import_export/export.html` — Türkçe etiketli dışa aktarma sayfası.
+- `uye_change_list.html` — "Arşive Taşı (ön izleme)" butonu.
+- `uye_arsiv_onizleme.html` — arşiv ön izleme + onay.
 
-> Not: Eski `system_restore_start/confirm/code.html` şablonları kaldırıldı; güncel akış tek form (`system_restore_form.html`).
+### Yönetim Yüzü Sınırı
+- **Masaüstü** — günlük operasyon: kitap/nüsha, ödünç/iade, üye yönetimi ve **dönem başı toplu öğrenci aktarımı (K9.13)**.
+- **Admin paneli** — nadiren değişen/bakım işleri: ayar tabloları (Sinif, Rol, LoanPolicy, RoleLoanPolicy, NotificationSettings, KurumAyarlari), kullanıcılar, arşivleme.
+- **Yedekleme** — `pg_dump` + cron (sunucu tarafı; admin arayüzü yok).
 
 ## 2. Deployment
 
@@ -36,6 +36,16 @@ Detaylı rehber: `kutuphane/django_deployment_checklist.md` ve `kutuphane/SERVER
 - `.env` içinden okunur: `/etc/kutuphane/.env` ve sonra `<proje>/kutuphane/.env` (yoksa varsayılanlar).
 - Gunicorn WSGI; WhiteNoise statik dosyaları servis eder; `collectstatic` gerekir.
 - Cron: `/etc/cron.d/kutuphane-scheduler` → `python manage.py run_scheduled_tasks` her 15 dk.
+
+### Eski Veri Aktarımı (tek seferlik)
+Eski sistemden yalnız **katalog** aktarılır (Yazar/Kategori/Kitap/KitapNusha/Raf + Rol/RoleLoanPolicy/LoanPolicy); üye/ödünç/arşiv/personel aktarılmaz (öğrenciler masaüstü K9.13 ile eklenir).
+1. Eski makinede: `sudo -u postgres pg_dump <db> -Fc -f /tmp/kutuphane_eski.dump` → dosyayı hedefe kopyala.
+2. Aktarım (`scripts/eski_veri_aktar.sh`, hedef DB'ye göre):
+   - **Local:** `bash kutuphane/scripts/eski_veri_aktar.sh <dump> local`
+   - **Sunucu:** dump'ı sunucuya kopyala → `sudo bash kutuphane/scripts/eski_veri_aktar.sh <dump> prod` (veya `staging`)
+   Betik dump'ı geçici DB'ye (`<DB_NAME>_eski`) yükler, **dry-run raporu** gösterir, `EVET` onayıyla uygular, geçici DB'yi siler. Prod DB'ye istemciden bağlanılmaz; sunucuda çalıştırılır.
+3. `manage.py eski_veri_aktar` **idempotenttir**: doğal anahtarlarla (barkod, ad, isbn veya başlık+yazar) eşleşen kayıtlar tekrar oluşturulmaz. Rol adları kanonikleştirilir (`öğrenci`→`Öğrenci`).
+4. Eski `oduncte` nüshalar, ödünç geçmişi aktarılmadığından `mevcut`a çevrilir (`--odunctekileri-mevcut-yap`).
 
 ### Ortam Değişkenleri (`settings.py` `load_env`)
 | Değişken | Varsayılan | Açıklama |
@@ -49,6 +59,7 @@ Detaylı rehber: `kutuphane/django_deployment_checklist.md` ve `kutuphane/SERVER
 | `DB_HOST` | `localhost` | |
 | `DB_PORT` | `5432` | |
 | `FIELD_ENCRYPTION_KEY` | (yoksa `SECRET_KEY`) | Kişisel veri alan şifrelemesi anahtarı; ayrı tutulması önerilir (rotasyonda veriyi bozmaz) |
+| `YEDEK_SIFRE` | — | `scripts/yedekle.sh` pg_dump yedeğini şifrelemek için (zorunlu); güçlü tutulmalı, paylaşılmamalı |
 
 ### Bazı Önemli Ayarlar
 - `LANGUAGE_CODE = 'tr'`, `TIME_ZONE = 'Europe/Istanbul'`, `USE_TZ = True`.
@@ -59,10 +70,9 @@ Detaylı rehber: `kutuphane/django_deployment_checklist.md` ve `kutuphane/SERVER
 
 - **API**: Tüm uçlar JWT korumalı; yalnızca `health` açık. Öğrenci bilgileri yetkisiz erişime kapalı (masaüstü/mobil istemciler token ile konuşur).
 - **Admin**: Django session kimliği; admin = `is_superuser`; operatör/giriş hesapları Django `User`'dır.
-- **Restore**: `EVET` + dinamik 6 haneli kod — yanlışlıkla veri kaybını önler; kullanılmış/geçersiz kodlar reddedilir; dosya seçimi `backups/` ile sınırlıdır. Yine de **yıkıcıdır** (flush sonrası load).
+- **Yedekleme**: Admin panelde yedek/geri yükle **yok**; `scripts/yedekle.sh` ile `pg_dump -Fc` alınır ve `openssl` (AES-256) ile şifrelenir (`YEDEK_SIFRE`). Geri yükleme `scripts/geri-yukle.sh` ile `pg_restore --clean` — **yıkıcıdır**, onay ister.
 - **Header temizliği**: `SafeHeaderMiddleware` ASCII olmayan/çok satırlı header değerlerini temizler (masaüstü `requests` istemcisinin RecursionError vermemesi için).
 - **Şifreler**: Django `make_password`/`check_password` (tek kaynak: `User.password`).
-- **Yedekleme**: Disk ve indirilen dosya **şifrelidir** (`.json.enc`); şifreleme anahtarı `.env`'de sağlanır. Eski düz metin `.json` yedekler restore'da hâlâ kabul edilir.
 - **Yetki**: Admin = `is_superuser`; operatör = Uye bağı olmayan `User`; editör = `Uye.rol="Editör"` (kitap düzenleme). Üye uçları salt-okunur ve kendine ait.
 
 ## 4. Veritabanı (PostgreSQL) Kurulumu

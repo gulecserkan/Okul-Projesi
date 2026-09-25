@@ -1,6 +1,4 @@
-from django.utils.crypto import get_random_string
-from django.conf import settings
-import os, json, io, datetime
+import json
 
 from django.contrib import admin, messages
 from django.urls import path
@@ -9,17 +7,11 @@ from django.utils.timezone import now
 from django.db import transaction
 from django.core.files.base import ContentFile
 from django.db.models import Q
-from django.http import HttpResponse
-from django.core import management
 from django.contrib.auth.models import User, Group
 from django.contrib.auth.admin import UserAdmin, GroupAdmin
 from django import forms
 from django.contrib.auth.hashers import make_password
 
-from import_export.admin import ImportExportModelAdmin
-
-from .resources import UyeResource
-from .encryption import encrypt_blob, decrypt_blob
 from .models import (
     Rol, Sinif, Uye, Yazar, Kategori, Raf, Kitap, KitapNusha,
     OduncKaydi, AuditLog,
@@ -33,101 +25,6 @@ class CustomAdminSite(admin.AdminSite):
     site_header = "Kütüphane Yönetim Sistemi"
     site_title = "Kütüphane Admin"
     index_title = "Kontrol Paneli"
-
-    restore_code = None
-
-    def system_restore_view(self, request):
-        backups_dir = settings.BASE_DIR / "backups"
-        backups_dir.mkdir(exist_ok=True)
-
-        if request.method == "GET":
-            backup_files = sorted(os.listdir(backups_dir), reverse=True)
-            self.restore_code = get_random_string(6).upper()
-            return render(request, "admin/system_restore_form.html", {
-                "code": self.restore_code,
-                "backup_files": backup_files,
-            })
-
-        elif request.method == "POST":
-            confirm = request.POST.get("confirm", "")
-            code = request.POST.get("code", "")
-            file = request.FILES.get("json_file")
-            selected_file = request.POST.get("selected_file")
-
-            if confirm != "EVET":
-                return HttpResponse("Hata: 'EVET' yazmanız gerekiyor.", status=400)
-            if not self.restore_code or code != self.restore_code:
-                self.restore_code = None
-                return HttpResponse("Hata: Güvenlik kodu yanlış veya süresi doldu.", status=400)
-
-            raw = None
-            if file:
-                raw = file.read()
-            elif selected_file:
-                backups_root = backups_dir.resolve()
-                candidate = (backups_dir / selected_file).resolve()
-                if not str(candidate).startswith(str(backups_root)):
-                    return HttpResponse("Hata: Geçersiz yedek dosyası.", status=400)
-                if not candidate.exists():
-                    return HttpResponse("Hata: Seçilen yedek bulunamadı.", status=400)
-                raw = candidate.read_bytes()
-            else:
-                return HttpResponse("Hata: Dosya seçilmedi.", status=400)
-
-            # Yedek şifreliyse çöz; eski düz metin JSON kabul edilir.
-            data = decrypt_blob(raw)
-            restore_path = backups_dir / "_restore_pending.json"
-            restore_path.write_bytes(data)
-            try:
-                management.call_command("flush", "--noinput")
-                management.call_command("loaddata", str(restore_path))
-            finally:
-                restore_path.unlink(missing_ok=True)
-            self.restore_code = None
-            return HttpResponse("✅ Restore işlemi tamamlandı.")
-
-    def get_urls(self):
-        urls = super().get_urls()
-        custom_urls = [
-            path("system/ayarlar/", self.admin_view(self.system_settings_view), name="system-settings"),
-            path("system/backup/", self.admin_view(self.system_backup_view), name="system-backup"),
-            path("system/restore/", self.admin_view(self.system_restore_view), name="system-restore"),
-        ]
-        return custom_urls + urls
-
-    def system_settings_view(self, request):
-        return render(request, "admin/system_settings.html")
-
-    def system_backup_view(self, request):
-        backups_dir = settings.BASE_DIR / "backups"
-        backups_dir.mkdir(exist_ok=True)
-
-        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"backup_{timestamp}.json.enc"
-        filepath = backups_dir / filename
-
-        buffer = io.StringIO()
-        management.call_command(
-            "dumpdata",
-            stdout=buffer,
-            indent=2,
-            exclude=[
-                "contenttypes",
-                "auth.permission",
-                "admin.logentry",
-                "sessions",
-                "sessions.session",
-            ],
-        )
-
-        # Şifre alanları düz metin içerdiği için yedek diskte şifreli saklanır.
-        encrypted = encrypt_blob(buffer.getvalue().encode("utf-8"))
-        with open(filepath, "wb") as f:
-            f.write(encrypted)
-
-        response = HttpResponse(encrypted, content_type="application/octet-stream")
-        response["Content-Disposition"] = f'attachment; filename="{filename}"'
-        return response
 
 
 admin_site = CustomAdminSite(name="custom_admin")
@@ -234,9 +131,8 @@ class AuditLogAdmin(admin.ModelAdmin):
     list_filter = ("islem", "kullanici")
     search_fields = ("islem", "detay", "kullanici__username", "kullanici__first_name", "kullanici__last_name")
 
-# --- Uye + import-export + ARŞİV Özel URL + İşlem ---
-class UyeAdmin(ImportExportModelAdmin):
-    resource_class = UyeResource
+# --- Uye + ARŞİV Özel URL + İşlem ---
+class UyeAdmin(admin.ModelAdmin):
     list_display = ("uye_no", "ad", "soyad", "sinif", "rol", "aktif", "kayit_tarihi", "pasif_tarihi")
     list_filter = ("sinif", "rol", "aktif")
     search_fields = ("uye_no", "ad", "soyad")  # eposta şifreli olduğundan aranamaz

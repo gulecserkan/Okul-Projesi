@@ -35,18 +35,15 @@ Admin Paneli Geliştirmeleri:
 
 Arşivleme (3+ yıl pasif öğrenciler + ödünç geçmişi)
 
-Sistem ayarları sayfası:
-
-Komple backup (yedekleme)
-
-Komple restore (geri yükleme) — 3 adımlı güvenlik onaylı
+Yedekleme sunucu tarafında `pg_dump` + cron (`scripts/yedekle.sh`, `scripts/geri-yukle.sh`)
 
 Etiket / Barkod desteği (termal yazıcı entegrasyonu için backend hazır)
 
-📥 Öğrenci CSV içe aktarma formatı
-- Başlık satırı zorunlu, virgül ayraçlı, değerler yalın (tırnaksız) yazılabilir.
-- Kolonlar: `uye_no,ad,soyad,sinif,rol` (sinif ve rol mevcut ad alanlarıyla eşleşir).
-- Kodlama: UTF-8
+📥 Öğrenci CSV içe aktarma formatı (masaüstü K9.13)
+- Toplu giriş yalnız masaüstü uygulamadan yapılır; admin panelde içe/dışa aktarma yoktur.
+- Başlık satırı zorunlu; ayraç `,` / `;` / `\t` otomatik algılanır.
+- Kolonlar: `ogrenci_no` (veya `uye_no`), `ad`, `soyad`, `sinif`[, `rol`]; sınıf `5/A`→`5-A` normalize edilir.
+- Kodlama: UTF-8 (bozuksa CP1254 uyumlu çözülür).
 
 🛠️ Kurulum
 1. Depoyu klonla
@@ -121,36 +118,29 @@ Admin URL: http://127.0.0.1:8000/admin/
 
 Ek Özellikler:
 
-Öğrenci Yönetimi
-
-CSV/JSON içe aktarma
+Öğrenci Yönetimi (liste/arama/düzenleme)
 
 Arşivleme işlemleri
 
-Sistem Ayarları
+Ayar tabloları (Rol, LoanPolicy, RoleLoanPolicy, NotificationSettings, KurumAyarlari)
 
-Backup → JSON dosyası indirilebilir
+🗄️ Yedekleme ve Geri Yükleme (sunucu tarafı)
 
-Restore → JSON’dan geri yükleme (üçlü doğrulama ile)
-
-🗄️ Yedekleme ve Geri Yükleme
 Backup
 
-Admin → Sistem Ayarları → “💾 Sistemi Yedekle”
+scripts/yedekle.sh → pg_dump -Fc + openssl ile şifreli /var/backups/kutuphane/kutuphane_<ortam>_<zaman>.dump.enc
 
-backups/backup_YYYYMMDD_HHMMSS.json.enc olarak şifreli kaydedilir
+Cron: /etc/cron.d/kutuphane-yedek (her gün 03:30, 14 gün saklama)
 
-Aynı şifreli dosya tarayıcıya indirilebilir (içerik düz metin telefon/e-posta içerdiği için şifrelidir)
+Gereksinim: /etc/kutuphane/.env içinde YEDEK_SIFRE
 
 Restore
 
-Admin → Sistem Ayarları → “♻️ Sistemi Geri Yükle”
+scripts/geri-yukle.sh <yedek.dump.enc> [prod|staging]
 
-Adım adım güvenlik onayı (EVET + 6 haneli kod)
+pg_restore --clean --if-exists (mevcut nesneler değiştirilir)
 
-Dosya yükleyerek veya mevcut yedekten seçerek geri yükleme; hem yeni `.json.enc` hem eski düz metin `.json` desteklenir
-
-⚠️ Restore işlemi tüm mevcut verileri siler. Dikkatli kullanılmalıdır.
+⚠️ Geri yükleme yıkıcıdır; öncesinde güncel yedek alınmalıdır. Admin panelde yedek arayüzü yoktur.
 
 📦 Arşivleme
 

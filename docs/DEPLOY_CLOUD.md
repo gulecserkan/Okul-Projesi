@@ -264,20 +264,22 @@ nginx -t && systemctl reload nginx
 
 ### Veritabanı yedekleme (cron)
 
+Depoda hazır betikler: `kutuphane/scripts/yedekle.sh` (`pg_dump -Fc` + `openssl` şifreli) ve `kutuphane/scripts/geri-yukle.sh`. Zamanlama kaynağı: `kutuphane/scripts/cron.d/kutuphane-yedek`.
+
 ```bash
-cat > /etc/cron.d/kutuphane-backup <<'EOF'
-# PostgreSQL + media yedeği (günlük 02:30), 14 gün tut
-30 2 * * * root mkdir -p /var/backups/kutuphane && sudo -u postgres pg_dump kutuphane -Fc | gzip > /var/backups/kutuphane/pg_$(date +\%F).dump.gz && find /var/backups/kutuphane -name 'pg_*' -mtime +14 -delete
-40 2 * * * root tar -czf /var/backups/kutuphane/media_$(date +\%F).tar.gz -C /srv/kutuphane/kutuphane media && find /var/backups/kutuphane -name 'media_*' -mtime +14 -delete
-EOF
-chmod 644 /etc/cron.d/kutuphane-backup
+# /etc/kutuphane/.env içine güçlü bir YEDEK_SIFRE ekleyin (şifreleme için zorunlu).
+sudo cp /srv/kutuphane/kutuphane/scripts/cron.d/kutuphane-yedek /etc/cron.d/kutuphane-yedek
+sudo chmod 644 /etc/cron.d/kutuphane-yedek
+
+# Media yedeği (ayrı cron) — günlük 02:40, 14 gün tut
+printf '%s\n' '40 2 * * * root tar -czf /var/backups/kutuphane/media_$(date +\%F).tar.gz -C /srv/kutuphane/kutuphane media && find /var/backups/kutuphane -name "media_*" -mtime +14 -delete' | sudo tee /etc/cron.d/kutuphane-media
+sudo chmod 644 /etc/cron.d/kutuphane-media
 ```
 
-Geri yükleme (`-Fc` özel format → `pg_restore`):
+Geri yükleme (`-Fc` özel format → `pg_restore`, şifre çözülerek):
 
 ```bash
-zcat /var/backups/kutuphane/pg_2026-09-24.dump.gz \
-  | sudo -u postgres pg_restore -d kutuphane --clean --if-exists
+sudo bash /srv/kutuphane/kutuphane/scripts/geri-yukle.sh /var/backups/kutuphane/kutuphane_prod_YYYYMMDD_HHMMSS.dump.enc prod
 ```
 
 ## 9. Firewall ve SSH güvenliği
@@ -466,10 +468,10 @@ systemctl enable --now kutuphane-staging
 | Django/Gunicorn — staging | 127.0.0.1:8001 | `kutuphane-staging.service` · `/srv/kutuphane-staging` |
 | Nginx | 80 → (443 Faz B) | `/etc/nginx/sites-available/kutuphane` |
 | Sırlar | — | `/etc/kutuphane/.env`, `/etc/kutuphane/staging.env` (root, 600) |
-| Yayın betikleri | — | `kutuphane/scripts/deploy.sh`, `rollback.sh` |
-| Loglar | — | `/var/log/kutuphane/` (gunicorn, staging, deploy, scheduler) |
-| Yedekler | — | `/var/backups/kutuphane/` (DB + media, 14 gün) |
-| Cron | — | `/etc/cron.d/kutuphane-scheduler`, `kutuphane-backup` |
+| Yayın betikleri | — | `kutuphane/scripts/deploy.sh`, `rollback.sh`, `yedekle.sh`, `geri-yukle.sh` |
+| Loglar | — | `/var/log/kutuphane/` (gunicorn, staging, deploy, scheduler, yedek) |
+| Yedekler | — | `/var/backups/kutuphane/` (şifreli DB dump + media, 14 gün) |
+| Cron | — | `/etc/cron.d/kutuphane-scheduler`, `kutuphane-yedek`, `kutuphane-media` |
 
 ---
 

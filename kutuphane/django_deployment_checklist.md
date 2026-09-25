@@ -25,11 +25,13 @@
 - [ ] UFW/iptables ayarlarını yap
 
 ## 7. Yedekleme
-- [ ] backups/ klasörünü periyodik yedekle (cron job)
+- [ ] `/etc/kutuphane/.env` içine `YEDEK_SIFRE` eklendi mi?
+- [ ] `scripts/cron.d/kutuphane-yedek` → `/etc/cron.d/kutuphane-yedek` kuruldu mu?
+- [ ] `scripts/yedekle.sh` elle çalıştırılıp şifreli yedek doğrulandı mı?
+- [ ] `scripts/geri-yukle.sh` geri yükleme provası (scratch DB) yapıldı mı?
 
 ## 8. Test
 - [ ] Admin paneli açılıyor mu?
 - [ ] API endpointleri çalışıyor mu?
-- [ ] Öğrenci içe/dışa aktarma çalışıyor mu?
+- [ ] Masaüstü öğrenci içe aktarma (K9.13) çalışıyor mu?
 - [ ] Arşivleme fonksiyonu çalışıyor mu?
-- [ ] Backup/restore fonksiyonları çalışıyor mu?

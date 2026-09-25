@@ -38,7 +38,7 @@ Okul-Projesi/
 
 | Katman | Teknoloji | Sorumlu olduğu iş |
 |---|---|---|
-| **Backend** `kutuphane/` | Django 5.2, DRF 3.16, simplejwt, PostgreSQL, WhiteNoise, import-export | Tüm iş mantığı: ödünç, ceza politikası, sayım, arşiv, istatistik, backup/restore |
+| **Backend** `kutuphane/` | Django 5.2, DRF 3.16, simplejwt, PostgreSQL, WhiteNoise | Tüm iş mantığı: ödünç, ceza politikası, sayım, arşiv, istatistik |
 | **Masaüstü (eski, PyQt5)** `kutuphane_desktop/` | PyQt5 5.15, requests | Kasiyer terminali (referans): hızlı arama, ödünç/iade, etiket ve fiş yazdırma |
 | **Masaüstü (Flutter)** `masaustu/` | Flutter | Kütüphane personeli: kitap/öğrenci/ödünç/katalog yönetimi, etiket/işlem ekranları |
 | **Mobil (tek uygulama)** `mobil/kutuphane/` | Flutter, http, shared_preferences, image_picker, mobile_scanner | Rol bazlı: `personel` → kitap yönetimi; `üye` → gezinti + ödünçlerim |
@@ -71,8 +71,8 @@ Okul-Projesi/
 
 ## Yedekleme / Swiss Army Knife
 
-- **Backup:** Admin → Sistem Ayarları → "Sistemi Yedekle" → `backups/backup_YYYYMMDD_HHMMSS.json` + tarayıcıya indirilir.
-- **Restore:** Admin → Sistem Ayarları → "Sistemi Geri Yükle": `EVET` + 6 haneli güvenlik kodu → tüm veri silinir (`flush`) → JSON yüklenir.
+- **Yedekleme:** Sunucu tarafı `scripts/yedekle.sh` → `pg_dump -Fc` + `openssl` şifreli → `/var/backups/kutuphane/…dump.enc` (cron: `/etc/cron.d/kutuphane-yedek`, her gün 03:30, 14 gün saklama). Admin panelde yedek arayüzü **yok**.
+- **Geri yükleme:** `scripts/geri-yukle.sh <yedek.dump.enc> [prod|staging]` → `pg_restore --clean --if-exists`.
 - **Arşivleme:** 3+ yıl pasif öğrenciler ödünç geçmişiyle `ArsivBatch`'e snapshot'lanır, canlı veriden silinir.
 
 ## Kurulum (Özet)

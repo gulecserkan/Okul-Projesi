@@ -1,0 +1,7 @@
+# Kütüphane PostgreSQL periyodik yedeği — her gün 03:30 (prod).
+# Kurulum: sudo cp kutuphane/scripts/cron.d/kutuphane-yedek /etc/cron.d/kutuphane-yedek
+#          sudo chmod 644 /etc/cron.d/kutuphane-yedek
+# Gereksinim: /etc/kutuphane/.env içinde DB_* ve YEDEK_SIFRE.
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+30 3 * * * root /srv/kutuphane/kutuphane/scripts/yedekle.sh prod >> /var/log/kutuphane/yedek-cron.log 2>&1

@@ -122,6 +122,6 @@ curl -s -X POST http://127.0.0.1:8000/api/penalties/12/pay/ \
 
 ## 8. Kullanılan Bağımlılıklar
 
-`Django 5.2.7`, `djangorestframework 3.16.1`, `djangorestframework_simplejwt 5.5.1`, `django-import-export 4.3.10`, `psycopg2-binary 2.9.10`, `whitenoise 6.11.0`, `pillow 12.0.0`, `gunicorn 23.0.0`, `Faker 37.8.0`.
+`Django 5.2.7`, `djangorestframework 3.16.1`, `djangorestframework_simplejwt 5.5.1`, `psycopg2-binary 2.9.10`, `whitenoise 6.11.0`, `pillow 12.0.0`, `gunicorn 23.0.0`, `Faker 37.8.0`.
 
 Not: Redis/Memcached/Celery yok — zamanlı işler cron ile `manage.py` komutları üzerinden yürütülür.

@@ -29,6 +29,7 @@ Durum etiketleri: ✅ çözüldü (dalda) · ⏳ açık
 | 2 | **Rapor/istatistik sayfası** (desktop) — tasarım birlikte yapılacak | `kutuphane_desktop/todos` |
 | 3 | **Ayarlar altı istatistik sekmesi**: gecikme + toplam ceza istatistikleri | `kutuphane_desktop/todos` |
 | 4 | **Cron yapılandırması**: `/etc/cron.d/kutuphane-scheduler` — 15 dk aralığın deployment'da aktifleştirilmesi | `setup_backend_service.sh:85-87` |
+| 8 | **Yedek cron kurulumu**: `scripts/cron.d/kutuphane-yedek` → `/etc/cron.d/`; `/etc/kutuphane/.env`'e `YEDEK_SIFRE` | `scripts/yedekle.sh` |
 | 5 | **.deb paketleme** (sunucu + masaüstü) + CI/CD | `kutuphane_desktop/todos` "PAKET HALİNE GETİRME" |
 | 6 | **Öğrenci uygulaması**: ana ekranda "Kitap ara / Ödünçlerim / Favoriler / Randevu / Danış / Profilim" butonları ölü; bildirim + QR butonları da boş | backend bağlantısı planı |
 | 7 | **Gerçek bildirimler**: e-posta (SMTP) / SMS / mobil kanalların implementation'ı | `jobs.dispatch_notifications()` |
@@ -36,8 +37,8 @@ Durum etiketleri: ✅ çözüldü (dalda) · ⏳ açık
 ## C. Mimari Notlar / Dikkat Edilecekler
 
 1. **Postgres'e bağımlılık**: trigram (`pg_trgm`), `ArrayAgg`, `DATE_TRUNC`, `TrigramSimilarity`. DB PostgreSQL değilse çalışmaz.
-2. **Arşiv & restore yıkıcıdır**: `arsiv_onayla` canlı öğrenciyi siliyor; restore önce `flush`. Yedek alınmadan yapılmamalı.
-3. ✅ **CSV içe aktarma pasifleştirme**: artık varsayılan kapalı (`UyeResource.pasiflestir=False`); kısmi CSV güvenle yüklenir.
+2. **Arşiv & geri yükleme yıkıcıdır**: `arsiv_onayla` canlı öğrenciyi siliyor; `scripts/geri-yukle.sh` `pg_restore --clean` ile mevcut nesneleri değiştirir. Öncesinde güncel `pg_dump` yedeği alınmalı.
+3. ✅ **Admin üye içe/dışa aktarma kaldırıldı**: toplu öğrenci aktarımının tek yolu masaüstü K9.13'tür; admin'de içe/dışa aktarma ve pasifleştirme yolu yoktur.
 4. ⏳ **JWT tek doğrulama** — DRF permission seviyesinde rol ayrımı: `IsAdminPersonel` (admin=superuser), `IsPersonel` (operatör), `IsEditor` (kitap düzenleme); üye uçları self-scoped (K9).
 5. **Zaman dilimi**: `TIME_ZONE='Europe/Istanbul'`, `USE_TZ=True`; istemciler UTC ISO gönderir.
 6. ✅ **Barkod**: sunucu otomatik üretir (`KIT`+6 hane); artık tek `MAX` sorgusu + IntegrityError retry — çakışma riski yok denecek kadar az.
