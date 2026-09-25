@@ -58,16 +58,13 @@ void main() {
 
     expect(find.byType(BookListScreen), findsOneWidget);
     expect(find.byType(UyeHomeScreen, skipOffstage: false), findsOneWidget);
-
-    final nav = tester.widget<NavigationBar>(find.byType(NavigationBar));
-    expect(nav.destinations.length, 2);
     expect(find.text('Editör'), findsOneWidget);
     expect(find.text('Üye'), findsOneWidget);
   });
 
-  testWidgets('varsayılan bölüm editördür', (tester) async {
+  testWidgets('varsayılan bölüm editördür (üst başlık üye adı)', (tester) async {
     await _pump(tester);
-    expect(find.text('Kütüphane (Admin)'), findsOneWidget);
+    expect(find.text('Editör Öğretmen'), findsOneWidget);
   });
 
   testWidgets('üye bölümüne geçilince üç sekme görünür', (tester) async {
@@ -76,8 +73,6 @@ void main() {
     await tester.tap(find.text('Üye'));
     await tester.pumpAndSettle();
 
-    final nav = tester.widget<NavigationBar>(find.byType(NavigationBar));
-    expect(nav.selectedIndex, 1);
     expect(find.text('Kitaplar'), findsOneWidget);
     expect(find.text('Ödünçlerim'), findsOneWidget);
     expect(find.text('Ceza'), findsOneWidget);

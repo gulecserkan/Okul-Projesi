@@ -92,7 +92,7 @@ void main() {
     HttpOverrides.global = null;
   });
 
-  testWidgets('app bar üye adı+soyadı (no) ve uygulama adını gösterir', (
+  testWidgets('app bar üye adı+soyadı (no) gösterir', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -118,7 +118,6 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Ayşe Kaya (100)'), findsOneWidget);
-    expect(find.text('Kütüphane'), findsOneWidget);
   });
 
   testWidgets('kitaplar kapak ızgarasında yüklenir', (tester) async {

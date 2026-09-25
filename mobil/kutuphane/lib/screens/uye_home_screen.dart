@@ -324,9 +324,7 @@ class _UyeHomeScreenState extends State<UyeHomeScreen> {
     return due.isBefore(DateTime.now());
   }
 
-  /// K9.8: üye ekranındaki küçük aksiyon — ikon + metin.
-  /// AppBar başlığı: üye adı+soyadı (üye no); "Kütüphane" arka planda (alt satır)
-  /// uygulama adı olarak görünür.
+  /// AppBar başlığı: üye adı + soyadı (üye no).
   Widget _buildAppBarTitle() {
     final t = widget.tokens;
     final name = (t.fullName ?? '').trim();
@@ -334,25 +332,10 @@ class _UyeHomeScreenState extends State<UyeHomeScreen> {
     final mainLabel = name.isNotEmpty
         ? (no.isNotEmpty ? '$name ($no)' : name)
         : (no.isNotEmpty ? no : 'Kütüphane');
-    final scheme = Theme.of(context).colorScheme;
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          mainLabel,
-          overflow: TextOverflow.ellipsis,
-          style: Theme.of(
-            context,
-          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
-        ),
-        Text(
-          'Kütüphane',
-          style: Theme.of(
-            context,
-          ).textTheme.labelSmall?.copyWith(color: scheme.onSurfaceVariant),
-        ),
-      ],
+    return Text(
+      mainLabel,
+      overflow: TextOverflow.ellipsis,
+      style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
     );
   }
 
@@ -514,6 +497,8 @@ class _UyeHomeScreenState extends State<UyeHomeScreen> {
       length: 3,
       child: Scaffold(
         appBar: AppBar(
+          toolbarHeight: 52,
+          titleSpacing: 14,
           title: _buildAppBarTitle(),
           actions: [
             _actionButton(
@@ -529,9 +514,9 @@ class _UyeHomeScreenState extends State<UyeHomeScreen> {
           ],
           bottom: const TabBar(
             tabs: [
-              Tab(icon: Icon(Icons.menu_book_outlined), text: 'Kitaplar'),
-              Tab(icon: Icon(Icons.history), text: 'Ödünçlerim'),
-              Tab(icon: Icon(Icons.paid_outlined), text: 'Ceza'),
+              Tab(text: 'Kitaplar'),
+              Tab(text: 'Ödünçlerim'),
+              Tab(text: 'Ceza'),
             ],
           ),
         ),
@@ -546,7 +531,7 @@ class _UyeHomeScreenState extends State<UyeHomeScreen> {
     return Column(
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
           child: TextField(
             controller: _searchController,
             textInputAction: TextInputAction.search,
@@ -563,6 +548,8 @@ class _UyeHomeScreenState extends State<UyeHomeScreen> {
               ),
               border: const OutlineInputBorder(),
               isDense: true,
+              contentPadding:
+                  const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
             ),
           ),
         ),

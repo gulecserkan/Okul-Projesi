@@ -91,7 +91,12 @@ class _BookListScreenState extends State<BookListScreen> {
     final scheme = Theme.of(context).colorScheme;
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Kütüphane (Admin)"),
+        toolbarHeight: 52,
+        title: Text(
+          _baslikYazisi(),
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
+        ),
         actions: [
           if (widget.tokens.tip == 'personel')
             IconButton(
@@ -204,6 +209,12 @@ class _BookListScreenState extends State<BookListScreen> {
     );
   }
 
+  /// Oturumdaki üyenin adı + soyadı; yoksa uygulama adı.
+  String _baslikYazisi() {
+    final ad = (widget.tokens.fullName ?? '').trim();
+    return ad.isNotEmpty ? ad : 'Kütüphane';
+  }
+
   Widget _buildSearchBar(BuildContext context) {
     return TextField(
       controller: _searchController,
@@ -215,6 +226,8 @@ class _BookListScreenState extends State<BookListScreen> {
           icon: const Icon(Icons.check),
           onPressed: _loadBooks,
         ),
+        isDense: true,
+        contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
       ),
       onSubmitted: (_) => _loadBooks(),
     );

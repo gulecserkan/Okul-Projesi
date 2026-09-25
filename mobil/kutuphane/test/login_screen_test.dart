@@ -36,7 +36,7 @@ void main() {
   testWidgets('giriş alanları ve butonu görünür', (tester) async {
     await tester.pumpWidget(_screen(onAuthenticated: (_) async {}));
 
-    expect(find.text('Kullanıcı adı'), findsOneWidget);
+    expect(find.text('Üye No'), findsOneWidget);
     expect(find.text('Şifre'), findsOneWidget);
     expect(find.text('Giriş yap'), findsOneWidget);
   });
@@ -47,7 +47,7 @@ void main() {
     await tester.tap(find.text('Giriş yap'));
     await tester.pump();
 
-    expect(find.text('Kullanıcı adı ve şifre zorunlu.'), findsOneWidget);
+    expect(find.text('Üye no ve şifre zorunlu.'), findsOneWidget);
   });
 
   testWidgets('başarılı girişte token döner', (tester) async {

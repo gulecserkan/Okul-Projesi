@@ -30,7 +30,7 @@ class _KutuphaneAppState extends State<KutuphaneApp> {
   AuthTokens? _tokens;
   String? _handshakeError;
   String? _sessionNotice;
-  final Duration _maxAuthAge = const Duration(minutes: 15);
+  final Duration _maxAuthAge = const Duration(hours: 12);
   static const Duration _maxRememberedAge = Duration(days: 30);
   bool _rememberMe = false;
   AppTheme _currentTheme = AppTheme.defaultLight;
@@ -80,7 +80,7 @@ class _KutuphaneAppState extends State<KutuphaneApp> {
     AuthTokens? refreshedTokens = storedTokens;
     if (storedTokens != null) {
       final now = DateTime.now();
-      // K9.11: "Beni hatırla" açıksa oturum uzun (30 gün), kapalıysa 15 dk.
+      // K9.11: "Beni hatırla" açıksa oturum uzun (30 gün), kapalıysa 12 saat.
       final ageLimit = _rememberMe ? _maxRememberedAge : _maxAuthAge;
       final tooOld = lastAuth == null
           ? true

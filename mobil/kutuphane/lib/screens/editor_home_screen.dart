@@ -66,21 +66,72 @@ class _EditorHomeScreenState extends State<EditorHomeScreen> {
           ),
         ],
       ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _index,
-        onDestinationSelected: (i) => setState(() => _index = i),
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.edit_note_outlined),
-            selectedIcon: Icon(Icons.edit_note),
-            label: 'Editör',
+      bottomNavigationBar: _buildBottomBar(context),
+    );
+  }
+
+  /// İnce alt çubuk: yalnızca iki bölüm geçişi, ikon + metin YAN YANA.
+  Widget _buildBottomBar(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return SafeArea(
+      top: false,
+      child: Container(
+        height: 46,
+        decoration: BoxDecoration(
+          color: scheme.surface,
+          border: Border(top: BorderSide(color: scheme.outlineVariant, width: 0.6)),
+        ),
+        child: Row(
+          children: [
+            _bolumButonu(context, 0, Icons.edit_note_outlined, Icons.edit_note, 'Editör'),
+            _bolumButonu(context, 1, Icons.person_outline, Icons.person, 'Üye'),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _bolumButonu(
+    BuildContext context,
+    int index,
+    IconData ikon,
+    IconData seciliIkon,
+    String etiket,
+  ) {
+    final scheme = Theme.of(context).colorScheme;
+    final secili = _index == index;
+    return Expanded(
+      child: InkWell(
+        onTap: () => setState(() => _index = index),
+        child: Container(
+          alignment: Alignment.center,
+          decoration: secili
+              ? BoxDecoration(
+                  border: Border(
+                    top: BorderSide(color: scheme.primary, width: 2.5),
+                  ),
+                )
+              : null,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                secili ? seciliIkon : ikon,
+                size: 18,
+                color: secili ? scheme.primary : scheme.onSurfaceVariant,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                etiket,
+                style: TextStyle(
+                  fontSize: 13.5,
+                  fontWeight: secili ? FontWeight.w700 : FontWeight.w500,
+                  color: secili ? scheme.primary : scheme.onSurfaceVariant,
+                ),
+              ),
+            ],
           ),
-          NavigationDestination(
-            icon: Icon(Icons.person_outline),
-            selectedIcon: Icon(Icons.person),
-            label: 'Üye',
-          ),
-        ],
+        ),
       ),
     );
   }

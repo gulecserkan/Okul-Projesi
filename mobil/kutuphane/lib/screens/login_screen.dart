@@ -213,7 +213,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           TextField(
                             controller: _usernameController,
                             decoration: const InputDecoration(
-                              labelText: "Kullanıcı adı",
+                              labelText: "Üye No",
                               prefixIcon: Icon(Icons.person_outline),
                             ),
                             textInputAction: TextInputAction.next,
@@ -330,7 +330,7 @@ class _LoginScreenState extends State<LoginScreen> {
     final username = _usernameController.text.trim();
     final password = _passwordController.text.trim();
     if (username.isEmpty || password.isEmpty) {
-      setState(() => _error = "Kullanıcı adı ve şifre zorunlu.");
+      setState(() => _error = "Üye no ve şifre zorunlu.");
       return;
     }
     setState(() {
