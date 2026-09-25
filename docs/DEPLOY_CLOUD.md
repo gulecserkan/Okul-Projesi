@@ -73,7 +73,7 @@ DEBUG=false
 SECRET_KEY=${SECRET_KEY}
 FIELD_ENCRYPTION_KEY=${SECRET_KEY}
 GOOGLE_BOOKS_API_KEY=
-ALLOWED_HOSTS=${SERVER_IP}
+ALLOWED_HOSTS=${SERVER_IP},127.0.0.1,localhost
 CSRF_TRUSTED_ORIGINS=http://${SERVER_IP}
 SECURE_SSL_REDIRECT=false
 SESSION_COOKIE_SECURE=false
@@ -335,7 +335,7 @@ certbot --nginx -d "$DOMAIN" --redirect     # 80→443 otomatik
 `.env` güncelle:
 
 ```bash
-sed -i "s/^ALLOWED_HOSTS=.*/ALLOWED_HOSTS=${SERVER_IP},${DOMAIN}/" /etc/kutuphane/.env
+sed -i "s/^ALLOWED_HOSTS=.*/ALLOWED_HOSTS=${SERVER_IP},${DOMAIN},127.0.0.1,localhost/" /etc/kutuphane/.env
 sed -i "s/^CSRF_TRUSTED_ORIGINS=.*/CSRF_TRUSTED_ORIGINS=https:\/\/${DOMAIN}/" /etc/kutuphane/.env
 sed -i "s/^SECURE_SSL_REDIRECT=.*/SECURE_SSL_REDIRECT=true/" /etc/kutuphane/.env
 sed -i "s/^SESSION_COOKIE_SECURE=.*/SESSION_COOKIE_SECURE=true/" /etc/kutuphane/.env
