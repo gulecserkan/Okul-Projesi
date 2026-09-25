@@ -8,6 +8,18 @@ sunucuya yalnızca etiketli sürümler gönderilir (bkz. `docs/DEPLOY_CLOUD.md`)
 
 - (geliştirme sürüyor)
 
+## [1.1.2] — 2026-09-26
+
+Genel web kataloğunda kitap detay sayfası ve ana sayfa hızlı filtreleri.
+
+### Web (kök katalog, K11)
+- Kitap kartına tıklayınca `/kitap/<id>/` detay sayfası: nüsha özeti
+  (toplam/mevcut/ödünçte, kayıp-hasarlı), hepsi ödünçteyse **en yakın iade
+  tarihi**, açıklama, raf numarası ve yüklenen görseller için **slider**.
+- Ana sayfada hızlı filtre: **kategori** seçimi + **yazar** (datalist) araması;
+  sayfalama aktif filtreleri korur.
+- Testler: katalog filtre + detay sayfası (toplam 130 test).
+
 ## [1.1.1] — 2026-09-26
 
 Düzeltme: mobil editör kitap görsellerinde ön kapak (`resim1`) yüklenemiyordu.
