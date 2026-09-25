@@ -8,6 +8,33 @@ sunucuya yalnızca etiketli sürümler gönderilir (bkz. `docs/DEPLOY_CLOUD.md`)
 
 - (geliştirme sürüyor)
 
+## [1.1.0] — 2026-09-26
+
+Dönem başı toplu öğrenci içe aktarma, arşiv/kayıp kuralı ve şifreli yedekleme
+altyapısı; masaüstü ve admin yönetimi sadeleştirildi.
+
+### Backend (Django + DRF + PostgreSQL)
+- **K9.13 — Toplu öğrenci içe aktarma (dönem başı senkronu):** masaüstünden CSV;
+  `dry_run` önizleme + tek atomik uygulama; sınıf normalize (`5/A` → `5-A`),
+  eksik sınıf oluşturma, çakışma/mezun yönetimi; yetki personel/admin. Admin
+  paneldeki üye içe/dışa aktarma kaldırıldı; tek aktarım yolu bu madde
+- **K2.8 — Arşiv kayıp kuralı:** arşivlenen öğrencinin kapatılmamış
+  (`oduncte`/`gecikmis`) ödünçlerinin nüshası `kayip` yapılır; katalog korunur
+- Yeni şema migration'ları ve `eski_veri_aktar` yönetim komutu + `eski_veri_aktar.sh`
+- `django-import-export` bağımlılığı ve admin entegrasyonu kaldırıldı
+
+### Yedekleme / Altyapı
+- **Şifreli DB yedeği:** `scripts/yedekle.sh` (`pg_dump -Fc` + `openssl`),
+  `scripts/geri-yukle.sh` ve `scripts/cron.d/kutuphane-yedek` (günlük 03:30,
+  14 gün saklama). `/etc/kutuphane/.env` içinde `YEDEK_SIFRE` gerektirir
+- `docs/DEPLOY_CLOUD.md`: yedek/geri yükleme bölümü ve `ALLOWED_HOSTS`
+  (`127.0.0.1,localhost`) güncellendi
+
+### Masaüstü (Flutter, Linux)
+- Öğrenci içe aktarma **Ayarlar** sekmesine taşındı (yalnız admin); eski ayar
+  sekmeleri ve üye içe/dışa aktarma arayüzü kaldırıldı
+- Admin alanları Türkçeleştirildi; arşiv hatırlatması eklendi
+
 ## [1.0.0] — 2026-09-24
 
 İlk yayın. Kütüphane yönetim sistemi: Django + DRF backend, Flutter masaüstü
