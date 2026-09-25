@@ -1529,3 +1529,161 @@ class KatalogWebTests(TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, "Sonuç bulunamadı.")
         self.assertNotContains(resp, "Sefiller")
+
+
+class K9_13ImportTests(APITestCase):
+    """K9.13: toplu öğrenci içe aktarma (dönem başı senkronu)."""
+
+    URL = "/api/uyeler/import/"
+
+    def setUp(self):
+        self.sinif, _ = Sinif.objects.get_or_create(ad="5-A")
+        self.rol_ogr, _ = Rol.objects.get_or_create(ad="Öğrenci")
+        self.rol_ogr2, _ = Rol.objects.get_or_create(ad="Öğretmen")
+        self.rol_edit, _ = Rol.objects.get_or_create(ad="Editör")
+
+        # Aktif öğrenci (CSV'de var → yenileme)
+        self.ogr = Uye.objects.create(
+            ad="Ali", soyad="Veli", uye_no="100",
+            sinif=self.sinif, rol=self.rol_ogr,
+        )
+        # Aktif öğrenci (CSV'de yok → pasife çekilecek)
+        self.giden = Uye.objects.create(
+            ad="Giden", soyad="Ogrenci", uye_no="150",
+            sinif=self.sinif, rol=self.rol_ogr,
+        )
+        # Pasif mezun (CSV'de var → çakışma)
+        self.mezun = Uye.objects.create(
+            ad="Mezun", soyad="Kisi", uye_no="200",
+            sinif=self.sinif, rol=self.rol_ogr, aktif=False,
+        )
+        # Öğretmen (CSV'de aynı no → hata, dokunulmaz)
+        self.ogretmen = Uye.objects.create(
+            ad="Ogretmen", soyad="Kisi", uye_no="300",
+            sinif=self.sinif, rol=self.rol_ogr2,
+        )
+
+        self.admin = User.objects.create_superuser(username="admin", password="a1!")
+        self.personel = User.objects.create_user(username="op", password="o1!")
+
+        self.editor_user = User.objects.create_user(username="ed", password="e1!")
+        Uye.objects.create(
+            ad="Editor", soyad="Kisi", uye_no="400",
+            rol=self.rol_edit, user=self.editor_user,
+        )
+
+    def _csv(self):
+        return (
+            "ogrenci_no;ad;soyad;sinif\n"
+            "100;Ali;Veli;5/A\n"
+            "101;Yeni;Ogrenci;5-A\n"
+            "102;Baska;Ogrenci;6/B\n"
+            "200;Mezun;Kisi;5/A\n"
+            "300;Ogretmen;Kisi;5/A\n"
+        )
+
+    def _post(self, user, *, dry_run, yeniden=False, csv_metni=None):
+        self.client.force_authenticate(user)
+        return self.client.post(
+            self.URL,
+            {
+                "csv": csv_metni if csv_metni is not None else self._csv(),
+                "dry_run": dry_run,
+                "yeniden_kullan": yeniden,
+            },
+            format="json",
+        )
+
+    def test_onizleme_db_degistirmez(self):
+        resp = self._post(self.personel, dry_run=True)
+        self.assertEqual(resp.status_code, 200, resp.content)
+        ozet = resp.data["ozet"]
+        self.assertEqual(ozet["toplam"], 5)
+        self.assertEqual(ozet["yeni"], 2)
+        self.assertEqual(ozet["yenileme"], 1)
+        self.assertEqual(ozet["cakisma"], 1)
+        self.assertEqual(ozet["hatali"], 1)
+        self.assertEqual(ozet["pasife_cekilecek"], 1)
+        self.assertEqual(resp.data["yeni_siniflar"], ["6-B"])
+        # DB değişmedi
+        self.assertFalse(Uye.objects.filter(uye_no="101").exists())
+        self.assertTrue(Uye.objects.get(uye_no="100").aktif)
+        self.assertTrue(Uye.objects.get(uye_no="150").aktif)
+
+    def test_uygula_senkron(self):
+        resp = self._post(self.personel, dry_run=False)
+        self.assertEqual(resp.status_code, 200, resp.content)
+        self.assertTrue(resp.data.get("uygulandi"))
+        # Yenilenen öğrenci aktif + sınıf korunur
+        ogr = Uye.objects.get(uye_no="100")
+        self.assertTrue(ogr.aktif)
+        self.assertEqual(ogr.sinif.ad, "5-A")
+        # Yeni öğrenciler aktif + Öğrenci + sınıf (normalize + otomatik)
+        yeni = Uye.objects.get(uye_no="101")
+        self.assertTrue(yeni.aktif)
+        self.assertEqual(yeni.rol.ad, "Öğrenci")
+        self.assertEqual(yeni.sinif.ad, "5-A")
+        yeni2 = Uye.objects.get(uye_no="102")
+        self.assertEqual(yeni2.sinif.ad, "6-B")
+        # Listede olmayan aktif öğrenci pasifleşti
+        self.assertFalse(Uye.objects.get(uye_no="150").aktif)
+        # Pasif mezun (çakışma) pasif kaldı
+        self.assertFalse(Uye.objects.get(uye_no="200").aktif)
+        # Öğretmen dokunulmadı
+        ogretmen = Uye.objects.get(uye_no="300")
+        self.assertTrue(ogretmen.aktif)
+        self.assertEqual(ogretmen.rol.ad, "Öğretmen")
+
+    def test_cakisma_yeniden_kullan(self):
+        resp = self._post(self.personel, dry_run=False, yeniden=True)
+        self.assertEqual(resp.status_code, 200, resp.content)
+        mezun = Uye.objects.get(uye_no="200")
+        self.assertTrue(mezun.aktif)
+        self.assertEqual(mezun.ad, "Mezun")
+
+    def test_ogretmen_cakismasi_dokunulmaz(self):
+        resp = self._post(self.personel, dry_run=False)
+        self.assertEqual(resp.status_code, 200, resp.content)
+        satir = next(s for s in resp.data["satirlar"] if s["uye_no"] == "300")
+        self.assertEqual(satir["islem"], "hata")
+
+    def test_personel_ogrenci_disi_rol_atayamaz(self):
+        csv_metni = "uye_no,ad,soyad,sinif,rol\n501,Ogret,Men,5-A,Öğretmen\n"
+        resp = self._post(self.personel, dry_run=True, csv_metni=csv_metni)
+        self.assertEqual(resp.status_code, 200, resp.content)
+        satir = resp.data["satirlar"][0]
+        self.assertEqual(satir["islem"], "hata")
+
+    def test_admin_ogrenci_disi_rol_atayabilir(self):
+        csv_metni = "uye_no,ad,soyad,sinif,rol\n501,Ogret,Men,5-A,Öğretmen\n"
+        resp = self._post(self.admin, dry_run=False, csv_metni=csv_metni)
+        self.assertEqual(resp.status_code, 200, resp.content)
+        yeni = Uye.objects.get(uye_no="501")
+        self.assertEqual(yeni.rol.ad, "Öğretmen")
+
+    def test_virgul_ayraci_ve_uye_no_basligi(self):
+        csv_metni = "uye_no,ad,soyad,sinif\n601,Virgul,Ogrenci,5-A\n"
+        resp = self._post(self.personel, dry_run=True, csv_metni=csv_metni)
+        self.assertEqual(resp.status_code, 200, resp.content)
+        self.assertEqual(resp.data["satirlar"][0]["uye_no"], "601")
+
+    def test_baslik_eksikse_400(self):
+        resp = self._post(self.personel, dry_run=True, csv_metni="a;b;c\n1;2;3\n")
+        self.assertEqual(resp.status_code, 400)
+
+    def test_yetki(self):
+        # Anonim → 401
+        self.client.force_authenticate(None)
+        self.assertEqual(
+            self.client.post(self.URL, {"csv": self._csv()}, format="json").status_code,
+            status.HTTP_401_UNAUTHORIZED,
+        )
+        # Editör → 403
+        self.client.force_authenticate(self.editor_user)
+        self.assertEqual(
+            self.client.post(self.URL, {"csv": self._csv()}, format="json").status_code,
+            status.HTTP_403_FORBIDDEN,
+        )
+        # Personel → 200
+        self.assertTrue(self._post(self.personel, dry_run=True).status_code, 200)
+

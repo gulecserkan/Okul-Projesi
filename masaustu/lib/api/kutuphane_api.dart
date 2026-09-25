@@ -354,6 +354,37 @@ class KutuphaneApi {
     return data.whereType<Map<String, dynamic>>().toList();
   }
 
+  /// K9.13: toplu öğrenci içe aktarma (CSV). `dryRun=true` yalnız önizleme
+  /// döndürür, `false` uygular. `yenidenKullan` pasif (mezun) çakışmasını
+  /// yeniden kullanır.
+  Future<({Map<String, dynamic>? data, String? error})> ogrenciImport(
+    String csv, {
+    bool dryRun = true,
+    bool yenidenKullan = false,
+  }) async {
+    try {
+      final resp = await _client.request(
+        'POST',
+        'uyeler/import/',
+        auth: true,
+        body: {
+          'csv': csv,
+          'dry_run': dryRun,
+          'yeniden_kullan': yenidenKullan,
+        },
+      );
+      final data = jsonDecode(utf8.decode(resp.bodyBytes));
+      if (resp.statusCode >= 200 &&
+          resp.statusCode < 300 &&
+          data is Map<String, dynamic>) {
+        return (data: data, error: null);
+      }
+      return (data: null, error: extractError(resp));
+    } catch (_) {
+      return (data: null, error: 'İçe aktarma başlatılamadı.');
+    }
+  }
+
   /// Kayıp/hasarlı ceza önerisi dahil ödünç politikasını getirir.
   Future<(String? kayipHasarCezasi, String? error)> fetchLoanPolicy() async {
     try {

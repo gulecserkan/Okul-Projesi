@@ -50,6 +50,7 @@ from .rules import (
     can_delete_uye,
     can_duzelt_nusha,
     merge_referential,
+    ogrenci_aktar,
     similar_kitap,
     validate_transition,
 )
@@ -328,6 +329,31 @@ class UyeViewSet(viewsets.ModelViewSet):
         data = UyeSerializer(uye).data
         data["warnings"] = warnings
         return Response(data)
+
+    @action(detail=False, methods=["post"], url_path="import",
+            permission_classes=[IsPersonel])
+    def ice_aktar(self, request):
+        """K9.13: toplu öğrenci içe aktarma (CSV). Varsayılan `dry_run=true`."""
+        csv_metni = request.data.get("csv") or request.data.get("csv_metni") or ""
+        if not str(csv_metni).strip():
+            return Response(
+                {"hata": "CSV içeriği boş."}, status=status.HTTP_400_BAD_REQUEST
+            )
+        raw_dry = request.query_params.get("dry_run")
+        if raw_dry is None:
+            raw_dry = request.data.get("dry_run", True)
+        dry_run = str(raw_dry).strip().lower() in ("1", "true", "evet", "yes")
+        raw_yeniden = request.data.get("yeniden_kullan", False)
+        yeniden = str(raw_yeniden).strip().lower() in ("1", "true", "evet", "yes")
+        sonuc = ogrenci_aktar(
+            csv_metni,
+            is_superuser=bool(request.user.is_superuser),
+            dry_run=dry_run,
+            yeniden_kullan=yeniden,
+        )
+        if "hata" in sonuc:
+            return Response(sonuc, status=status.HTTP_400_BAD_REQUEST)
+        return Response(sonuc)
 
 class YazarViewSet(viewsets.ModelViewSet):
     queryset = Yazar.objects.all()

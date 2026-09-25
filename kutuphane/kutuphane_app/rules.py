@@ -5,11 +5,14 @@ Kurallar view katmanında tekrarlanmaz; bu modül üzerinden uygulanır.
 
 from __future__ import annotations
 
+import csv as _csv
+import io as _io
 import re
 
+from django.db import transaction
 from django.utils import timezone
 
-from .models import Kategori, Kitap, KitapNusha, OduncKaydi, Raf, Yazar
+from .models import Kategori, Kitap, KitapNusha, OduncKaydi, Raf, Rol, Sinif, Uye, Yazar
 from .turkish import fold
 
 # --- Ödünç kapanış geçişleri (K3) ---
@@ -179,3 +182,262 @@ def rol_degisikligi_izinli(hedef_rol_ad, *, is_superuser) -> bool:
     if is_superuser:
         return True
     return hedef_rol_ad is not None and hedef_rol_ad == "Öğrenci"
+
+
+# --- Toplu öğrenci içe aktarma (K9.13) ---
+_SAYI_BASLIKLARI = {"uye_no", "ogrenci_no", "no", "numara"}
+_ALAN_BASLIKLARI = {"ad": "ad", "soyad": "soyad", "sinif": "sinif", "rol": "rol"}
+
+
+def _baslik_key(value) -> str:
+    """CSV başlıklarını karşılaştırmak için Türkçe-duyarsız anahtar (Sınıf→sinif)."""
+    return fold(value).replace("ı", "i").strip()
+
+
+def _csv_ayrac(sample: str) -> str:
+    try:
+        return _csv.Sniffer().sniff(sample, delimiters=",;\t|").delimiter
+    except _csv.Error:
+        return ","
+
+
+def _sinif_normalize(value) -> str:
+    """K9.13: CSV sınıfını DB biçimine çevirir (5/A → 5-A, 5a → 5-A)."""
+    s = (value or "").strip().upper()
+    if not s:
+        return ""
+    s = re.sub(r"\s*/\s*", "-", s)
+    s = re.sub(r"\s*-\s*", "-", s)
+    s = re.sub(r"\s+", " ", s).strip()
+    m = re.match(r"^(\d+)\s*-?\s*([A-ZÇĞİÖŞÜ])$", s)
+    if m:
+        return f"{m.group(1)}-{m.group(2)}"
+    return s
+
+
+def parse_ogrenci_csv(text: str):
+    """K9.13: CSV metnini satır sözlüklerine çevirir.
+
+    Döner: `(satirlar, hata)`. Başlıkta zorunlu sütun eksikse hata metni döner.
+    """
+    text = text or ""
+    sample = text[:2048]
+    delimiter = _csv_ayrac(sample)
+    rows = list(_csv.reader(_io.StringIO(text), delimiter=delimiter))
+    if not rows:
+        return None, "CSV boş."
+    idx: dict = {}
+    for i, h in enumerate(rows[0]):
+        key = _baslik_key(h)
+        if key in _SAYI_BASLIKLARI:
+            idx["uye_no"] = i
+        elif key in _ALAN_BASLIKLARI:
+            idx[_ALAN_BASLIKLARI[key]] = i
+    eksik = [a for a in ("uye_no", "ad", "soyad") if a not in idx]
+    if eksik:
+        adlar = {"uye_no": "uye_no/ogrenci_no", "ad": "ad", "soyad": "soyad"}
+        return None, "CSV başlığında şu sütun(lar) eksik: " + ", ".join(
+            adlar[a] for a in eksik
+        )
+    parsed = []
+    for satir_no, raw in enumerate(rows[1:], start=2):
+        if not any((c or "").strip() for c in raw):
+            continue
+
+        def _get(alan):
+            i = idx.get(alan)
+            if i is None or i >= len(raw):
+                return ""
+            return (raw[i] or "").strip()
+
+        parsed.append(
+            {
+                "satir": satir_no,
+                "uye_no": _get("uye_no"),
+                "ad": _get("ad"),
+                "soyad": _get("soyad"),
+                "sinif": _get("sinif"),
+                "rol": _get("rol") if "rol" in idx else "",
+            }
+        )
+    return parsed, None
+
+
+def _hedef_rol(rol_raw, *, is_superuser):
+    """K9.13 + K9.5.2: varsayılan Öğrenci; öğrenci dışı rol yalnız admin."""
+    ad = (rol_raw or "").strip()
+    if not ad or _baslik_key(ad) == "ogrenci":
+        return "Öğrenci", None
+    if not is_superuser:
+        return None, "Öğrenci dışı rol ataması yalnızca yönetici tarafından yapılabilir."
+    if not Rol.objects.filter(ad=ad).exists():
+        return None, f"Tanımsız rol: {ad}"
+    return ad, None
+
+
+def _mevcut_uyeler():
+    """Tüm üyelerin `uye_no → Uye` haritası (rol/aktiflik ayrımı için)."""
+    return {
+        u.uye_no.upper(): u
+        for u in Uye.objects.select_related("sinif", "rol").all()
+        if u.uye_no
+    }
+
+
+def _ogrenci_analiz(parsed, *, is_superuser, yeniden_kullan):
+    """K9.13: satırları sınıflandırır (DB'ye dokunmaz)."""
+    mevcut = _mevcut_uyeler()
+    sinif_map = {fold(s.ad): s for s in Sinif.objects.all()}
+    sinif_adlari = {}  # fold(ad) → normalize ad (mevcut + üretilecek)
+    yeni_siniflar_fold = set()
+    gorulen = set()
+    satirlar = []
+    for r in parsed:
+        uye_no = (r["uye_no"] or "").strip().upper()
+        ad = (r["ad"] or "").strip()
+        soyad = (r["soyad"] or "").strip()
+        norm_sinif = _sinif_normalize(r["sinif"])
+        rol_ad, rol_hata = _hedef_rol(r["rol"], is_superuser=is_superuser)
+
+        islem, sebep = "yeni", None
+        if not uye_no:
+            islem, sebep = "hata", "Üye no boş."
+        elif not ad or not soyad:
+            islem, sebep = "hata", "Ad veya soyad boş."
+        elif rol_hata:
+            islem, sebep = "hata", rol_hata
+        elif uye_no in gorulen:
+            islem, sebep = "hata", "CSV içinde aynı üye no birden fazla geçiyor."
+        else:
+            gorulen.add(uye_no)
+            var = mevcut.get(uye_no)
+            if var is None:
+                islem = "yeni"
+            elif not (var.rol and var.rol.ad == "Öğrenci"):
+                rol_adi = var.rol.ad if var.rol else "rolsüz"
+                islem, sebep = (
+                    "hata",
+                    f"{rol_adi} kaydıyla aynı üye no; bu satır dokunulmadı.",
+                )
+            elif var.aktif or yeniden_kullan:
+                islem = "yenileme"
+            else:
+                islem, sebep = (
+                    "cakisma",
+                    "Pasif (mezun) kayıtla aynı üye no; varsayılan olarak atlandı.",
+                )
+
+        if norm_sinif:
+            key = fold(norm_sinif)
+            sinif_adlari[key] = norm_sinif
+            if key not in sinif_map:
+                yeni_siniflar_fold.add(key)
+
+        satirlar.append(
+            {
+                "satir": r["satir"],
+                "uye_no": uye_no,
+                "ad": ad,
+                "soyad": soyad,
+                "sinif": norm_sinif,
+                "rol": rol_ad or (r["rol"] or "").strip(),
+                "islem": islem,
+                "sebep": sebep,
+            }
+        )
+
+    # Pasife çekilecekler: aktif öğrenci olup CSV'de numarası geçmeyenler.
+    # CSV'de geçen her numara (hatalı satırlar dâhil) korunur; veri hatalı diye
+    # öğrenci pasife çekilmez.
+    csv_nolar = {(r["uye_no"] or "").strip().upper() for r in parsed if r["uye_no"]}
+    pasife = [
+        {"uye_no": u.uye_no, "ad": u.ad, "soyad": u.soyad}
+        for key, u in mevcut.items()
+        if u.rol and u.rol.ad == "Öğrenci" and u.aktif and key not in csv_nolar
+    ]
+
+    ozet = {
+        "toplam": len(parsed),
+        "yeni": sum(1 for s in satirlar if s["islem"] == "yeni"),
+        "yenileme": sum(1 for s in satirlar if s["islem"] == "yenileme"),
+        "cakisma": sum(1 for s in satirlar if s["islem"] == "cakisma"),
+        "hatali": sum(1 for s in satirlar if s["islem"] == "hata"),
+        "pasife_cekilecek": len(pasife),
+    }
+    return {
+        "ozet": ozet,
+        "satirlar": satirlar,
+        "pasife_cekilecekler": pasife,
+        "yeni_siniflar": sorted(sinif_adlari[k] for k in yeni_siniflar_fold),
+    }
+
+
+def ogrenci_aktar(
+    csv_text, *, is_superuser=False, dry_run=True, yeniden_kullan=False
+):
+    """K9.13: dönem başı toplu öğrenci içe aktarma.
+
+    Önizleme (`dry_run=True`) DB'ye dokunmaz; uygulamada tek `atomic` işlem:
+    (1) tüm aktif Öğrenciler pasife çekilir, (2) CSV satırları `uye_no`'dan
+    eşlenir — yok → yeni, önceden aktif → yenile+aktif, önceden pasif → çakışma,
+    (3) listede olmayanlar pasif kalır. Öğretmen/Editör dokunulmaz.
+    """
+    parsed, hata = parse_ogrenci_csv(csv_text)
+    if hata:
+        return {"hata": hata}
+
+    analiz = _ogrenci_analiz(
+        parsed, is_superuser=is_superuser, yeniden_kullan=yeniden_kullan
+    )
+    sonuc = {
+        "dry_run": bool(dry_run),
+        "ozet": analiz["ozet"],
+        "satirlar": analiz["satirlar"],
+        "pasife_cekilecekler": analiz["pasife_cekilecekler"],
+        "yeni_siniflar": analiz["yeni_siniflar"],
+    }
+    if dry_run:
+        return sonuc
+
+    snapshot = _mevcut_uyeler()
+    rol_cache = {r.ad: r for r in Rol.objects.all()}
+    with transaction.atomic():
+        Uye.objects.filter(rol__ad="Öğrenci", aktif=True).update(
+            aktif=False, pasif_tarihi=timezone.now()
+        )
+
+        sinif_map = {fold(s.ad): s for s in Sinif.objects.all()}
+        for ad in analiz["yeni_siniflar"]:
+            key = fold(ad)
+            if key not in sinif_map:
+                obj, _ = Sinif.objects.get_or_create(ad=ad)
+                sinif_map[key] = obj
+
+        for s in analiz["satirlar"]:
+            if s["islem"] in ("hata", "cakisma"):
+                continue
+            sinif = sinif_map.get(fold(s["sinif"])) if s["sinif"] else None
+            rol = rol_cache.get(s["rol"]) or rol_cache.get("Öğrenci")
+            if s["islem"] == "yeni":
+                Uye.objects.create(
+                    ad=s["ad"],
+                    soyad=s["soyad"],
+                    uye_no=s["uye_no"],
+                    sinif=sinif,
+                    rol=rol,
+                    aktif=True,
+                )
+            else:  # yenileme
+                u = snapshot.get(s["uye_no"])
+                if u is None:  # güvenlik ağı
+                    continue
+                u.ad = s["ad"]
+                u.soyad = s["soyad"]
+                u.sinif = sinif
+                u.rol = rol
+                u.aktif = True
+                u.pasif_tarihi = None
+                u.save()
+
+    sonuc["uygulandi"] = True
+    return sonuc
