@@ -8,6 +8,16 @@ sunucuya yalnızca etiketli sürümler gönderilir (bkz. `docs/DEPLOY_CLOUD.md`)
 
 - (geliştirme sürüyor)
 
+## [1.1.1] — 2026-09-26
+
+Düzeltme: mobil editör kitap görsellerinde ön kapak (`resim1`) yüklenemiyordu.
+
+### Backend
+- `KitapDetailSerializer`: `resim1..resim5` yazılabilir `ImageField` — editör/admin
+  multipart PATCH ile görsel yükleyebilir, JSON `null` ile silebilir (önceden
+  `resim1` read-only olduğu için ön kapak yüklemesi sessizce yok sayılıyordu).
+- Testler: editör resim1 yükleme/silme, öğrenci 403 (toplam 123 test).
+
 ## [1.1.0] — 2026-09-26
 
 Dönem başı toplu öğrenci içe aktarma, arşiv/kayıp kuralı ve şifreli yedekleme
