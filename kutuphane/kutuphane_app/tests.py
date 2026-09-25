@@ -12,6 +12,7 @@ from PIL import Image
 
 from django.contrib.auth.models import User
 from django.core.cache import cache
+from django.core.files.base import ContentFile
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db import connection
 from django.test import Client, TestCase, override_settings
@@ -1559,6 +1560,7 @@ class KatalogWebTests(TestCase):
         self.assertContains(resp, "Temizle")
 
 
+@override_settings(MEDIA_ROOT=tempfile.mkdtemp())
 class KitapDetayWebTests(TestCase):
     """K11: kök katalogdan kitap detay sayfası (nüsha durumu, iade, raf)."""
 
@@ -1587,11 +1589,23 @@ class KitapDetayWebTests(TestCase):
         resp = self.client.get(self._url())
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, "Detay Kitabı")
-        self.assertContains(resp, "Toplam nüsha: 3")
-        self.assertContains(resp, "Kütüphanede: 2")
-        self.assertContains(resp, "Ödünçte: 1")
+        self.assertContains(resp, "Toplam nüsha")
+        self.assertContains(resp, "Kütüphanede")
+        self.assertContains(resp, "Ödünçte")
+        self.assertContains(resp, '<div class="sayi">3</div>')
+        self.assertContains(resp, '<div class="sayi">2</div>')
+        self.assertContains(resp, '<div class="sayi">1</div>')
         self.assertContains(resp, "A-1")
         self.assertContains(resp, "A-2")
+
+    def test_detay_lightbox_ve_galeri_icerir(self):
+        buf = io.BytesIO()
+        Image.new("RGB", (2, 2), (120, 60, 30)).save(buf, format="PNG")
+        self.kitap.resim1.save("kapak.png", ContentFile(buf.getvalue()), save=True)
+        resp = self.client.get(self._url())
+        self.assertContains(resp, 'id="aktifResim"')
+        self.assertContains(resp, 'id="lightbox"')
+        self.assertContains(resp, "lightboxAc")
 
     def test_kimlik_gerektirmez(self):
         resp = self.client.get(f"/kitap/{self.kitap.id}/")
