@@ -1638,6 +1638,21 @@ class K9_13ImportTests(APITestCase):
         self.assertTrue(ogretmen.aktif)
         self.assertEqual(ogretmen.rol.ad, "Öğretmen")
 
+    def test_arsiv_hatirlatma_sayisi(self):
+        """İçe aktarma yanıtı 3+ yıl pasif arşiv adayı sayısını bildirir (K2.5)."""
+        eski = timezone.now() - timedelta(days=4 * 365)
+        Uye.objects.create(
+            ad="Eski", soyad="Mezun", uye_no="900",
+            sinif=self.sinif, rol=self.rol_ogr, aktif=False, pasif_tarihi=eski,
+        )
+        resp = self._post(self.personel, dry_run=True)
+        self.assertEqual(resp.status_code, 200, resp.content)
+        self.assertGreaterEqual(resp.data["arsiv_aday"], 1)
+
+        resp2 = self._post(self.personel, dry_run=False)
+        self.assertEqual(resp2.status_code, 200, resp2.content)
+        self.assertGreaterEqual(resp2.data["arsiv_aday"], 1)
+
     def test_cakisma_yeniden_kullan(self):
         resp = self._post(self.personel, dry_run=False, yeniden=True)
         self.assertEqual(resp.status_code, 200, resp.content)

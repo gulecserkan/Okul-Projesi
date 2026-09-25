@@ -148,6 +148,15 @@ void main() {
     expect(sonuc!['uygulandi'], isTrue);
   });
 
+  testWidgets('arşiv adayı varsa hatırlatma gösterilir', (tester) async {
+    final preview = _preview();
+    preview['arsiv_aday'] = 3;
+    final api = _FakeApi(preview: preview);
+    await _pumpDialog(tester, api);
+    expect(find.textContaining('3 öğrenci 3+ yıldır pasif'), findsOneWidget);
+    expect(find.textContaining('Django admin'), findsOneWidget);
+  });
+
   testWidgets('üye listesinde içe aktarma butonu artık yok', (tester) async {
     await tester.pumpWidget(
       const MaterialApp(home: Scaffold(body: StudentListScreen())),

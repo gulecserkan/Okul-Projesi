@@ -6,7 +6,6 @@ from django.shortcuts import render, redirect
 from django.utils.timezone import now
 from django.db import transaction
 from django.core.files.base import ContentFile
-from django.db.models import Q
 from django.contrib.auth.models import User, Group
 from django.contrib.auth.admin import UserAdmin, GroupAdmin
 from django import forms
@@ -19,6 +18,7 @@ from .models import (
     LoanPolicy, RoleLoanPolicy, NotificationSettings, KurumAyarlari,
     InventorySession, InventoryItem
 )
+from .rules import arsiv_adaylari_queryset
 
 # --- Custom Admin Site ---
 class CustomAdminSite(admin.AdminSite):
@@ -43,6 +43,13 @@ admin_site.register(Sinif, SinifAdmin)
 class RolAdmin(admin.ModelAdmin):
     list_display = ("ad", "get_duration", "get_max_items", "get_daily_penalty")
     search_fields = ("ad",)
+    fieldsets = (
+        (None, {
+            "description": "Kütüphane rolleri. Her rolün ödünç/ceza değerleri "
+                           "'Rol Ödünç Kuralları' bölümünden ayarlanır.",
+            "fields": ("ad",),
+        }),
+    )
 
     def _policy(self, obj):
         return getattr(obj, "loan_policy", None)
@@ -160,12 +167,7 @@ class UyeAdmin(admin.ModelAdmin):
 
     # 3+ yıl pasif (veya pasif_tarihi boş ama 3+ yıl önce kaydedilmiş) adayları göster
     def arsiv_onizleme(self, request):
-        uc_yil_once = now().replace(year=now().year - 3)
-        adaylar = Uye.objects.filter(
-            Q(aktif=False) &
-            (Q(pasif_tarihi__lt=uc_yil_once) |
-             (Q(pasif_tarihi__isnull=True) & Q(kayit_tarihi__lt=uc_yil_once)))
-        )
+        adaylar = arsiv_adaylari_queryset()
         return render(request, "admin/uye_arsiv_onizleme.html", {
             "adaylar": adaylar,
             "toplam": adaylar.count(),
@@ -173,12 +175,7 @@ class UyeAdmin(admin.ModelAdmin):
 
     # Adayları arşive taşı + JSON paket üret + canlı DB’den temizle
     def arsiv_onayla(self, request):
-        uc_yil_once = now().replace(year=now().year - 3)
-        hedef = Uye.objects.filter(
-            Q(aktif=False) &
-            (Q(pasif_tarihi__lt=uc_yil_once) |
-             (Q(pasif_tarihi__isnull=True) & Q(kayit_tarihi__lt=uc_yil_once)))
-        )
+        hedef = arsiv_adaylari_queryset()
 
         if not hedef.exists():
             messages.warning(request, "Arşivlenecek uygun öğrenci yok.")
@@ -334,6 +331,33 @@ class LoanPolicyAdmin(admin.ModelAdmin):
         "penalty_delay_days",
         "shift_weekend",
     )
+    readonly_fields = ("created_at", "updated_at")
+    fieldsets = (
+        (None, {
+            "description": "Tüm istemcilerin kullandığı GENEL ödünç varsayılanları. "
+                           "Bir rol için 'Rol Ödünç Kuralları' bölümünde özel değer "
+                           "tanımlıysa, o rol için geçerli olan odur. Alanların anlamı "
+                           "her alanın altındaki açıklamada yazar.",
+            "fields": ("default_duration", "default_max_items", "delay_grace_days",
+                       "penalty_delay_days", "shift_weekend"),
+        }),
+        ("Otomatik uzatma", {
+            "fields": ("auto_extend_enabled", "auto_extend_days", "auto_extend_limit"),
+        }),
+        ("İade, karantina ve zorunluluklar", {
+            "fields": ("quarantine_days", "require_damage_note", "require_shelf_code"),
+        }),
+        ("Sessiz saatler (bildirim erteleme)", {
+            "fields": ("quiet_hours_enabled", "quiet_hours_start", "quiet_hours_end"),
+        }),
+        ("Ceza üst sınırları ve kayıp/hasar", {
+            "fields": ("penalty_max_per_loan", "penalty_max_per_student", "kayip_hasar_cezasi"),
+        }),
+        ("Kayıt bilgisi (salt okunur)", {
+            "classes": ("collapse",),
+            "fields": ("created_at", "updated_at"),
+        }),
+    )
 
 
 admin_site.register(LoanPolicy, LoanPolicyAdmin)
@@ -347,6 +371,17 @@ class RoleLoanPolicyAdmin(admin.ModelAdmin):
         "delay_grace_days",
         "penalty_delay_days",
         "daily_penalty_rate",
+    )
+    fieldsets = (
+        (None, {
+            "description": "Bir role özel ödünç süresi, kitap limiti ve ceza değerleri. "
+                           "BOŞ bırakılan her alan için 'Ödünç Politikası' bölümündeki "
+                           "GENEL değer kullanılır. Alanların anlamı alan altındaki "
+                           "açıklamalarda yazar.",
+            "fields": ("role", "duration", "max_items", "delay_grace_days",
+                       "penalty_delay_days", "shift_weekend", "daily_penalty_rate",
+                       "penalty_max_per_loan", "penalty_max_per_student"),
+        }),
     )
 
 
@@ -362,6 +397,59 @@ class NotificationSettingsAdmin(admin.ModelAdmin):
         "sms_enabled",
         "mobile_enabled",
     )
+    readonly_fields = (
+        "overdue_last_run",
+        "email_schedule_last_run",
+        "sms_schedule_last_run",
+        "mobile_schedule_last_run",
+        "created_at",
+        "updated_at",
+    )
+    fieldsets = (
+        (None, {
+            "description": "Hatırlatma ve gecikme bildirimleri ile e-posta/SMS/mobil "
+                           "kanallarının ayarları. Kanal ve zamanlama alanlarının anlamı "
+                           "alan altındaki açıklamalarda yazar.",
+            "fields": ("printer_warning_enabled",),
+        }),
+        ("İade hatırlatma", {
+            "fields": ("due_reminder_enabled", "due_reminder_days_before",
+                       "due_reminder_email_enabled", "due_reminder_sms_enabled",
+                       "due_reminder_mobile_enabled"),
+        }),
+        ("Gecikme bildirimi", {
+            "fields": ("due_overdue_enabled", "due_overdue_days_after",
+                       "overdue_email_enabled", "overdue_sms_enabled",
+                       "overdue_mobile_enabled"),
+        }),
+        ("E-posta (SMTP)", {
+            "fields": ("email_enabled", "email_sender", "email_smtp_host",
+                       "email_smtp_port", "email_use_tls", "email_username",
+                       "email_password", "email_schedule_enabled",
+                       "email_schedule_hour", "email_schedule_minute",
+                       "email_schedule_timezone"),
+        }),
+        ("SMS", {
+            "fields": ("sms_enabled", "sms_provider", "sms_api_url", "sms_api_key",
+                       "sms_schedule_enabled", "sms_schedule_hour",
+                       "sms_schedule_minute", "sms_schedule_timezone"),
+        }),
+        ("Mobil", {
+            "fields": ("mobile_enabled", "mobile_schedule_enabled",
+                       "mobile_schedule_hour", "mobile_schedule_minute",
+                       "mobile_schedule_timezone"),
+        }),
+        ("Mesaj şablonları", {
+            "fields": ("reminder_subject", "reminder_body",
+                       "overdue_subject", "overdue_body"),
+        }),
+        ("Durum (salt okunur)", {
+            "classes": ("collapse",),
+            "fields": ("overdue_last_run", "email_schedule_last_run",
+                       "sms_schedule_last_run", "mobile_schedule_last_run",
+                       "created_at", "updated_at"),
+        }),
+    )
 
 
 admin_site.register(NotificationSettings, NotificationSettingsAdmin)
@@ -369,6 +457,19 @@ admin_site.register(NotificationSettings, NotificationSettingsAdmin)
 
 class KurumAyarlariAdmin(admin.ModelAdmin):
     list_display = ("kutuphane_adi", "okul_adi", "telefon", "eposta")
+    readonly_fields = ("created_at", "updated_at")
+    fieldsets = (
+        (None, {
+            "description": "Fiş ve etiketlerde kullanılan kurum/kütüphane kimlik "
+                           "bilgileri.",
+            "fields": ("kutuphane_adi", "okul_adi", "adres", "telefon", "eposta",
+                       "website", "logo_url"),
+        }),
+        ("Kayıt bilgisi (salt okunur)", {
+            "classes": ("collapse",),
+            "fields": ("created_at", "updated_at"),
+        }),
+    )
 
 
 admin_site.register(KurumAyarlari, KurumAyarlariAdmin)

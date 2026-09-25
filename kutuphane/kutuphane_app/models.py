@@ -21,22 +21,64 @@ class Sinif(models.Model):
 
 # --- Roller (Öğrenci / Öğretmen / Personel gibi) ---
 class Rol(models.Model):
-    ad = models.CharField(max_length=50, unique=True)  # Öğrenci, Öğretmen vb.
+    ad = models.CharField(
+        max_length=50, unique=True, verbose_name="Rol adı",
+        help_text="Öğrenci, Öğretmen, Editör gibi rol adı.",
+    )  # Öğrenci, Öğretmen vb.
+
+    class Meta:
+        verbose_name = "Rol"
+        verbose_name_plural = "Roller"
 
     def __str__(self):
         return self.ad
 
 
 class RoleLoanPolicy(models.Model):
-    role = models.OneToOneField(Rol, on_delete=models.CASCADE, related_name="loan_policy")
-    duration = models.PositiveIntegerField(null=True, blank=True)
-    max_items = models.PositiveIntegerField(null=True, blank=True)
-    delay_grace_days = models.PositiveIntegerField(null=True, blank=True)
-    penalty_delay_days = models.PositiveIntegerField(null=True, blank=True)
-    shift_weekend = models.BooleanField(null=True, blank=True)
-    penalty_max_per_loan = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
-    penalty_max_per_student = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
-    daily_penalty_rate = models.DecimalField(max_digits=6, decimal_places=2, default=0)
+    role = models.OneToOneField(
+        Rol, on_delete=models.CASCADE, related_name="loan_policy",
+        verbose_name="Rol",
+        help_text="Bu ödünç kurallarının geçerli olduğu rol.",
+    )
+    duration = models.PositiveIntegerField(
+        null=True, blank=True, verbose_name="Ödünç süresi (gün)",
+        help_text="Kitabın kaç gün ödünç verileceği. Boşsa genel Ödünç Politikası değeri kullanılır.",
+    )
+    max_items = models.PositiveIntegerField(
+        null=True, blank=True, verbose_name="En fazla kitap",
+        help_text="Bu roldeki bir üyenin aynı anda alabileceği kitap sayısı. Boşsa genel değer.",
+    )
+    delay_grace_days = models.PositiveIntegerField(
+        null=True, blank=True, verbose_name="İade toleransı (gün)",
+        help_text="Ceza başlamadan önce tanınan ek gün. Boşsa genel değer.",
+    )
+    penalty_delay_days = models.PositiveIntegerField(
+        null=True, blank=True, verbose_name="Ceza gecikmesi (gün)",
+        help_text="Toleranstan sonra cezanın başlaması için geçen ek gün. Boşsa genel değer.",
+    )
+    shift_weekend = models.BooleanField(
+        null=True, blank=True, verbose_name="Hafta sonu kaydır",
+        help_text="İade tarihi hafta sonuna denk gelirse sonraki iş gününe kaydırılır.",
+    )
+    penalty_max_per_loan = models.DecimalField(
+        max_digits=8, decimal_places=2, null=True, blank=True,
+        verbose_name="Ceza tavanı – kitap (₺)",
+        help_text="Tek ödünç kaydı için en yüksek ceza (0 = sınırsız). Boşsa genel değer.",
+    )
+    penalty_max_per_student = models.DecimalField(
+        max_digits=8, decimal_places=2, null=True, blank=True,
+        verbose_name="Ceza tavanı – üye (₺)",
+        help_text="Bir üyenin toplam cezasının üst sınırı (0 = sınırsız). Boşsa genel değer.",
+    )
+    daily_penalty_rate = models.DecimalField(
+        max_digits=6, decimal_places=2, default=0,
+        verbose_name="Günlük ceza (₺)",
+        help_text="Gecikme başladıktan sonra her gün için uygulanan tutar (0 = ceza yok).",
+    )
+
+    class Meta:
+        verbose_name = "Rol Ödünç Kuralı"
+        verbose_name_plural = "Rol Ödünç Kuralları"
 
     def __str__(self):
         return f"{self.role.ad} ödünç ayarları"
@@ -442,33 +484,84 @@ class LoanPolicy(models.Model):
     """
 
     singleton_key = models.CharField(max_length=50, unique=True, default="default")
-    default_duration = models.PositiveIntegerField(default=15)
-    default_max_items = models.PositiveIntegerField(default=2)
-    delay_grace_days = models.PositiveIntegerField(default=0)
-    penalty_delay_days = models.PositiveIntegerField(default=0)
-    shift_weekend = models.BooleanField(default=False)
+    default_duration = models.PositiveIntegerField(
+        default=15, verbose_name="Varsayılan ödünç süresi (gün)",
+        help_text="Rol için özel değer tanımlı değilse kitabın kaç gün ödünç verileceği.",
+    )
+    default_max_items = models.PositiveIntegerField(
+        default=2, verbose_name="Varsayılan en fazla kitap",
+        help_text="Rol için özel değer yoksa bir üyenin aynı anda alabileceği kitap sayısı.",
+    )
+    delay_grace_days = models.PositiveIntegerField(
+        default=0, verbose_name="Varsayılan iade toleransı (gün)",
+        help_text="Bu kadar gün gecikme cezasız kabul edilir.",
+    )
+    penalty_delay_days = models.PositiveIntegerField(
+        default=0, verbose_name="Varsayılan ceza gecikmesi (gün)",
+        help_text="Toleranstan sonra cezanın başlaması için geçen ek gün.",
+    )
+    shift_weekend = models.BooleanField(
+        default=False, verbose_name="Hafta sonu kaydır",
+        help_text="İade tarihi hafta sonuna denk gelirse sonraki iş gününe kaydırılır.",
+    )
 
-    auto_extend_enabled = models.BooleanField(default=False)
-    auto_extend_days = models.PositiveIntegerField(default=0)
-    auto_extend_limit = models.PositiveIntegerField(default=0)
+    auto_extend_enabled = models.BooleanField(
+        default=False, verbose_name="Otomatik uzatma açık",
+        help_text="Süre dolarken ödünç otomatik uzatılır (aşağıdaki gün/limit kullanılır).",
+    )
+    auto_extend_days = models.PositiveIntegerField(
+        default=0, verbose_name="Otomatik uzatma süresi (gün)",
+        help_text="Otomatik uzatmada iade tarihinin kaç gün öteleneceği.",
+    )
+    auto_extend_limit = models.PositiveIntegerField(
+        default=0, verbose_name="Otomatik uzatma limiti (kez)",
+        help_text="Bir ödünç kaydının en fazla kaç kez uzatılabileceği.",
+    )
 
-    quarantine_days = models.PositiveIntegerField(default=0)
-    require_damage_note = models.BooleanField(default=False)
-    require_shelf_code = models.BooleanField(default=False)
+    quarantine_days = models.PositiveIntegerField(
+        default=0, verbose_name="Karantina (gün)",
+        help_text="İade edilen nüshanın yeniden ödünç verilebilmesi için beklenecek gün.",
+    )
+    require_damage_note = models.BooleanField(
+        default=False, verbose_name="Hasarlı iade için not zorunlu",
+        help_text="Kayıp/hasarlı iade kapatılırken açıklama girilmesi zorunlu olur.",
+    )
+    require_shelf_code = models.BooleanField(
+        default=False, verbose_name="Raf kodu zorunlu",
+        help_text="Yeni nüsha eklerken raf seçilmesi zorunlu olur.",
+    )
 
-    quiet_hours_enabled = models.BooleanField(default=False)
-    quiet_hours_start = models.TimeField(default=time(22, 0))
-    quiet_hours_end = models.TimeField(default=time(8, 0))
+    quiet_hours_enabled = models.BooleanField(
+        default=False, verbose_name="Sessiz saatler açık",
+        help_text="Belirtilen aralıkta bildirim gönderimi ertelenir.",
+    )
+    quiet_hours_start = models.TimeField(
+        default=time(22, 0), verbose_name="Sessiz saat başlangıcı",
+        help_text="Sessiz aralığın başlangıcı (SS:DD).",
+    )
+    quiet_hours_end = models.TimeField(
+        default=time(8, 0), verbose_name="Sessiz saat bitişi",
+        help_text="Bitiş; başlangıçtan küçükse gece yarısını aşar (ör. 22:00–08:00).",
+    )
 
-    penalty_max_per_loan = models.DecimalField(max_digits=8, decimal_places=2, default=0)
-    penalty_max_per_student = models.DecimalField(max_digits=8, decimal_places=2, default=0)
+    penalty_max_per_loan = models.DecimalField(
+        max_digits=8, decimal_places=2, default=0,
+        verbose_name="Ceza tavanı – kitap (₺)",
+        help_text="Tek ödünç kaydı için en yüksek ceza (0 = sınırsız).",
+    )
+    penalty_max_per_student = models.DecimalField(
+        max_digits=8, decimal_places=2, default=0,
+        verbose_name="Ceza tavanı – üye (₺)",
+        help_text="Bir üyenin toplam cezasının üst sınırı (0 = sınırsız).",
+    )
     kayip_hasar_cezasi = models.DecimalField(
         max_digits=8, decimal_places=2, default=0,
+        verbose_name="Kayıp/hasarlı cezası (₺)",
         help_text="Kayıp/hasarlı nüsha için önerilen ek ceza tutarı (TL). Sıfırsa öneri üretilmez."
     )
 
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Oluşturma")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="Güncelleme")
 
     class Meta:
         verbose_name = "Ödünç Politikası"
@@ -486,60 +579,75 @@ class LoanPolicy(models.Model):
 class NotificationSettings(models.Model):
     singleton_key = models.CharField(max_length=50, unique=True, default="default")
 
-    printer_warning_enabled = models.BooleanField(default=True)
+    printer_warning_enabled = models.BooleanField(
+        default=True, verbose_name="Açılışta yazıcı uyarısı",
+        help_text="Uygulama açılışında yazıcı sorunu varsa uyarı gösterilir.",
+    )
 
-    due_reminder_enabled = models.BooleanField(default=True)
-    due_reminder_days_before = models.PositiveIntegerField(default=1)
-    due_reminder_email_enabled = models.BooleanField(default=True)
-    due_reminder_sms_enabled = models.BooleanField(default=True)
-    due_reminder_mobile_enabled = models.BooleanField(default=True)
+    due_reminder_enabled = models.BooleanField(
+        default=True, verbose_name="İade hatırlatma açık",
+        help_text="İade tarihi yaklaşan üyelere hatırlatma gönderilir.",
+    )
+    due_reminder_days_before = models.PositiveIntegerField(
+        default=1, verbose_name="Kaç gün önce hatırlat",
+        help_text="İade tarihinden kaç gün önce hatırlatma yapılacağı.",
+    )
+    due_reminder_email_enabled = models.BooleanField(default=True, verbose_name="Hatırlatma – e-posta")
+    due_reminder_sms_enabled = models.BooleanField(default=True, verbose_name="Hatırlatma – SMS")
+    due_reminder_mobile_enabled = models.BooleanField(default=True, verbose_name="Hatırlatma – mobil")
 
-    due_overdue_enabled = models.BooleanField(default=True)
-    due_overdue_days_after = models.PositiveIntegerField(default=0)
-    overdue_email_enabled = models.BooleanField(default=True)
-    overdue_sms_enabled = models.BooleanField(default=True)
-    overdue_mobile_enabled = models.BooleanField(default=True)
+    due_overdue_enabled = models.BooleanField(
+        default=True, verbose_name="Gecikme bildirimi açık",
+        help_text="İade tarihi geçen üyelere gecikme bildirimi gönderilir.",
+    )
+    due_overdue_days_after = models.PositiveIntegerField(
+        default=0, verbose_name="Gecikmeden kaç gün sonra",
+        help_text="İade tarihi geçtikten kaç gün sonra bildirim gönderileceği.",
+    )
+    overdue_email_enabled = models.BooleanField(default=True, verbose_name="Gecikme – e-posta")
+    overdue_sms_enabled = models.BooleanField(default=True, verbose_name="Gecikme – SMS")
+    overdue_mobile_enabled = models.BooleanField(default=True, verbose_name="Gecikme – mobil")
 
-    email_enabled = models.BooleanField(default=False)
-    email_sender = models.CharField(max_length=120, blank=True)
-    email_smtp_host = models.CharField(max_length=120, blank=True)
-    email_smtp_port = models.PositiveIntegerField(default=587)
-    email_use_tls = models.BooleanField(default=True)
-    email_username = EncryptedCharField(max_length=512, blank=True)
-    email_password = EncryptedCharField(max_length=512, blank=True)
-    email_schedule_enabled = models.BooleanField(default=False)
-    email_schedule_hour = models.PositiveSmallIntegerField(default=9)
-    email_schedule_minute = models.PositiveSmallIntegerField(default=0)
-    email_schedule_timezone = models.CharField(max_length=64, blank=True)
+    email_enabled = models.BooleanField(default=False, verbose_name="E-posta gönderimi açık")
+    email_sender = models.CharField(max_length=120, blank=True, verbose_name="Gönderen adresi")
+    email_smtp_host = models.CharField(max_length=120, blank=True, verbose_name="SMTP sunucu")
+    email_smtp_port = models.PositiveIntegerField(default=587, verbose_name="SMTP portu")
+    email_use_tls = models.BooleanField(default=True, verbose_name="TLS kullan")
+    email_username = EncryptedCharField(max_length=512, blank=True, verbose_name="SMTP kullanıcı")
+    email_password = EncryptedCharField(max_length=512, blank=True, verbose_name="SMTP şifre")
+    email_schedule_enabled = models.BooleanField(default=False, verbose_name="E-posta zamanlama açık")
+    email_schedule_hour = models.PositiveSmallIntegerField(default=9, verbose_name="E-posta saat")
+    email_schedule_minute = models.PositiveSmallIntegerField(default=0, verbose_name="E-posta dakika")
+    email_schedule_timezone = models.CharField(max_length=64, blank=True, verbose_name="E-posta saat dilimi")
 
-    sms_enabled = models.BooleanField(default=False)
-    sms_provider = models.CharField(max_length=120, blank=True)
-    sms_api_url = models.CharField(max_length=255, blank=True)
-    sms_api_key = EncryptedCharField(max_length=512, blank=True)
-    sms_schedule_enabled = models.BooleanField(default=False)
-    sms_schedule_hour = models.PositiveSmallIntegerField(default=9)
-    sms_schedule_minute = models.PositiveSmallIntegerField(default=0)
-    sms_schedule_timezone = models.CharField(max_length=64, blank=True)
+    sms_enabled = models.BooleanField(default=False, verbose_name="SMS gönderimi açık")
+    sms_provider = models.CharField(max_length=120, blank=True, verbose_name="SMS sağlayıcı")
+    sms_api_url = models.CharField(max_length=255, blank=True, verbose_name="SMS API URL")
+    sms_api_key = EncryptedCharField(max_length=512, blank=True, verbose_name="SMS API anahtarı")
+    sms_schedule_enabled = models.BooleanField(default=False, verbose_name="SMS zamanlama açık")
+    sms_schedule_hour = models.PositiveSmallIntegerField(default=9, verbose_name="SMS saat")
+    sms_schedule_minute = models.PositiveSmallIntegerField(default=0, verbose_name="SMS dakika")
+    sms_schedule_timezone = models.CharField(max_length=64, blank=True, verbose_name="SMS saat dilimi")
 
-    mobile_enabled = models.BooleanField(default=False)
-    mobile_schedule_enabled = models.BooleanField(default=False)
-    mobile_schedule_hour = models.PositiveSmallIntegerField(default=9)
-    mobile_schedule_minute = models.PositiveSmallIntegerField(default=0)
-    mobile_schedule_timezone = models.CharField(max_length=64, blank=True)
+    mobile_enabled = models.BooleanField(default=False, verbose_name="Mobil bildirim açık")
+    mobile_schedule_enabled = models.BooleanField(default=False, verbose_name="Mobil zamanlama açık")
+    mobile_schedule_hour = models.PositiveSmallIntegerField(default=9, verbose_name="Mobil saat")
+    mobile_schedule_minute = models.PositiveSmallIntegerField(default=0, verbose_name="Mobil dakika")
+    mobile_schedule_timezone = models.CharField(max_length=64, blank=True, verbose_name="Mobil saat dilimi")
 
-    reminder_subject = models.CharField(max_length=200, blank=True)
-    reminder_body = models.TextField(blank=True)
+    reminder_subject = models.CharField(max_length=200, blank=True, verbose_name="Hatırlatma konusu")
+    reminder_body = models.TextField(blank=True, verbose_name="Hatırlatma metni")
 
-    overdue_subject = models.CharField(max_length=200, blank=True)
-    overdue_body = models.TextField(blank=True)
+    overdue_subject = models.CharField(max_length=200, blank=True, verbose_name="Gecikme konusu")
+    overdue_body = models.TextField(blank=True, verbose_name="Gecikme metni")
 
-    overdue_last_run = models.DateField(blank=True, null=True)
-    email_schedule_last_run = models.DateTimeField(blank=True, null=True)
-    sms_schedule_last_run = models.DateTimeField(blank=True, null=True)
-    mobile_schedule_last_run = models.DateTimeField(blank=True, null=True)
+    overdue_last_run = models.DateField(blank=True, null=True, verbose_name="Gecikme son çalışma")
+    email_schedule_last_run = models.DateTimeField(blank=True, null=True, verbose_name="E-posta son çalışma")
+    sms_schedule_last_run = models.DateTimeField(blank=True, null=True, verbose_name="SMS son çalışma")
+    mobile_schedule_last_run = models.DateTimeField(blank=True, null=True, verbose_name="Mobil son çalışma")
 
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Oluşturma")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="Güncelleme")
 
     class Meta:
         verbose_name = "Bildirim Ayarı"
@@ -558,16 +666,22 @@ class KurumAyarlari(models.Model):
     """Kurum/kütüphane kimlik bilgileri (fiş ve etiketlerde kullanılır)."""
 
     singleton_key = models.CharField(max_length=50, unique=True, default="default")
-    kutuphane_adi = models.CharField(max_length=150, blank=True)
-    okul_adi = models.CharField(max_length=150, blank=True)
-    adres = models.CharField(max_length=255, blank=True)
-    telefon = models.CharField(max_length=40, blank=True)
-    eposta = models.CharField(max_length=120, blank=True)
-    website = models.CharField(max_length=150, blank=True)
-    logo_url = models.CharField(max_length=500, blank=True)
+    kutuphane_adi = models.CharField(
+        max_length=150, blank=True, verbose_name="Kütüphane adı",
+        help_text="Fiş ve etiketlerde görünen kütüphane adı.",
+    )
+    okul_adi = models.CharField(max_length=150, blank=True, verbose_name="Okul adı")
+    adres = models.CharField(max_length=255, blank=True, verbose_name="Adres")
+    telefon = models.CharField(max_length=40, blank=True, verbose_name="Telefon")
+    eposta = models.CharField(max_length=120, blank=True, verbose_name="E-posta")
+    website = models.CharField(max_length=150, blank=True, verbose_name="Web sitesi")
+    logo_url = models.CharField(
+        max_length=500, blank=True, verbose_name="Logo URL",
+        help_text="Fiş/etiketlerde kullanılacak logo görselinin açık adresi.",
+    )
 
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Oluşturma")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="Güncelleme")
 
     class Meta:
         verbose_name = "Kurum Bilgileri"

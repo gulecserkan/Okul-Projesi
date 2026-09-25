@@ -10,6 +10,7 @@ import io as _io
 import re
 
 from django.db import transaction
+from django.db.models import Q
 from django.utils import timezone
 
 from .models import Kategori, Kitap, KitapNusha, OduncKaydi, Raf, Rol, Sinif, Uye, Yazar
@@ -396,6 +397,7 @@ def ogrenci_aktar(
         "pasife_cekilecekler": analiz["pasife_cekilecekler"],
         "yeni_siniflar": analiz["yeni_siniflar"],
     }
+    sonuc["arsiv_aday"] = arsiv_aday_sayisi()
     if dry_run:
         return sonuc
 
@@ -439,5 +441,25 @@ def ogrenci_aktar(
                 u.pasif_tarihi = None
                 u.save()
 
+    sonuc["arsiv_aday"] = arsiv_aday_sayisi()
     sonuc["uygulandi"] = True
     return sonuc
+
+
+def arsiv_adaylari_queryset():
+    """K2.5/K2.8: arşive uygun öğrenciler (admin arşiv akışının ölçütü).
+
+    `aktif=False` VE (pasif_tarihi 3+ yıl önce VEYA pasif_tarihi boşsa
+    kayıt_tarihi 3+ yıl önce).
+    """
+    uc_yil_once = timezone.now().replace(year=timezone.now().year - 3)
+    return Uye.objects.filter(
+        Q(aktif=False) &
+        (Q(pasif_tarihi__lt=uc_yil_once) |
+         (Q(pasif_tarihi__isnull=True) & Q(kayit_tarihi__lt=uc_yil_once)))
+    )
+
+
+def arsiv_aday_sayisi() -> int:
+    """K2.5: arşive uygun öğrenci sayısı (hatırlatma için)."""
+    return arsiv_adaylari_queryset().count()

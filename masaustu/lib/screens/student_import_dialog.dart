@@ -163,6 +163,7 @@ class _StudentImportDialogState extends State<StudentImportDialog> {
     final satirlar = (_preview!['satirlar'] as List?) ?? const [];
     final pasife = (_preview!['pasife_cekilecekler'] as List?) ?? const [];
     final yeniSiniflar = (_preview!['yeni_siniflar'] as List?) ?? const [];
+    final arsivAday = (_preview!['arsiv_aday'] as num?)?.toInt() ?? 0;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -187,6 +188,11 @@ class _StudentImportDialogState extends State<StudentImportDialog> {
             padding: const EdgeInsets.only(top: 8),
             child: Text('Otomatik oluşturulacak sınıf(lar): '
                 '${yeniSiniflar.join(', ')}'),
+          ),
+        if (arsivAday > 0)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: _arsivUyari(context, arsivAday),
           ),
         CheckboxListTile(
           contentPadding: EdgeInsets.zero,
@@ -240,6 +246,34 @@ class _StudentImportDialogState extends State<StudentImportDialog> {
             ],
           ),
       ],
+    );
+  }
+
+  Widget _arsivUyari(BuildContext context, int adet) {
+    const renk = Colors.brown;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: renk.withValues(alpha: 0.08),
+        border: Border.all(color: renk.withValues(alpha: 0.5)),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.inventory_2_outlined, color: renk, size: 18),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              '$adet öğrenci 3+ yıldır pasif ve arşive uygun. '
+              'Arşivleme Django admin panelinden yapılır '
+              '(Üyeler → "Arşive Taşı (ön izleme)").',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
