@@ -5,17 +5,21 @@ alan şifreleme (KVKK) ve personel güvenliği.
 
 from decimal import Decimal
 from datetime import timedelta
+import tempfile
 
 from django.contrib.auth.models import User
 from django.core.cache import cache
 from django.db import connection
-from django.test import TestCase, override_settings
+from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APITestCase
 
 from kutuphane_app.models import (
+    ArsivBatch,
+    ArsivOdunc,
+    ArsivUye,
     Kategori,
     Kitap,
     KitapNusha,
@@ -1686,4 +1690,82 @@ class K9_13ImportTests(APITestCase):
         )
         # Personel → 200
         self.assertTrue(self._post(self.personel, dry_run=True).status_code, 200)
+
+
+@override_settings(MEDIA_ROOT=tempfile.mkdtemp())
+class ArsivAkisiTests(TestCase):
+    """K2.5/K2.8: admin arşiv akışı — snapshot + canlı temizlik + nüsha durumu."""
+
+    ONIZLEME = "/admin/kutuphane_app/uye/arsiv_onizleme/"
+    ONAYLA = "/admin/kutuphane_app/uye/arsiv_onayla/"
+
+    def setUp(self):
+        self.sinif = Sinif.objects.create(ad="5-A")
+        self.rol = Rol.objects.get_or_create(ad="Öğrenci")[0]
+        self.admin = User.objects.create_superuser(username="admin", password="a1!")
+        self.client = Client()
+        self.client.force_login(self.admin)
+
+        self.yazar = Yazar.objects.create(ad_soyad="Yazar A")
+        self.kategori = Kategori.objects.create(ad="Kategori A")
+        self.kitap = Kitap.objects.create(
+            baslik="Arşiv Kitap", yazar=self.yazar, kategori=self.kategori
+        )
+        self.nusha = KitapNusha.objects.create(
+            kitap=self.kitap, barkod="ARC001", durum="oduncte"
+        )
+        eski_tarih = timezone.now() - timedelta(days=4 * 365)
+        self.uye = Uye.objects.create(
+            ad="Eski", soyad="Ogrenci", uye_no="9001",
+            sinif=self.sinif, rol=self.rol, aktif=False, pasif_tarihi=eski_tarih,
+        )
+        self.odunc = OduncKaydi.objects.create(
+            uye=self.uye, kitap_nusha=self.nusha,
+            iade_tarihi=eski_tarih, durum="oduncte",
+        )
+
+    def test_onizleme_adayi_listeler(self):
+        r = self.client.get(self.ONIZLEME)
+        self.assertEqual(r.status_code, 200)
+        self.assertContains(r, "9001")
+
+    def test_onayla_snapshot_uretir_ve_nushayi_kayip_yapar(self):
+        r = self.client.get(self.ONAYLA)
+        self.assertEqual(r.status_code, 302)
+
+        # Canlı kayıtlar temizlendi
+        self.assertFalse(Uye.objects.filter(uye_no="9001").exists())
+        self.assertFalse(OduncKaydi.objects.filter(uye_id=self.uye.id).exists())
+
+        # Snapshot oluştu
+        batch = ArsivBatch.objects.latest("id")
+        self.assertEqual(ArsivUye.objects.filter(batch=batch, uye_no="9001").count(), 1)
+        self.assertEqual(ArsivOdunc.objects.filter(batch=batch, uye_no="9001").count(), 1)
+        self.assertTrue(batch.json_dosya)
+
+        # K2.8: kapatılmamış ödünç → nüsha kayip (kilitli kalmaz), katalog korunur
+        self.nusha.refresh_from_db()
+        self.assertEqual(self.nusha.durum, "kayip")
+        self.assertTrue(Kitap.objects.filter(id=self.kitap.id).exists())
+
+    def test_onayla_kapatilmis_odunc_nushasina_dokunmaz(self):
+        # Ödünç teslim edilmiş + nüsha mevcut → arşiv nüshayı değiştirmemeli
+        self.odunc.durum = "teslim"
+        self.odunc.save(update_fields=["durum"])
+        self.nusha.durum = "mevcut"
+        self.nusha.save(update_fields=["durum"])
+
+        r = self.client.get(self.ONAYLA)
+        self.assertEqual(r.status_code, 302)
+        self.nusha.refresh_from_db()
+        self.assertEqual(self.nusha.durum, "mevcut")
+
+    def test_onayla_aday_yoksa_uyarir(self):
+        self.uye.aktif = True
+        self.uye.pasif_tarihi = None
+        self.uye.save()
+        r = self.client.get(self.ONAYLA, follow=True)
+        self.assertEqual(r.status_code, 200)
+        self.assertFalse(ArsivBatch.objects.exists())
+
 

@@ -37,6 +37,7 @@
 | K2.5 | Pasif öğrencinin geçmişi | Kayıtlar **korunur**, silinmez; arşiv akışı 3 yıl sonra devreye girer | admin arşiv, geçmiş ekranları | Mevcut (admin) |
 | K2.6 | `aktif/pasif` değişimi yetkisi | Yalnız `admin` (`IsAdminPersonel`) | `UyeViewSet` durum action | Evet |
 | K2.7 | Öğrenci silme (CRUD) | **Hiçbir `OduncKaydi` kaydı yoksa** silinebilir; varsa sileme reddedilir, pasife alınır | `can_delete_ogrenci` | Evet |
+| K2.8 | Arşivde kapatılmamış ödünç/nüsha | Arşivlenen öğrencinin `oduncte/gecikmis` ödüncü silinirken ilgili nüsha `kayip` yapılır (katalog korunur); kapatılmış ödünçlerin nüshasına dokunulmaz | admin `arsiv_onayla` | Evet |
 
 Not: Öğrenci→ödünç FK'sı `CASCADE` olduğundan, silme kurallarına uyulmazsa **tüm geçmiş
 SESSİZCE silinir**. Bu yüzden K2.7 zorunludur.

@@ -190,6 +190,7 @@ class UyeAdmin(admin.ModelAdmin):
             json_uyeler: list[dict] = []
             json_oduncler: list[dict] = []
             nusha_ids, kitap_ids = set(), set()
+            kayip_nusha_ids = set()
 
             # Öğrencileri arşive yaz + JSON’a ekle
             for o in hedef.select_related("sinif", "rol"):
@@ -249,6 +250,10 @@ class UyeAdmin(admin.ModelAdmin):
 
                 if nusha: nusha_ids.add(nusha.id)
                 if kitap: kitap_ids.add(kitap.id)
+                # K2.8: kapatılmamış ödünç silineceği için nüsha kilitli kalmasın
+                if (nusha and nusha.durum == "oduncte"
+                        and k.durum in ("oduncte", "gecikmis")):
+                    kayip_nusha_ids.add(nusha.id)
 
             # İlişkili nüsha + kitap snapshot’larını da JSON’a ekleyelim
             nushalar_qs = KitapNusha.objects.select_related("kitap").filter(id__in=nusha_ids)
@@ -284,6 +289,11 @@ class UyeAdmin(admin.ModelAdmin):
             }
             json_bytes = json.dumps(paket, ensure_ascii=False, indent=2).encode("utf-8")
             batch.json_dosya.save(f"arsiv_{batch.id}.json", ContentFile(json_bytes), save=True)
+
+            # K2.8: kapatılmamış ödünçlerin nüshalarını 'kayip' yap; aksi halde
+            # ödünç silinince nüsha kalıcı olarak 'oduncte' kalır.
+            if kayip_nusha_ids:
+                KitapNusha.objects.filter(id__in=kayip_nusha_ids, durum="oduncte").update(durum="kayip")
 
             # Temizlik: önce ödünçler, sonra öğrenciler
             oduncler.delete()
