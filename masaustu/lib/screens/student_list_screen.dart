@@ -1,7 +1,5 @@
 import 'dart:async';
-import 'dart:convert';
 
-import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 
 import '../api/kutuphane_api.dart';
@@ -13,7 +11,6 @@ import '../widgets/radial_menu.dart';
 import '../widgets/row_table.dart';
 import 'student_detail_screen.dart';
 import 'student_form_dialog.dart';
-import 'student_import_dialog.dart';
 import 'password_dialog.dart';
 
 class StudentListScreen extends StatefulWidget {
@@ -275,12 +272,6 @@ class _StudentListScreenState extends State<StudentListScreen> {
                 onPressed: _initialLoading ? null : () => _load(reset: true),
               ),
               const SizedBox(width: 8),
-              OutlinedButton.icon(
-                onPressed: _importStudents,
-                icon: const Icon(Icons.upload_file),
-                label: const Text('Öğrenci İçe Aktar'),
-              ),
-              const SizedBox(width: 8),
               FilledButton.icon(
                 onPressed: _newStudent,
                 icon: const Icon(Icons.person_add),
@@ -431,45 +422,6 @@ class _StudentListScreenState extends State<StudentListScreen> {
     );
     if (sifre != null && mounted) {
       _snack('Şifre güncellendi: $sifre — öğrenci ilk girişte değiştirecek.');
-    }
-  }
-
-  /// K9.13: CSV dosyası seç → önizleme → onayla → uygula.
-  Future<void> _importStudents() async {
-    const typeGroup = XTypeGroup(label: 'CSV', extensions: ['csv', 'txt']);
-    final file = await openFile(acceptedTypeGroups: const [typeGroup]);
-    if (file == null) return;
-    final bytes = await file.readAsBytes();
-    if (!mounted) return;
-    final csv = _decodeCsv(bytes);
-    final result = await showDialog<Map<String, dynamic>>(
-      context: context,
-      builder: (_) => StudentImportDialog(csv: csv),
-    );
-    if (result == null || !mounted) return;
-    final ozet = (result['ozet'] as Map?)?.cast<String, dynamic>() ?? {};
-    _snack(
-      'İçe aktarma tamamlandı — yeni: ${ozet['yeni'] ?? 0}, '
-      'yenileme: ${ozet['yenileme'] ?? 0}, '
-      'pasife: ${ozet['pasife_cekilecek'] ?? 0}, '
-      'hatalı: ${ozet['hatali'] ?? 0}.',
-    );
-    _load(reset: true);
-  }
-
-  /// CSV baytlarını çözer: UTF-8; bozuksa cp1254 uyumlu.
-  String _decodeCsv(List<int> bytes) {
-    try {
-      return utf8.decode(bytes);
-    } on FormatException {
-      return latin1
-          .decode(bytes)
-          .replaceAll('Ð', 'Ğ')
-          .replaceAll('Ý', 'İ')
-          .replaceAll('Þ', 'Ş')
-          .replaceAll('ð', 'ğ')
-          .replaceAll('ý', 'ı')
-          .replaceAll('þ', 'ş');
     }
   }
 

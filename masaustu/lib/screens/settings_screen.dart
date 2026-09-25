@@ -1,9 +1,13 @@
+import 'dart:convert';
+
+import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 
 import '../api/auth_api.dart';
 import '../api/kutuphane_api.dart';
 import '../config.dart';
 import '../theme.dart';
+import 'student_import_dialog.dart';
 
 /// Ayarlar ekranı (K10): sekmeli. Düzenleme yalnız admin; görüntüleme personel.
 class SettingsScreen extends StatelessWidget {
@@ -13,8 +17,28 @@ class SettingsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tabs = <Tab>[
+      const Tab(text: 'Görünüm'),
+      const Tab(text: 'Sunucu'),
+      const Tab(text: 'Ödünç Politikası'),
+      const Tab(text: 'Ceza (Rol)'),
+      const Tab(text: 'Bildirim'),
+      const Tab(text: 'Kurum'),
+      if (_admin) const Tab(text: 'Öğrenci Aktarımı'),
+      const Tab(text: 'Hesap'),
+    ];
+    final views = <Widget>[
+      const _GorunumTab(),
+      const _SunucuTab(),
+      _OdoncPolitikasiTab(admin: _admin),
+      _CezaRolTab(admin: _admin),
+      _BildirimTab(admin: _admin),
+      _KurumTab(admin: _admin),
+      if (_admin) const _OgrenciAktarTab(),
+      const _HesapTab(),
+    ];
     return DefaultTabController(
-      length: 7,
+      length: tabs.length,
       child: Column(
         children: [
           Padding(
@@ -28,30 +52,9 @@ class SettingsScreen extends StatelessWidget {
                       ?.copyWith(fontWeight: FontWeight.bold)),
             ),
           ),
-          const TabBar(
-            isScrollable: true,
-            tabs: [
-              Tab(text: 'Görünüm'),
-              Tab(text: 'Sunucu'),
-              Tab(text: 'Ödünç Politikası'),
-              Tab(text: 'Ceza (Rol)'),
-              Tab(text: 'Bildirim'),
-              Tab(text: 'Kurum'),
-              Tab(text: 'Hesap'),
-            ],
-          ),
+          TabBar(isScrollable: true, tabs: tabs),
           Expanded(
-            child: TabBarView(
-              children: [
-                const _GorunumTab(),
-                const _SunucuTab(),
-                _OdoncPolitikasiTab(admin: _admin),
-                _CezaRolTab(admin: _admin),
-                _BildirimTab(admin: _admin),
-                _KurumTab(admin: _admin),
-                const _HesapTab(),
-              ],
-            ),
+            child: TabBarView(children: views),
           ),
         ],
       ),
@@ -779,6 +782,79 @@ class _KurumTabState extends State<_KurumTab> {
         _metinAlan('Logo URL', _data['logo_url'], (v) => _data['logo_url'] = v, enabled: admin),
         const SizedBox(height: 16),
         _KaydetButonu(admin: admin, busy: _busy, onSave: _kaydet),
+      ],
+    );
+  }
+}
+
+// ---------------------------------------------------------------- Öğrenci Aktarımı
+
+/// K9.13: dönem başı toplu öğrenci aktarımı — yalnız admin sekmesi.
+class _OgrenciAktarTab extends StatelessWidget {
+  const _OgrenciAktarTab();
+
+  Future<void> _sec(BuildContext context) async {
+    const typeGroup = XTypeGroup(label: 'CSV', extensions: ['csv', 'txt']);
+    final file = await openFile(acceptedTypeGroups: const [typeGroup]);
+    if (file == null) return;
+    final bytes = await file.readAsBytes();
+    if (!context.mounted) return;
+    final csv = _decodeCsv(bytes);
+    final result = await showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (_) => StudentImportDialog(csv: csv),
+    );
+    if (result == null || !context.mounted) return;
+    final ozet = (result['ozet'] as Map?)?.cast<String, dynamic>() ?? {};
+    showAppSnack(
+      context,
+      'İçe aktarma tamamlandı — yeni: ${ozet['yeni'] ?? 0}, '
+      'yenileme: ${ozet['yenileme'] ?? 0}, '
+      'pasife: ${ozet['pasife_cekilecek'] ?? 0}, '
+      'hatalı: ${ozet['hatali'] ?? 0}.',
+    );
+  }
+
+  /// CSV baytlarını çözer: UTF-8; bozuksa cp1254 uyumlu.
+  String _decodeCsv(List<int> bytes) {
+    try {
+      return utf8.decode(bytes);
+    } on FormatException {
+      return latin1
+          .decode(bytes)
+          .replaceAll('Ð', 'Ğ')
+          .replaceAll('Ý', 'İ')
+          .replaceAll('Þ', 'Ş')
+          .replaceAll('ð', 'ğ')
+          .replaceAll('ý', 'ı')
+          .replaceAll('þ', 'ş');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.all(24),
+      children: [
+        Text('Dönem başı toplu öğrenci aktarımı (K9.13)',
+            style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: 8),
+        Text(
+          'e-okul CSV dosyası: ogrenci_no (veya uye_no), ad, soyad, sinif. '
+          'Önce önizleme gösterilir; onaylarsanız uygulanır. Yalnız Öğrenci '
+          'rolü kapsanır; öğretmen/editör etkilenmez. Bu işlem yalnızca admin '
+          'tarafından yapılabilir.',
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+        const SizedBox(height: 16),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: FilledButton.icon(
+            onPressed: () => _sec(context),
+            icon: const Icon(Icons.upload_file),
+            label: const Text('CSV Dosyası Seç ve İçe Aktar'),
+          ),
+        ),
       ],
     );
   }

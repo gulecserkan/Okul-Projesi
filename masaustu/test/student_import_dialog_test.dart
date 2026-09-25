@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:masaustu/api/kutuphane_api.dart';
+import 'package:masaustu/config.dart';
+import 'package:masaustu/screens/settings_screen.dart';
 import 'package:masaustu/screens/student_import_dialog.dart';
 import 'package:masaustu/screens/student_list_screen.dart';
 
@@ -146,11 +148,32 @@ void main() {
     expect(sonuc!['uygulandi'], isTrue);
   });
 
-  testWidgets('üye listesinde "Öğrenci İçe Aktar" butonu var', (tester) async {
+  testWidgets('üye listesinde içe aktarma butonu artık yok', (tester) async {
     await tester.pumpWidget(
       const MaterialApp(home: Scaffold(body: StudentListScreen())),
     );
     await tester.pumpAndSettle();
-    expect(find.text('Öğrenci İçe Aktar'), findsOneWidget);
+    expect(find.text('Öğrenci İçe Aktar'), findsNothing);
+  });
+
+  testWidgets('ayarlar: "Öğrenci Aktarımı" sekmesi yalnız admin', (tester) async {
+    final eski = AppConfig.session;
+    addTearDown(() => AppConfig.session = eski);
+
+    AppConfig.session = const Session(
+        accessToken: 't', refreshToken: 'r', username: 'a', role: 'admin');
+    await tester.pumpWidget(
+      const MaterialApp(home: Scaffold(body: SettingsScreen())),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Öğrenci Aktarımı'), findsOneWidget);
+
+    AppConfig.session = const Session(
+        accessToken: 't', refreshToken: 'r', username: 'p', role: 'personel');
+    await tester.pumpWidget(
+      const MaterialApp(home: Scaffold(body: SettingsScreen())),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Öğrenci Aktarımı'), findsNothing);
   });
 }

@@ -24,7 +24,7 @@ Admin panelde yedekle/geri yükle arayüzü **yoktur**; yedekleme sunucu tarafı
 - `uye_arsiv_onizleme.html` — arşiv ön izleme + onay.
 
 ### Yönetim Yüzü Sınırı
-- **Masaüstü** — günlük operasyon: kitap/nüsha, ödünç/iade, üye yönetimi ve **dönem başı toplu öğrenci aktarımı (K9.13)**.
+- **Masaüstü** — günlük operasyon: kitap/nüsha, ödünç/iade, üye yönetimi ve **dönem başı toplu öğrenci aktarımı** (K9.13; Ayarlar → Öğrenci Aktarımı, yalnız admin).
 - **Admin paneli** — nadiren değişen/bakım işleri: ayar tabloları (Sinif, Rol, LoanPolicy, RoleLoanPolicy, NotificationSettings, KurumAyarlari), kullanıcılar, arşivleme.
 - **Yedekleme** — `pg_dump` + cron (sunucu tarafı; admin arayüzü yok).
 
