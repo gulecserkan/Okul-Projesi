@@ -44,6 +44,7 @@ from .models import (
 from .turkish import fold
 from .rules import (
     NUSHA_KAPANIS_MAP,
+    ODUNC_ACIK_DURUMLAR,
     apply_student_status,
     can_delete_kitap,
     can_delete_nusha,
@@ -1636,18 +1637,88 @@ class BookCatalogView(TemplateView):
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         q = (self.request.GET.get("q") or "").strip()
+        kategori_id = (self.request.GET.get("kategori") or "").strip()
+        yazar_ad = (self.request.GET.get("yazar") or "").strip()
+
         books = Kitap.objects.select_related("yazar", "kategori").order_by("baslik")
         if q:
             books = books.filter(arama__icontains=fold(q))
+        if kategori_id.isdigit():
+            books = books.filter(kategori_id=int(kategori_id))
+        if yazar_ad:
+            books = books.filter(yazar__ad_soyad__iexact=yazar_ad)
+
         paginator = Paginator(books, 24)
         page_no = self.request.GET.get("page", "1")
         try:
             page = paginator.page(page_no)
         except (PageNotAnInteger, EmptyPage):
             page = paginator.page(1)
+
         ctx["page"] = page
         ctx["q"] = q
         ctx["total"] = paginator.count
+        ctx["kategoriler"] = Kategori.objects.order_by("ad")
+        ctx["yazarlar"] = Yazar.objects.order_by("ad_soyad")
+        ctx["kategori_secili"] = kategori_id
+        ctx["yazar_secili"] = yazar_ad
+        ctx["filtre_var"] = bool(q or kategori_id or yazar_ad)
+        return ctx
+
+
+class BookDetailPublicView(TemplateView):
+    """K11: kök katalogdan kitap detay sayfası (kimliksiz, salt-okunur).
+
+    Nüsha durum özeti (mevcut/ödünçte/kayıp/hasarlı), hepsi ödünçteyse en yakın
+    iade tarihi, açıklama, raf kodu ve yüklenen görseller (slider) gösterilir.
+    """
+
+    template_name = "kitap_detay.html"
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        kitap = get_object_or_404(
+            Kitap.objects.select_related("yazar", "kategori"), pk=kwargs["pk"]
+        )
+        nushalar = KitapNusha.objects.filter(kitap=kitap)
+        toplam = nushalar.count()
+        mevcut = nushalar.filter(durum="mevcut").count()
+        oduncte = nushalar.filter(durum="oduncte").count()
+        kayip = nushalar.filter(durum="kayip").count()
+        hasarli = nushalar.filter(durum="hasarli").count()
+
+        # Aktif ödünçteki en yakın iade tarihi (hepsi ödünçteyse anlamlı)
+        en_yakin_iade = (
+            OduncKaydi.objects
+            .filter(kitap_nusha__kitap=kitap, durum__in=ODUNC_ACIK_DURUMLAR)
+            .order_by("iade_tarihi")
+            .values_list("iade_tarihi", flat=True)
+            .first()
+        )
+
+        raf_kodlari = sorted(
+            {r for r in nushalar.values_list("raf_kodu", flat=True) if r}
+        )
+
+        resimler = []
+        if kitap.kapak_url:
+            resimler.append(kitap.kapak_url)
+        for alan in ("resim1", "resim2", "resim3", "resim4", "resim5"):
+            img = getattr(kitap, alan, None)
+            if img:
+                resimler.append(img.url)
+
+        ctx.update({
+            "kitap": kitap,
+            "toplam": toplam,
+            "mevcut": mevcut,
+            "oduncte": oduncte,
+            "kayip": kayip,
+            "hasarli": hasarli,
+            "en_yakin_iade": en_yakin_iade,
+            "raf_kodlari": raf_kodlari,
+            "resimler": resimler,
+        })
         return ctx
 
 

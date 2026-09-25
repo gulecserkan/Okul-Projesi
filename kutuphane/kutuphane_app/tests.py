@@ -4,7 +4,7 @@ alan şifreleme (KVKK) ve personel güvenliği.
 """
 
 from decimal import Decimal
-from datetime import timedelta
+from datetime import datetime, timedelta
 import io
 import tempfile
 
@@ -1508,12 +1508,13 @@ class KatalogWebTests(TestCase):
     @classmethod
     def setUpTestData(cls):
         kategori = Kategori.objects.create(ad="Roman")
+        kategori2 = Kategori.objects.create(ad="Şiir")
         yazar = Yazar.objects.create(ad_soyad="Victor Hugo")
         cls.kitap1 = Kitap.objects.create(
             baslik="Sefiller", yazar=yazar, kategori=kategori, yayin_yili=1862
         )
         cls.kitap2 = Kitap.objects.create(
-            baslik="Kral Olan Çocuk", kategori=kategori, yayin_yili=1950
+            baslik="Kral Olan Çocuk", kategori=kategori2, yayin_yili=1950
         )
 
     def test_kok_adres_kataloğu_sunar(self):
@@ -1537,6 +1538,79 @@ class KatalogWebTests(TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, "Sonuç bulunamadı.")
         self.assertNotContains(resp, "Sefiller")
+
+    def test_kategori_filtresi(self):
+        roman = Kategori.objects.get(ad="Roman")
+        resp = self.client.get(reverse("katalog"), {"kategori": roman.id})
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Sefiller")
+        self.assertNotContains(resp, "Kral Olan Çocuk")
+
+    def test_yazar_filtresi(self):
+        resp = self.client.get(reverse("katalog"), {"yazar": "Victor Hugo"})
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Sefiller")
+        self.assertNotContains(resp, "Kral Olan Çocuk")
+
+    def test_filtre_secenekleri_ve_temizle(self):
+        resp = self.client.get(reverse("katalog"), {"kategori": Kategori.objects.get(ad="Roman").id})
+        self.assertContains(resp, "Tüm kategoriler")
+        self.assertContains(resp, "yazar-list")
+        self.assertContains(resp, "Temizle")
+
+
+class KitapDetayWebTests(TestCase):
+    """K11: kök katalogdan kitap detay sayfası (nüsha durumu, iade, raf)."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.rol = Rol.objects.get_or_create(ad="Öğrenci")[0]
+        cls.sinif = Sinif.objects.create(ad="5-A")
+        cls.uye = Uye.objects.create(
+            ad="Ali", soyad="Veli", uye_no="500", sinif=cls.sinif, rol=cls.rol
+        )
+        cls.kitap = Kitap.objects.create(baslik="Detay Kitabı", yayin_yili=2000)
+        cls.n1 = KitapNusha.objects.create(
+            kitap=cls.kitap, barkod="DT1", durum="mevcut", raf_kodu="A-1"
+        )
+        cls.n2 = KitapNusha.objects.create(
+            kitap=cls.kitap, barkod="DT2", durum="mevcut", raf_kodu="A-1"
+        )
+        cls.n3 = KitapNusha.objects.create(
+            kitap=cls.kitap, barkod="DT3", durum="oduncte", raf_kodu="A-2"
+        )
+
+    def _url(self):
+        return reverse("kitap-detay", args=[self.kitap.id])
+
+    def test_detay_nusha_ozetini_ve_rafi_gosterir(self):
+        resp = self.client.get(self._url())
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Detay Kitabı")
+        self.assertContains(resp, "Toplam nüsha: 3")
+        self.assertContains(resp, "Kütüphanede: 2")
+        self.assertContains(resp, "Ödünçte: 1")
+        self.assertContains(resp, "A-1")
+        self.assertContains(resp, "A-2")
+
+    def test_kimlik_gerektirmez(self):
+        resp = self.client.get(f"/kitap/{self.kitap.id}/")
+        self.assertEqual(resp.status_code, 200)
+
+    def test_hepsi_oduncteyse_en_yakin_iade_gosterilir(self):
+        KitapNusha.objects.filter(id__in=[self.n1.id, self.n2.id]).update(durum="oduncte")
+        iade = timezone.make_aware(datetime(2030, 1, 15, 12, 0))
+        OduncKaydi.objects.create(
+            uye=self.uye, kitap_nusha=self.n3, iade_tarihi=iade, durum="oduncte"
+        )
+        resp = self.client.get(self._url())
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "tüm nüshalar ödünçte")
+        self.assertContains(resp, "15.01.2030")
+
+    def test_olmayan_kitap_404(self):
+        resp = self.client.get("/kitap/999999/")
+        self.assertEqual(resp.status_code, 404)
 
 
 class K9_13ImportTests(APITestCase):

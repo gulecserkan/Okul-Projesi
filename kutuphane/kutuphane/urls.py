@@ -24,6 +24,7 @@ from kutuphane_app.views import (
     HealthCheckView,
     ChangePasswordView,
     BookCatalogView,
+    BookDetailPublicView,
     LoanPolicyView,
     RoleLoanPolicyView,
     NotificationSettingsView,
@@ -85,6 +86,7 @@ urlpatterns = [
     path('api/logs/', AuditLogView.as_view(), name="audit-log"),
     path("api/token/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
     path("api/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
+    path("kitap/<int:pk>/", BookDetailPublicView.as_view(), name="kitap-detay"),
     path("", BookCatalogView.as_view(), name="katalog"),
 ]
 

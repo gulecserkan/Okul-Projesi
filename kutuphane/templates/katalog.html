@@ -29,33 +29,50 @@
   header h1 { margin: 0 0 6px; font-size: 26px; letter-spacing: .5px; }
   header p { margin: 0; opacity: .85; }
   .arama {
-    max-width: 560px;
+    max-width: 900px;
     margin: -22px auto 0;
     padding: 0 16px;
   }
   .arama form {
     display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
     background: var(--renk-kart);
     border: 1px solid var(--renk-cizgi);
     border-radius: 12px;
     box-shadow: 0 6px 18px rgba(0,0,0,.10);
-    overflow: hidden;
+    padding: 10px;
   }
-  .arama input {
-    flex: 1;
-    border: 0;
-    padding: 14px 16px;
-    font-size: 15px;
+  .arama input, .arama select {
+    border: 1px solid var(--renk-cizgi);
+    border-radius: 8px;
+    padding: 11px 12px;
+    font-size: 14.5px;
+    background: #fff;
+    color: var(--renk-metin);
     outline: none;
   }
+  .arama input[name="q"] { flex: 1 1 220px; }
+  .arama select { flex: 0 1 190px; }
+  .arama input[name="yazar"] { flex: 0 1 190px; }
   .arama button {
     border: 0;
     background: var(--renk-vurgu);
     color: #fff;
     padding: 0 22px;
+    border-radius: 8px;
     font-size: 15px;
     cursor: pointer;
   }
+  .temizle {
+    align-self: center;
+    color: var(--renk-soluk);
+    text-decoration: none;
+    font-size: 13.5px;
+    padding: 0 6px;
+    white-space: nowrap;
+  }
+  .temizle:hover { color: var(--renk-vurgu); }
   .sayac {
     max-width: 1100px;
     margin: 22px auto 6px;
@@ -79,7 +96,11 @@
     display: flex;
     flex-direction: column;
     box-shadow: 0 2px 8px rgba(0,0,0,.05);
+    text-decoration: none;
+    color: inherit;
+    transition: box-shadow .15s ease, transform .15s ease;
   }
+  .kitap:hover { box-shadow: 0 10px 24px rgba(0,0,0,.13); transform: translateY(-2px); }
   .kapak {
     aspect-ratio: 3 / 4;
     background: #ece7db;
@@ -131,8 +152,19 @@
 
 <div class="arama">
   <form method="get" action="/">
-    <input type="search" name="q" value="{{ q }}" placeholder="Başlık, yazar, kategori ara..." autofocus>
+    <input type="search" name="q" value="{{ q }}" placeholder="Başlık, yazar, kategori ara...">
+    <select name="kategori" aria-label="Kategori" onchange="this.form.submit()">
+      <option value="">Tüm kategoriler</option>
+      {% for kat in kategoriler %}
+        <option value="{{ kat.id }}"{% if kategori_secili == kat.id|stringformat:"s" %} selected{% endif %}>{{ kat.ad }}</option>
+      {% endfor %}
+    </select>
+    <input type="text" name="yazar" list="yazar-list" value="{{ yazar_secili }}" placeholder="Yazar seç..." autocomplete="off" aria-label="Yazar">
+    <datalist id="yazar-list">
+      {% for y in yazarlar %}<option value="{{ y.ad_soyad }}"></option>{% endfor %}
+    </datalist>
     <button type="submit">Ara</button>
+    {% if filtre_var %}<a class="temizle" href="/">Temizle</a>{% endif %}
   </form>
 </div>
 
@@ -140,7 +172,7 @@
 
 <div class="katalog">
   {% for k in page.object_list %}
-  <div class="kitap">
+  <a class="kitap" href="{% url 'kitap-detay' k.id %}">
     {% if k.kapak_url %}
       <img class="kapak" src="{{ k.kapak_url }}" alt="{{ k.baslik }}" loading="lazy"
            onerror="this.style.display='none';this.insertAdjacentHTML('afterend','<div class=&quot;kapak-bos&quot;>Kapak yok</div>')">
@@ -161,7 +193,7 @@
       <span class="gorus"><em>Öğretmen görüşü:</em> {{ k.aciklama|truncatechars:130 }}</span>
       {% endif %}
     </div>
-  </div>
+  </a>
   {% empty %}
   <p class="bos">Sonuç bulunamadı.</p>
   {% endfor %}
@@ -170,17 +202,17 @@
 {% if page.paginator.num_pages > 1 %}
 <div class="sayfalama">
   {% if page.has_previous %}
-    <a href="?{% if q %}q={{ q|urlencode }}&amp;{% endif %}page={{ page.previous_page_number }}">‹ Önceki</a>
+    <a href="{% querystring page=page.previous_page_number %}">‹ Önceki</a>
   {% endif %}
   {% for num in page.paginator.page_range %}
     {% if num == page.number %}
       <span class="aktif">{{ num }}</span>
     {% else %}
-      <a href="?{% if q %}q={{ q|urlencode }}&amp;{% endif %}page={{ num }}">{{ num }}</a>
+      <a href="{% querystring page=num %}">{{ num }}</a>
     {% endif %}
   {% endfor %}
   {% if page.has_next %}
-    <a href="?{% if q %}q={{ q|urlencode }}&amp;{% endif %}page={{ page.next_page_number }}">Sonraki ›</a>
+    <a href="{% querystring page=page.next_page_number %}">Sonraki ›</a>
   {% endif %}
 </div>
 {% endif %}

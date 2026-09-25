@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ kitap.baslik }} — Kütüphane</title>
+<style>
+  :root {
+    --renk-bg: #f4f2ec;
+    --renk-kart: #ffffff;
+    --renk-metin: #2c2a26;
+    --renk-soluk: #6f6a5e;
+    --renk-vurgu: #7a3e2e;
+    --renk-cizgi: #e4dfd3;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background: var(--renk-bg);
+    color: var(--renk-metin);
+  }
+  header {
+    background: linear-gradient(135deg, #6d3527, #8a4b36);
+    color: #fff;
+    padding: 20px 16px;
+  }
+  header .ic { max-width: 1000px; margin: 0 auto; display: flex; align-items: center; gap: 14px; }
+  header a { color: #fff; text-decoration: none; opacity: .9; font-size: 14px; }
+  header a:hover { opacity: 1; }
+  header h1 { margin: 0; font-size: 18px; font-weight: 500; }
+
+  .detay {
+    max-width: 1000px;
+    margin: 24px auto 40px;
+    padding: 0 16px;
+    display: grid;
+    grid-template-columns: minmax(0, 340px) 1fr;
+    gap: 28px;
+  }
+  @media (max-width: 760px) { .detay { grid-template-columns: 1fr; } }
+
+  /* --- görsel slider --- */
+  .slider {
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    border-radius: 12px;
+    border: 1px solid var(--renk-cizgi);
+    background: #ece7db;
+    aspect-ratio: 3 / 4;
+    box-shadow: 0 2px 10px rgba(0,0,0,.06);
+  }
+  .slider::-webkit-scrollbar { display: none; }
+  .slide {
+    flex: 0 0 100%;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    scroll-snap-align: center;
+    background: #ece7db;
+  }
+  .resim-bos {
+    aspect-ratio: 3 / 4;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #ece7db;
+    color: #b3aa93;
+    border: 1px solid var(--renk-cizgi);
+    border-radius: 12px;
+  }
+  .slider-nav { display: flex; align-items: center; justify-content: center; gap: 12px; margin-top: 10px; }
+  .slider-nav > button {
+    border: 1px solid var(--renk-cizgi);
+    background: #fff;
+    border-radius: 8px;
+    width: 38px;
+    height: 32px;
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
+    color: var(--renk-metin);
+  }
+  .noktalar { display: flex; gap: 6px; }
+  .noktalar button {
+    width: 9px; height: 9px; padding: 0; border: 0; border-radius: 50%;
+    background: #c9c1af; cursor: pointer;
+  }
+  .noktalar button.aktif { background: var(--renk-vurgu); }
+
+  /* --- bilgi --- */
+  h1.baslik { font-size: 24px; margin: 0 0 6px; line-height: 1.25; }
+  .kunye { color: var(--renk-soluk); font-size: 14px; line-height: 1.5; }
+  .kunye b { color: var(--renk-metin); font-weight: 600; }
+
+  .rozet-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0 4px; }
+  .rozet { padding: 6px 12px; border-radius: 999px; font-size: 13px; font-weight: 600; border: 1px solid transparent; }
+  .rozet.n { background: #efece4; color: #4a443a; border-color: #e0dacb; }
+  .rozet.mevcut { background: #e6f4ea; color: #1e7a3d; border-color: #c7e6d1; }
+  .rozet.oduncte { background: #fdf1d8; color: #a86a00; border-color: #f2dcaa; }
+  .rozet.diger { background: #f0eded; color: #6f6a5e; border-color: #ddd; }
+
+  .durum-satir { margin: 12px 0; font-size: 14.5px; }
+  .iade-uyari {
+    background: #fdf1d8; border: 1px solid #f2dcaa; color: #8a5a00;
+    padding: 10px 12px; border-radius: 10px; font-size: 14px; margin: 10px 0;
+  }
+  .mevcut-uyari {
+    background: #e6f4ea; border: 1px solid #c7e6d1; color: #1e7a3d;
+    padding: 10px 12px; border-radius: 10px; font-size: 14px; margin: 10px 0;
+  }
+
+  .blok { margin-top: 18px; }
+  .blok h2 { font-size: 15px; margin: 0 0 6px; color: var(--renk-vurgu); }
+  .aciklama { white-space: pre-line; line-height: 1.55; font-size: 14.5px; }
+  .raf { display: flex; flex-wrap: wrap; gap: 6px; }
+  .raf span { background: #fff; border: 1px solid var(--renk-cizgi); border-radius: 8px; padding: 4px 10px; font-size: 13px; }
+
+  .geri { display: inline-block; margin-top: 22px; color: var(--renk-soluk); text-decoration: none; font-size: 14px; }
+  .geri:hover { color: var(--renk-vurgu); }
+  footer { text-align: center; color: var(--renk-soluk); font-size: 12.5px; padding: 18px; }
+</style>
+</head>
+<body>
+<header>
+  <div class="ic">
+    <a href="{% url 'katalog' %}">‹ Katalog</a>
+    <h1>{{ kitap.baslik }}</h1>
+  </div>
+</header>
+
+<div class="detay">
+  <div>
+    {% if resimler %}
+      <div class="slider" id="slider">
+        {% for r in resimler %}
+          <img class="slide" src="{{ r }}" alt="{{ kitap.baslik }} — görsel {{ forloop.counter }}" loading="lazy">
+        {% endfor %}
+      </div>
+      {% if resimler|length > 1 %}
+      <div class="slider-nav">
+        <button type="button" onclick="kaydir(-1)" aria-label="Önceki görsel">‹</button>
+        <div class="noktalar" id="noktalar"></div>
+        <button type="button" onclick="kaydir(1)" aria-label="Sonraki görsel">›</button>
+      </div>
+      {% endif %}
+    {% else %}
+      <div class="resim-bos">Görsel yok</div>
+    {% endif %}
+  </div>
+
+  <div>
+    <h1 class="baslik">{{ kitap.baslik }}</h1>
+    <div class="kunye">
+      {% if kitap.yazar %}<b>{{ kitap.yazar.ad_soyad }}</b>{% endif %}
+      {% if kitap.kategori %} · {{ kitap.kategori.ad }}{% endif %}
+      {% if kitap.yayin_yili %} · {{ kitap.yayin_yili }}{% endif %}
+      {% if kitap.isbn %}<br>ISBN: {{ kitap.isbn }}{% endif %}
+    </div>
+
+    <div class="rozet-row">
+      <span class="rozet n">Toplam nüsha: {{ toplam }}</span>
+      <span class="rozet mevcut">Kütüphanede: {{ mevcut }}</span>
+      <span class="rozet oduncte">Ödünçte: {{ oduncte }}</span>
+      {% if kayip %}<span class="rozet diger">Kayıp: {{ kayip }}</span>{% endif %}
+      {% if hasarli %}<span class="rozet diger">Hasarlı: {{ hasarli }}</span>{% endif %}
+    </div>
+
+    {% if toplam == 0 %}
+      <div class="iade-uyari">Bu kitabın kayıtlı nüshası yok.</div>
+    {% elif mevcut > 0 %}
+      <div class="mevcut-uyari">Kütüphanede ödünç alınabilir {{ mevcut }} nüsha var.</div>
+    {% elif oduncte > 0 %}
+      <div class="iade-uyari">
+        Şu an tüm nüshalar ödünçte.
+        {% if en_yakin_iade %}En yakın iade tarihi: <b>{{ en_yakin_iade|date:"d.m.Y" }}</b>.{% endif %}
+      </div>
+    {% else %}
+      <div class="iade-uyari">Şu an kütüphanede ödünç alınabilir nüsha yok.</div>
+    {% endif %}
+
+    {% if raf_kodlari %}
+    <div class="blok">
+      <h2>Raf numarası</h2>
+      <div class="raf">
+        {% for r in raf_kodlari %}<span>{{ r }}</span>{% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    {% if kitap.aciklama %}
+    <div class="blok">
+      <h2>Öğretmen görüşü / açıklama</h2>
+      <div class="aciklama">{{ kitap.aciklama }}</div>
+    </div>
+    {% endif %}
+
+    <a class="geri" href="{% url 'katalog' %}">‹ Katalog'a dön</a>
+  </div>
+</div>
+
+<footer>Kütüphane Yönetim Sistemi · <a href="/admin/" style="color:inherit">Yönetim</a></footer>
+
+<script>
+  function kaydir(dir) {
+    var s = document.getElementById('slider');
+    if (!s) return;
+    s.scrollBy({ left: dir * s.clientWidth, behavior: 'smooth' });
+  }
+  (function () {
+    var s = document.getElementById('slider');
+    var noktalar = document.getElementById('noktalar');
+    if (!s || !noktalar) return;
+    var slides = s.querySelectorAll('.slide');
+    slides.forEach(function (_, i) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.setAttribute('aria-label', (i + 1) + '. görsel');
+      b.onclick = function () { s.scrollTo({ left: i * s.clientWidth, behavior: 'smooth' }); };
+      noktalar.appendChild(b);
+    });
+    function aktif() {
+      var i = Math.round(s.scrollLeft / s.clientWidth);
+      Array.prototype.forEach.call(noktalar.children, function (b, j) {
+        b.classList.toggle('aktif', j === i);
+      });
+    }
+    s.addEventListener('scroll', function () { requestAnimationFrame(aktif); });
+    aktif();
+  })();
+</script>
+</body>
+</html>
