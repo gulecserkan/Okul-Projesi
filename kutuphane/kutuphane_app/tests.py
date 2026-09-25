@@ -5,10 +5,14 @@ alan şifreleme (KVKK) ve personel güvenliği.
 
 from decimal import Decimal
 from datetime import timedelta
+import io
 import tempfile
+
+from PIL import Image
 
 from django.contrib.auth.models import User
 from django.core.cache import cache
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db import connection
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
@@ -1705,6 +1709,63 @@ class K9_13ImportTests(APITestCase):
         )
         # Personel → 200
         self.assertTrue(self._post(self.personel, dry_run=True).status_code, 200)
+
+
+@override_settings(MEDIA_ROOT=tempfile.mkdtemp())
+class KitapResimUploadTests(APITestCase):
+    """Mobil editör: kitap görseli (resim1..5) sunucuya yüklenir; yetki IsEditor."""
+
+    def setUp(self):
+        self.kitap = Kitap.objects.create(baslik="Resim Test Kitabı")
+        rol_ed, _ = Rol.objects.get_or_create(ad="Editör")
+        self.editor_user = User.objects.create_user("editoru", password="e1!")
+        Uye.objects.create(ad="Ed", soyad="Itor", rol=rol_ed, user=self.editor_user)
+
+    @staticmethod
+    def _png():
+        buf = io.BytesIO()
+        Image.new("RGB", (1, 1), (200, 0, 0)).save(buf, format="PNG")
+        return SimpleUploadedFile("kapak.png", buf.getvalue(), content_type="image/png")
+
+    def test_editor_resim1_yukleyebilir(self):
+        self.client.force_authenticate(self.editor_user)
+        resp = self.client.patch(
+            f"/api/kitaplar/{self.kitap.id}/",
+            {"resim1": self._png()},
+            format="multipart",
+        )
+        self.assertEqual(resp.status_code, 200, resp.content)
+        self.kitap.refresh_from_db()
+        self.assertTrue(self.kitap.resim1)
+        self.assertTrue(resp.data.get("resim1"))
+
+    def test_editor_resim1_silebilir(self):
+        self.kitap.resim1 = self._png()
+        self.kitap.save()
+        self.assertTrue(self.kitap.resim1)
+        self.client.force_authenticate(self.editor_user)
+        resp = self.client.patch(
+            f"/api/kitaplar/{self.kitap.id}/",
+            {"resim1": None},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 200, resp.content)
+        self.kitap.refresh_from_db()
+        self.assertFalse(self.kitap.resim1)
+
+    def test_ogrenci_resim_yukleyemez(self):
+        rol_ogr, _ = Rol.objects.get_or_create(ad="Öğrenci")
+        ogr_user = User.objects.create_user("ogru", password="o1!")
+        Uye.objects.create(ad="Og", soyad="Ren", rol=rol_ogr, user=ogr_user)
+        self.client.force_authenticate(ogr_user)
+        resp = self.client.patch(
+            f"/api/kitaplar/{self.kitap.id}/",
+            {"resim1": self._png()},
+            format="multipart",
+        )
+        self.assertEqual(resp.status_code, 403)
+        self.kitap.refresh_from_db()
+        self.assertFalse(self.kitap.resim1)
 
 
 @override_settings(MEDIA_ROOT=tempfile.mkdtemp())

@@ -217,6 +217,14 @@ class KitapSerializer(KitapBaseSerializer):
 
 
 class KitapDetailSerializer(KitapBaseSerializer):
+    # Yüklenen kitap görselleri (resim1=ön kapak … resim5). Düzenleyen
+    # (editör/admin) multipart PATCH ile yükleyebilir; JSON null ile silebilir.
+    resim1 = serializers.ImageField(required=False, allow_null=True)
+    resim2 = serializers.ImageField(required=False, allow_null=True)
+    resim3 = serializers.ImageField(required=False, allow_null=True)
+    resim4 = serializers.ImageField(required=False, allow_null=True)
+    resim5 = serializers.ImageField(required=False, allow_null=True)
+
     class Meta(KitapBaseSerializer.Meta):
         fields = KitapBaseSerializer.Meta.fields + [
             "resim2",
