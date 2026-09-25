@@ -8,6 +8,18 @@ sunucuya yalnızca etiketli sürümler gönderilir (bkz. `docs/DEPLOY_CLOUD.md`)
 
 - (geliştirme sürüyor)
 
+## [1.1.3] — 2026-09-26
+
+Kitap detay sayfası görsel iyileştirmesi ve görsel büyütme.
+
+### Web (kök katalog, K11)
+- Detay sayfası yeniden tasarlandı: sticky üst çubuk, galeri + küçük görsel
+  şeridi, nüsha için **istatistik kartları** (toplam/kütüphanede/ödünçte,
+  kayıp-hasarlı), durum bandı, raf çipleri ve açıklama bloğu.
+- Görsele tıklayınca **lightbox** ile büyütme: ‹ › gezinme, sayı göstergesi,
+  Esc/ok tuşları ve dışına tıklayınca kapanma.
+- Testler güncellendi (toplam 131 test).
+
 ## [1.1.2] — 2026-09-26
 
 Genel web kataloğunda kitap detay sayfası ve ana sayfa hızlı filtreleri.
