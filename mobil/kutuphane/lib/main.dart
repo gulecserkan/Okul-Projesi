@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 import 'api/library_api.dart';
 import 'models/auth.dart';
+import 'models/mobil_surum.dart';
 import 'screens/book_list_screen.dart';
 import 'screens/uye_home_screen.dart';
 import 'screens/editor_home_screen.dart';
@@ -10,6 +12,7 @@ import 'screens/force_password_screen.dart';
 import 'screens/login_screen.dart';
 import 'storage/session_storage.dart';
 import 'theme/app_theme.dart';
+import 'widgets/update_dialog.dart';
 
 void main() {
   runApp(const KutuphaneApp());
@@ -116,6 +119,36 @@ class _KutuphaneAppState extends State<KutuphaneApp> {
       _loading = false;
       _handshakeError = null;
     });
+
+    // Sunucudaki sürümle karşılaştır; yeni sürüm varsa bildir (K13.4).
+    await _guncellemeKontrolEt(storedBaseUrl);
+  }
+
+  /// Kurulu sürümü sunucudaki sürümle karşılaştırır ve gerekirse diyalog açar.
+  Future<void> _guncellemeKontrolEt(String baseUrl) async {
+    final uzak = await LibraryApiClient(baseUrl: baseUrl).mobilSurum();
+    if (uzak == null || uzak.apkUrl.isEmpty) return;
+
+    String kuruluSurum = "";
+    int kuruluKod = 0;
+    try {
+      final info = await PackageInfo.fromPlatform();
+      kuruluSurum = info.version;
+      kuruluKod = int.tryParse(info.buildNumber) ?? 0;
+    } catch (_) {
+      return; // sürüm bilgisi okunamazsa sessizce geç
+    }
+
+    final karar = guncellemeKarari(kuruluKod: kuruluKod, uzak: uzak);
+    if (!karar.guncellemeVar || !mounted) return;
+
+    await guncellemeDiyaloguGoster(
+      context,
+      surum: uzak,
+      zorunlu: karar.zorunlu,
+      kuruluSurum: kuruluSurum,
+      baseUrl: baseUrl,
+    );
   }
 
   Future<void> _onServerConnected(String baseUrl) async {

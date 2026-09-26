@@ -8,6 +8,28 @@ sunucuya yalnızca etiketli sürümler gönderilir (bkz. `docs/DEPLOY_CLOUD.md`)
 
 - (geliştirme sürüyor)
 
+## [1.1.5] — 2026-09-26
+
+Android mobil uygulaması için sürümlü dağıtım ve uygulama içi güncelleme (K13).
+
+### Backend
+- `GET /api/mobil/surum/` (auth'suz): `MOBIL_DIST_DIR/surum.json`'dan sürüm bilgisi
+  döner (`surum`, `surumKodu`, `minSurumKodu`, `apkUrl`); yapılandırma/dosya yoksa 404.
+- `settings.MOBIL_DIST_DIR` (env ile verilir).
+- Testler: `MobilSurumApiTests` (3).
+
+### Mobil
+- Bağımlılıklar: `url_launcher`, `package_info_plus`.
+- Açılışta sürüm kontrolü: `minSurumKodu` altı **zorunlu**, üstü **opsiyonel** bildirim;
+  "Güncelle" APK'yı tarayıcıda açar. Sunucuya ulaşılamazsa sessizce atlanır.
+- Android **kalıcı release imzası** (`key.properties` + `mobil/keystore/`, git dışı).
+- Testler: `mobil_surum_test` + `update_dialog_test`.
+
+### Sunucu / dağıtım
+- `/srv/kutuphane-mobil/` (repo dışı) + nginx `/mobil/` alias; `MOBIL_DIST_DIR` env.
+- `mobil/yukle_apk.sh`: APK + `surum.json` + `index.html` üretir/yükler.
+- `docs/MOBIL_YAYIN.md`; `IS_KURALLARI.md` K13.
+
 ## [1.1.4] — 2026-09-26
 
 Düzeltme: şifre verildikten sonra üye no değişince mobil/üye girişi bozuluyordu.

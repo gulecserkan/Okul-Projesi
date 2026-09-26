@@ -227,5 +227,19 @@ Her kural için en az bir test:
 - K10.5-K10.7: raf kodu zorunlu nüsha reddi/raf ile kabul; kayıp/hasarlı notsuz kapatma 400, notlu kapanış notu saklar; sessiz saatte bildirim atlanır, kapalıyken normal (K10IsleyisEntegrasyonTests).
 - K11: kök adres 200 + kitap başlıkları; kimlik gerektirmeme; büyük/küçük harfle arama; sonuç-yok mesajı (KatalogWebTests).
 - K9.12: editör ekranında iki bölüm (Editör/Üye) alt gezinmesi; üye bölümü üç sekmeyi (Kitaplar/Ödünçlerim/Ceza) gösterir (EditorHomeScreenTests).
-- K9.13: önizleme/uygula; sınıf `5/A`→`5-A` normalize + eksik sınıf oluşturma; yeni/yenile/aktifle; listede olmayan mezun pasif kalır; önceden pasif çakışmada varsayılan atla, "yeniden kullan" ile aktifleşir; Öğretmen/Editör dokunulmaz; rol kuralı (personel Öğrenci, admin diğer); ayraç/kodlama; yetki 403 (K9.13ImportTests).
-- E2E canlı smoke: checkout → kapat döngüsü.
+ - K9.13: önizleme/uygula; sınıf `5/A`→`5-A` normalize + eksik sınıf oluşturma; yeni/yenile/aktifle; listede olmayan mezun pasif kalır; önceden pasif çakışmada varsayılan atla, "yeniden kullan" ile aktifleşir; Öğretmen/Editör dokunulmaz; rol kuralı (personel Öğrenci, admin diğer); ayraç/kodlama; yetki 403 (K9.13ImportTests).
+ - E2E canlı smoke: checkout → kapat döngüsü.
+
+---
+
+## 13. MOBİL UYGULAMA DAĞITIMI VE GÜNCELLEME (K13)
+
+| # | Kural | İşlenir |
+|---|---|---|
+| K13.1 | Android uygulaması **Google Play dışında, kendi sunucumuzdan** dağıtılır; ilk kurulum `GET /mobil/` sayfasından, güncelleme uygulama içi bildirimle yapılır. iOS bu yöntemi desteklemez (App Store gerekir, kapsam dışı). | `mobil/yukle_apk.sh`, `docs/MOBIL_YAYIN.md` |
+| K13.2 | Dağıtılan APK **kalıcı release keystore** ile imzalanır (`mobil/keystore/`, git dışı); güncelleme ancak aynı imzayla üzerine kurulur. Debug imzalı APK dağıtılmaz. | `android/app/build.gradle.kts` + `key.properties` |
+| K13.3 | Sunucu sürüm bilgisini `GET /api/mobil/surum/` (auth'suz) sunar; veri `MOBIL_DIST_DIR/surum.json`'dan okunur (`surum`, `surumKodu`, `minSurumKodu`, `apkUrl`). Yapılandırma/dosya yoksa 404. | `MobilSurumView`, `settings.MOBIL_DIST_DIR` |
+| K13.4 | Uygulama açılışta sürümü kontrol eder: kurulu `surumKodu < minSurumKodu` → **zorunlu** (kapatılamaz, yalnız "Güncelle"); `minSurumKodu ≤ kurulu < surumKodu` → **opsiyonel** bildirim (ertelenebilir). Sunucuya ulaşılamazsa kontrol sessizce atlanır. | `main.dart` + `widgets/update_dialog.dart` |
+| K13.5 | Her yayında `surumKodu` (`pubspec` `+build`) **artırılır**; APK sürümü backend sürümünden bağımsız yayınlanabilir. Dosya sunucuda `/srv/kutuphane-mobil/` (repo dışı) tutulur. | `mobil/yukle_apk.sh` |
+
+Test: `MobilSurumApiTests` (K13.3), `mobil_surum_test`/`update_dialog_test` (K13.4).

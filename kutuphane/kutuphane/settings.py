@@ -231,6 +231,9 @@ REST_FRAMEWORK = {
     },
 }
 
+# Mobil uygulama dağıtım dizini (APK + surum.json). Boşsa /api/mobil/surum/ 404 döner.
+MOBIL_DIST_DIR = os.environ.get("MOBIL_DIST_DIR", "")
+
 # Testlerde hızlı şifre hash'i kullan (PBKDF2 yavaş; auth testleri çok sayıda
 # kullanıcı oluşturup giriş yaptığından test süresini belirgin kısaltır).
 import sys as _sys  # noqa: E402

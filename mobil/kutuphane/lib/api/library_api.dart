@@ -7,6 +7,7 @@ import 'package:image_picker/image_picker.dart';
 
 import '../models/auth.dart';
 import '../models/book.dart';
+import '../models/mobil_surum.dart';
 
 class ApiException implements Exception {
   ApiException(this.message, {this.statusCode, this.details});
@@ -80,6 +81,24 @@ class LibraryApiClient {
     } catch (e) {
       return HandshakeResult(ok: false, message: e.toString());
     }
+  }
+
+  /// Sunucudaki mobil sürüm bilgisi (GET /api/mobil/surum/, auth gerekmez).
+  /// Ulaşılamaz/yoksa null döner; sürüm kontrolü sessizce atlanır.
+  Future<MobilSurum?> mobilSurum() async {
+    try {
+      final response = await _client
+          .get(_uri("/api/mobil/surum/"), headers: _headers(jsonBody: false))
+          .timeout(const Duration(seconds: 6));
+      if (response.statusCode == 200) {
+        return MobilSurum.fromJson(
+          jsonDecode(response.body) as Map<String, dynamic>,
+        );
+      }
+    } catch (_) {
+      // sessiz geç: sürüm kontrolü uygulamayı engellemez
+    }
+    return null;
   }
 
   Future<AuthTokens> login(String username, String password) async {

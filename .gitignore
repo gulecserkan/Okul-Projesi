@@ -73,6 +73,10 @@ mobil/**/android/.gradle/
 mobil/**/android/local.properties
 mobil/**/android/app/build/
 mobil/**/android/key.properties
+# Release imza anahtarı ve şifreleri ASLA git'e girmez
+mobil/keystore/
+mobil/**/*.jks
+mobil/**/*.keystore
 mobil/**/ios/Pods/
 mobil/**/ios/.symlinks/
 mobil/**/ios/Flutter/App.framework

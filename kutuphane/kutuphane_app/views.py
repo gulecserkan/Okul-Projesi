@@ -20,6 +20,9 @@ from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
 from django.views.generic import TemplateView
+import json
+import os
+from django.conf import settings
 
 from .book_lookup import lookup_books
 
@@ -1623,6 +1626,35 @@ class HealthCheckView(APIView):
             "timestamp": now().isoformat(),
         }
         return Response(data)
+
+
+class MobilSurumView(APIView):
+    """Mobil uygulama sürüm bilgisi (APK dağıtımı; auth'suz).
+
+    Sunucudaki ``MOBIL_DIST_DIR/surum.json`` dosyası okunur. Örnek:
+      {"surum": "1.1.4", "surumKodu": 1, "minSurumKodu": 1,
+       "apkUrl": "/mobil/kutuphane-v1.1.4.apk"}
+    """
+
+    authentication_classes = []
+    permission_classes = []
+
+    def get(self, request):
+        kok = getattr(settings, "MOBIL_DIST_DIR", "")
+        if not kok:
+            return Response(
+                {"error": "Mobil dağıtım yapılandırılmadı"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        try:
+            with open(os.path.join(kok, "surum.json"), encoding="utf-8") as f:
+                veri = json.load(f)
+        except (FileNotFoundError, json.JSONDecodeError):
+            return Response(
+                {"error": "Sürüm bilgisi bulunamadı"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        return Response(veri)
 
 
 class BookCatalogView(TemplateView):

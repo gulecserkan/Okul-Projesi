@@ -6,6 +6,8 @@ alan şifreleme (KVKK) ve personel güvenliği.
 from decimal import Decimal
 from datetime import datetime, timedelta
 import io
+import json
+import os
 import tempfile
 
 from PIL import Image
@@ -1976,5 +1978,40 @@ class UyeGirisHesabiSenkronTests(APITestCase):
         uye.refresh_from_db()
         self.assertEqual(uye.uye_no, "605264")
         self.assertEqual(uye.user.username, "605264")
+
+
+class MobilSurumApiTests(APITestCase):
+    """Mobil sürüm ucu (auth'suz): MOBIL_DIST_DIR/surum.json içeriğini döner."""
+
+    URL = "/api/mobil/surum/"
+
+    def test_yapilandirilmamissa_404(self):
+        with override_settings(MOBIL_DIST_DIR=""):
+            r = self.client.get(self.URL)
+        self.assertEqual(r.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_surum_json_doner(self):
+        icerik = {
+            "surum": "1.1.4",
+            "surumKodu": 1,
+            "minSurumKodu": 1,
+            "apkUrl": "/mobil/kutuphane-v1.1.4.apk",
+        }
+        with tempfile.TemporaryDirectory() as d:
+            with open(os.path.join(d, "surum.json"), "w", encoding="utf-8") as f:
+                json.dump(icerik, f)
+            with override_settings(MOBIL_DIST_DIR=d):
+                r = self.client.get(self.URL)
+        self.assertEqual(r.status_code, status.HTTP_200_OK)
+        self.assertEqual(r.data["surum"], "1.1.4")
+        self.assertEqual(r.data["surumKodu"], 1)
+        self.assertEqual(r.data["apkUrl"], "/mobil/kutuphane-v1.1.4.apk")
+
+    def test_dosya_yoksa_404(self):
+        with tempfile.TemporaryDirectory() as d:
+            with override_settings(MOBIL_DIST_DIR=d):
+                r = self.client.get(self.URL)
+        self.assertEqual(r.status_code, status.HTTP_404_NOT_FOUND)
+
 
 
