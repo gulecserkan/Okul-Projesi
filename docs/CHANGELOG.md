@@ -8,6 +8,15 @@ sunucuya yalnızca etiketli sürümler gönderilir (bkz. `docs/DEPLOY_CLOUD.md`)
 
 - (geliştirme sürüyor)
 
+## [1.1.6] — 2026-09-26
+
+Katalog sayfasına mobil uygulama kurulum bağlantısı.
+
+### Web
+- `katalog.html`: footer'a "Mobil Uygulama" bağlantısı; telefon ekranlarında
+  (`max-width: 680px`) arama kutusunun altında belirgin **"Mobil Uygulamayı İndir"**
+  düğmesi → `/mobil/` (göreli bağlantı, IP/alan adından bağımsız).
+
 ## [1.1.5] — 2026-09-26
 
 Android mobil uygulaması için sürümlü dağıtım ve uygulama içi güncelleme (K13).
