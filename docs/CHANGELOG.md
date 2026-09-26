@@ -7,7 +7,7 @@ sunucuya yalnızca etiketli sürümler gönderilir (bkz. `docs/DEPLOY_CLOUD.md`)
 ## [1.1.10] — 2026-09-27
 
 Web katalog yenilendi, üye kitap gezintisi elden geçirildi ve oturum süresi
-hatası düzeltildi. Mobil sürüm **1.1.6** (`surumKodu` 3) olarak yayınlandı.
+hatası düzeltildi. Mobil sürüm **1.1.6** (`surumKodu` 4) olarak yayınlandı.
 
 - **Yazar seçimi (K9.9):** çok uzun yazar listesi çekmeceden çıkarılıp **tam ekran
   "Yazar seç" ekranına** taşındı: Türkçe alfabetik gruplar, sabit harf başlıkları,
