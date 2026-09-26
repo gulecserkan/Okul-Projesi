@@ -74,7 +74,8 @@ cat > /tmp/kutuphane-mobil-index.html <<HTML
           (Ayarlar → Güvenlik).</li>
       <li>İndirilen dosyayı açıp <em>Kur</em> deyin.</li>
     </ol>
-    Uygulamayı açınca sunucu adresini girin ve üye numaranız + şifrenizle giriş yapın.
+    Uygulama sunucu adresini otomatik seçer (alan adı → genel IP); erişilemezse
+    adres sorulur. Üye numaranız + şifrenizle giriş yapın.
   </div>
 </main>
 </body>

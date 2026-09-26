@@ -8,6 +8,17 @@ sunucuya yalnızca etiketli sürümler gönderilir (bkz. `docs/DEPLOY_CLOUD.md`)
 
 - (geliştirme sürüyor)
 
+## [1.1.9] — 2026-09-26
+
+Masaüstü uzaktan kurulumda sistem bağımlılığı yönetimi.
+
+- `uzaktan-kur.sh`: sistem bağımlılığı kontrolü (GTK3 **soname**; parolasız sudo
+  varsa otomatik kurar, yoksa komut önerir). `MASAUSTU_BAGIMLILIK=0` ile kapatılır;
+  `MASAUSTU_EK_PAKETLER` (ör. termal yazıcı için `libusb-1.0-0`) ile genişletilir.
+  Uygulama önceden derlendiğinden hedef makinede **Flutter gerekmez**.
+- `mobil/yukle_apk.sh`: indirme sayfası metni sunucu adresinin otomatik seçildiğini belirtir.
+- Doküman: `MASAUSTU_YAYIN.md` Bağımlılıklar bölümü; K13.10 güncellendi.
+
 ## [1.1.8] — 2026-09-26
 
 Alan adı (`okulkitapligi.tr`) hazırlığı + akıllı sunucu adresi.

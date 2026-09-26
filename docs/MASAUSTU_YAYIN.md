@@ -41,6 +41,20 @@ bash ~/.local/share/kutuphane-masaustu/kur.sh
 Menüde **Kütüphane Yönetim Sistemi** olarak görünür. Sunucu adresi otomatik
 seçilir (alan adı → genel IP); erişilemezse uygulama sunucu adresini sorar.
 
+## Bağımlılıklar
+
+Uygulama **önceden derlenmiş** olduğundan hedef bilgisayarda **Flutter gerekmez**.
+Yalnız GTK3 çalışma zamanı gerekir; masaüstü Pardus/Debian kurulumlarında hazır gelir.
+
+`uzaktan-kur.sh` eksik temel paketi (GTK3) soname üzerinden tespit eder ve
+**parolasız sudo** varsa otomatik kurar; yoksa çalıştırılacak komutu yazar.
+Kontrol/`apt` yoksa sessizce devam eder.
+
+- Kontrolü kapatmak: `MASAUSTU_BAGIMLILIK=0`
+- Ek paket (ör. termal yazıcı USB): `MASAUSTU_EK_PAKETLER="libusb-1.0-0"`
+- Seri yazıcı için ayrıca kullanıcıyı `dialout` grubuna ekleme / udev kuralı
+  gerekebilir (ileride gerekirse bu betiğe eklenecek).
+
 ## Sunucu adresi (K13.11)
 
 - Aday listesi: `https://okulkitapligi.tr/api` → `http://89.252.153.171/api`
