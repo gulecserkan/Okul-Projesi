@@ -8,6 +8,17 @@ sunucuya yalnızca etiketli sürümler gönderilir (bkz. `docs/DEPLOY_CLOUD.md`)
 
 - (geliştirme sürüyor)
 
+## [1.1.4] — 2026-09-26
+
+Düzeltme: şifre verildikten sonra üye no değişince mobil/üye girişi bozuluyordu.
+
+### Backend
+- `UyeSerializer`: `uye_no` değiştiğinde bağlı giriş hesabının kullanıcı adı
+  güncellenir (giriş: kullanıcı adı = üye no, K9.5.1); numara başka bir hesapla
+  çakışıyorsa hata döner.
+- Testlerde hızlı şifre hash'i (MD5) — tam süit ~142 sn → ~6 sn (yalnız test modunda).
+- Testler: `UyeGirisHesabiSenkronTests` (2).
+
 ## [1.1.3] — 2026-09-26
 
 Kitap detay sayfası görsel iyileştirmesi ve görsel büyütme.
