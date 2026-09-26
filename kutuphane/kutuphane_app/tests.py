@@ -2014,4 +2014,38 @@ class MobilSurumApiTests(APITestCase):
         self.assertEqual(r.status_code, status.HTTP_404_NOT_FOUND)
 
 
+class MasaustuSurumApiTests(APITestCase):
+    """Masaüstü sürüm ucu (auth'suz): MASAUSTU_DIST_DIR/surum.json içeriğini döner."""
+
+    URL = "/api/masaustu/surum/"
+
+    def test_yapilandirilmamissa_404(self):
+        with override_settings(MASAUSTU_DIST_DIR=""):
+            r = self.client.get(self.URL)
+        self.assertEqual(r.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_surum_json_doner(self):
+        icerik = {
+            "surum": "1.1.7",
+            "surumKodu": 1,
+            "minSurumKodu": 1,
+            "url": "/masaustu/kutuphane-v1.1.7-linux-x64.tar.gz",
+            "sha256": "abc123",
+        }
+        with tempfile.TemporaryDirectory() as d:
+            with open(os.path.join(d, "surum.json"), "w", encoding="utf-8") as f:
+                json.dump(icerik, f)
+            with override_settings(MASAUSTU_DIST_DIR=d):
+                r = self.client.get(self.URL)
+        self.assertEqual(r.status_code, status.HTTP_200_OK)
+        self.assertEqual(r.data["surum"], "1.1.7")
+        self.assertEqual(r.data["sha256"], "abc123")
+
+    def test_dosya_yoksa_404(self):
+        with tempfile.TemporaryDirectory() as d:
+            with override_settings(MASAUSTU_DIST_DIR=d):
+                r = self.client.get(self.URL)
+        self.assertEqual(r.status_code, status.HTTP_404_NOT_FOUND)
+
+
 

@@ -8,6 +8,29 @@ sunucuya yalnızca etiketli sürümler gönderilir (bkz. `docs/DEPLOY_CLOUD.md`)
 
 - (geliştirme sürüyor)
 
+## [1.1.7] — 2026-09-26
+
+Masaüstü (Linux) uygulaması için sunucudan otomatik güncelleme (K13.6–K13.9).
+
+### Backend
+- `GET /api/masaustu/surum/` (auth'suz): `MASAUSTU_DIST_DIR/surum.json`'dan sürüm
+  bilgisi döner (`surum`, `surumKodu`, `minSurumKodu`, `url`, `sha256`); yoksa 404.
+- `settings.MASAUSTU_DIST_DIR`; ortak `_SurumView` tabanına geçildi.
+- Testler: `MasaustuSurumApiTests` (3).
+
+### Masaüstü
+- Açılışta sürüm kontrolü; zorunlu/opsiyonel bildirim.
+- Otomatik güncelleme: paket indirme + **sha256** doğrulama + uygulama kapanınca
+  kurulum klasörünü değiştirme ve yeniden başlatma (yalnız `~/.local/share/kutuphane-masaustu`).
+- `--dart-define=APP_VERSION/APP_VERSION_CODE` ile sürüm; `crypto` bağımlılığı.
+- Testler: `update_service_test.dart`.
+
+### Dağıtım / doküman
+- `masaustu/kur.sh` (kurulum + `.desktop`), `masaustu/yukle_masaustu.sh`
+  (release derle + paketle + yükle + sha256).
+- Sunucu: `/srv/kutuphane-masaustu/` + nginx `/masaustu/`; `MASAUSTU_DIST_DIR` env.
+- `docs/MASAUSTU_YAYIN.md`; `IS_KURALLARI.md` K13.6–K13.9.
+
 ## [1.1.6] — 2026-09-26
 
 Katalog sayfasına mobil uygulama kurulum bağlantısı.

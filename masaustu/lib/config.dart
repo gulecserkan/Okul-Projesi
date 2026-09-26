@@ -8,6 +8,14 @@ import 'dart:io';
 class AppConfig {
   static const String defaultBaseUrl = 'http://127.0.0.1:8000/api';
 
+  /// Uygulama sürümü (derlemede `--dart-define=APP_VERSION=...` ile verilir).
+  static const String appVersion =
+      String.fromEnvironment('APP_VERSION', defaultValue: '0.1.0');
+
+  /// Sürüm kodu (derlemede `--dart-define=APP_VERSION_CODE=...`).
+  static const int appVersionCode =
+      int.fromEnvironment('APP_VERSION_CODE', defaultValue: 1);
+
   static String get _dirPath =>
       '${Platform.environment['HOME'] ?? '.'}/.config/kutuphane_masaustu';
 

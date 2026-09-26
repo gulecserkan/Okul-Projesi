@@ -231,8 +231,9 @@ REST_FRAMEWORK = {
     },
 }
 
-# Mobil uygulama dağıtım dizini (APK + surum.json). Boşsa /api/mobil/surum/ 404 döner.
+# Mobil / masaüstü dağıtım dizinleri (surum.json + paket dosyaları). Boşsa uç 404 döner.
 MOBIL_DIST_DIR = os.environ.get("MOBIL_DIST_DIR", "")
+MASAUSTU_DIST_DIR = os.environ.get("MASAUSTU_DIST_DIR", "")
 
 # Testlerde hızlı şifre hash'i kullan (PBKDF2 yavaş; auth testleri çok sayıda
 # kullanıcı oluşturup giriş yaptığından test süresini belirgin kısaltır).

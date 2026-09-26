@@ -1628,33 +1628,53 @@ class HealthCheckView(APIView):
         return Response(data)
 
 
-class MobilSurumView(APIView):
-    """Mobil uygulama sürüm bilgisi (APK dağıtımı; auth'suz).
+def _surum_json_oku(kok):
+    """Dağıtım dizinindeki surum.json'u okur; yok/bozuksa None döner."""
+    if not kok:
+        return None
+    try:
+        with open(os.path.join(kok, "surum.json"), encoding="utf-8") as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return None
 
-    Sunucudaki ``MOBIL_DIST_DIR/surum.json`` dosyası okunur. Örnek:
-      {"surum": "1.1.4", "surumKodu": 1, "minSurumKodu": 1,
-       "apkUrl": "/mobil/kutuphane-v1.1.4.apk"}
+
+class _SurumView(APIView):
+    """Dağıtım dizininden sürüm bilgisi (surum.json) döndüren ortak taban.
+
+    Örnek içerik:
+      {"surum": "1.1.7", "surumKodu": 1, "minSurumKodu": 1,
+       "url": "/masaustu/kutuphane-v1.1.7-linux-x64.tar.gz",
+       "sha256": "..."}
     """
 
     authentication_classes = []
     permission_classes = []
+    dist_ayari = ""
+    yok_mesaji = "Sürüm bilgisi bulunamadı"
 
     def get(self, request):
-        kok = getattr(settings, "MOBIL_DIST_DIR", "")
-        if not kok:
+        veri = _surum_json_oku(getattr(settings, self.dist_ayari, ""))
+        if veri is None:
             return Response(
-                {"error": "Mobil dağıtım yapılandırılmadı"},
-                status=status.HTTP_404_NOT_FOUND,
-            )
-        try:
-            with open(os.path.join(kok, "surum.json"), encoding="utf-8") as f:
-                veri = json.load(f)
-        except (FileNotFoundError, json.JSONDecodeError):
-            return Response(
-                {"error": "Sürüm bilgisi bulunamadı"},
+                {"error": self.yok_mesaji},
                 status=status.HTTP_404_NOT_FOUND,
             )
         return Response(veri)
+
+
+class MobilSurumView(_SurumView):
+    """APK sürüm bilgisi (auth'suz)."""
+
+    dist_ayari = "MOBIL_DIST_DIR"
+    yok_mesaji = "Mobil sürüm bilgisi bulunamadı"
+
+
+class MasaustuSurumView(_SurumView):
+    """Masaüstü paket sürüm bilgisi (auth'suz)."""
+
+    dist_ayari = "MASAUSTU_DIST_DIR"
+    yok_mesaji = "Masaüstü sürüm bilgisi bulunamadı"
 
 
 class BookCatalogView(TemplateView):

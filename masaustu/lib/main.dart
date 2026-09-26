@@ -5,6 +5,8 @@ import 'config.dart';
 import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
 import 'theme.dart';
+import 'update_dialog.dart';
+import 'update_service.dart';
 
 void main() {
   runApp(const KutuphaneApp());
@@ -44,7 +46,23 @@ class _BootstrapHomeState extends State<_BootstrapHome> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _restoreSession());
+    WidgetsBinding.instance.addPostFrameCallback((_) => _startup());
+  }
+
+  Future<void> _startup() async {
+    await _guncellemeKontrolEt();
+    await _restoreSession();
+  }
+
+  /// Açılışta sunucudaki masaüstü sürümünü kontrol eder (K13.4).
+  Future<void> _guncellemeKontrolEt() async {
+    final uzak = await sunucudanSurumOku();
+    final karar = guncellemeKarari(
+      kuruluKod: AppConfig.appVersionCode,
+      uzak: uzak,
+    );
+    if (!karar.guncellemeVar || uzak == null || !mounted) return;
+    await guncellemeGoster(context, uzak, karar.zorunlu);
   }
 
   Future<void> _restoreSession() async {

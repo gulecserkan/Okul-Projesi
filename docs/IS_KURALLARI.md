@@ -232,7 +232,7 @@ Her kural için en az bir test:
 
 ---
 
-## 13. MOBİL UYGULAMA DAĞITIMI VE GÜNCELLEME (K13)
+## 13. UYGULAMA DAĞITIMI VE GÜNCELLEME (K13 — mobil + masaüstü)
 
 | # | Kural | İşlenir |
 |---|---|---|
@@ -241,5 +241,9 @@ Her kural için en az bir test:
 | K13.3 | Sunucu sürüm bilgisini `GET /api/mobil/surum/` (auth'suz) sunar; veri `MOBIL_DIST_DIR/surum.json`'dan okunur (`surum`, `surumKodu`, `minSurumKodu`, `apkUrl`). Yapılandırma/dosya yoksa 404. | `MobilSurumView`, `settings.MOBIL_DIST_DIR` |
 | K13.4 | Uygulama açılışta sürümü kontrol eder: kurulu `surumKodu < minSurumKodu` → **zorunlu** (kapatılamaz, yalnız "Güncelle"); `minSurumKodu ≤ kurulu < surumKodu` → **opsiyonel** bildirim (ertelenebilir). Sunucuya ulaşılamazsa kontrol sessizce atlanır. | `main.dart` + `widgets/update_dialog.dart` |
 | K13.5 | Her yayında `surumKodu` (`pubspec` `+build`) **artırılır**; APK sürümü backend sürümünden bağımsız yayınlanabilir. Dosya sunucuda `/srv/kutuphane-mobil/` (repo dışı) tutulur. | `mobil/yukle_apk.sh` |
+| K13.6 | Masaüstü (Linux) uygulaması **kullanıcı klasörüne** kurulur (`~/.local/share/kutuphane-masaustu`) + `.desktop` kısayolu (`Kütüphane Yönetim Sistemi`); ilk kurulum paketi `GET /masaustu/` sayfasından indirilir. | `masaustu/kur.sh`, `masaustu/yukle_masaustu.sh` |
+| K13.7 | Sunucu masaüstü sürümünü `GET /api/masaustu/surum/` (auth'suz) sunar; veri `MASAUSTU_DIST_DIR/surum.json`'dan okunur (`surum`, `surumKodu`, `minSurumKodu`, `url`, `sha256`). Yoksa 404. | `MasaustuSurumView`, `settings.MASAUSTU_DIST_DIR` |
+| K13.8 | Masaüstü açılışta sürümü kontrol eder. Otomatik güncelleme **yalnız kurulum klasöründen** çalışırken etkindir: paket indirilir, **sha256** doğrulanır, uygulama kapanınca kurulum klasörü değiştirilir ve uygulama yeniden başlatılır. Geliştirme/`/opt` gibi durumlarda yalnız **bildirim + indirme bağlantısı** gösterilir. | `masaustu/lib/update_service.dart` + `update_dialog.dart` |
+| K13.9 | Her masaüstü yayınında `APP_VERSION`/`APP_VERSION_CODE` (`--dart-define`) artırılır; paket `sha256` ile `surum.json`'a yazılır. Dosya `/srv/kutuphane-masaustu/` (repo dışı). | `masaustu/yukle_masaustu.sh` |
 
-Test: `MobilSurumApiTests` (K13.3), `mobil_surum_test`/`update_dialog_test` (K13.4).
+Test: `MobilSurumApiTests`/`MasaustuSurumApiTests` (K13.3/K13.7), `mobil_surum_test`/`update_dialog_test` (K13.4), `masaustu/test/update_service_test.dart` (K13.8).
