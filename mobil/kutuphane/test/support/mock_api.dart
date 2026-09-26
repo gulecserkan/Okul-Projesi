@@ -24,6 +24,7 @@ MockClient routingClient({
   int loginStatus = 200,
   int changePasswordStatus = 200,
   int healthStatus = 200,
+  Map<String, dynamic>? mobilSurum,
   Map<String, dynamic>? fastQueryResponse,
   void Function(http.Request request)? onRequest,
 }) {
@@ -35,6 +36,17 @@ MockClient routingClient({
       return healthStatus == 200
           ? jsonResponse({'status': 'ok'})
           : jsonResponse({'detail': 'hata'}, status: healthStatus);
+    }
+    if (path.endsWith('/api/mobil/surum/')) {
+      return jsonResponse(
+        mobilSurum ??
+            {
+              'surum': '0.0.0',
+              'surumKodu': 0,
+              'minSurumKodu': 0,
+              'apkUrl': '',
+            },
+      );
     }
     if (path.endsWith('/api/token/')) {
       return jsonResponse(

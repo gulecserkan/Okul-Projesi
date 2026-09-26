@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
 
 import 'api/library_api.dart';
@@ -21,7 +22,10 @@ void main() {
 }
 
 class KutuphaneApp extends StatefulWidget {
-  const KutuphaneApp({super.key});
+  const KutuphaneApp({super.key, this.httpClient});
+
+  /// Test/DI için dışarıdan verilebilir.
+  final http.Client? httpClient;
 
   @override
   State<KutuphaneApp> createState() => _KutuphaneAppState();
@@ -29,6 +33,7 @@ class KutuphaneApp extends StatefulWidget {
 
 class _KutuphaneAppState extends State<KutuphaneApp> with WidgetsBindingObserver {
   final SessionStorage _storage = SessionStorage();
+  final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
   bool _loading = true;
   String? _baseUrl;
   String? _rememberedBaseUrl;
@@ -88,7 +93,10 @@ class _KutuphaneAppState extends State<KutuphaneApp> with WidgetsBindingObserver
     String? baseUrl = storedBaseUrl;
     var sunucuHazir = false;
     if (baseUrl != null) {
-      sunucuHazir = (await LibraryApiClient(baseUrl: baseUrl).handshake()).ok;
+      sunucuHazir =
+          (await LibraryApiClient(baseUrl: baseUrl, httpClient: widget.httpClient)
+                  .handshake())
+              .ok;
     }
     if (!sunucuHazir) {
       // Yalnız kayıtlı adres yoksa ya da bizim adaylarımızdan biriyse adayları yokla;
@@ -133,6 +141,7 @@ class _KutuphaneAppState extends State<KutuphaneApp> with WidgetsBindingObserver
           final api = LibraryApiClient(
             baseUrl: cozulenAdres,
             tokens: storedTokens,
+            httpClient: widget.httpClient,
           );
           refreshedTokens = await api.refreshToken(storedTokens.refreshToken);
           await _storage.saveTokens(refreshedTokens);
@@ -163,7 +172,10 @@ class _KutuphaneAppState extends State<KutuphaneApp> with WidgetsBindingObserver
 
   /// Kurulu sürümü sunucudaki sürümle karşılaştırır ve gerekirse diyalog açar.
   Future<void> _guncellemeKontrolEt(String baseUrl) async {
-    final uzak = await LibraryApiClient(baseUrl: baseUrl).mobilSurum();
+    final uzak = await LibraryApiClient(
+      baseUrl: baseUrl,
+      httpClient: widget.httpClient,
+    ).mobilSurum();
     if (uzak == null || uzak.apkUrl.isEmpty) return;
 
     String kuruluSurum = "";
@@ -177,10 +189,15 @@ class _KutuphaneAppState extends State<KutuphaneApp> with WidgetsBindingObserver
     }
 
     final karar = guncellemeKarari(kuruluKod: kuruluKod, uzak: uzak);
-    if (!karar.guncellemeVar || !mounted) return;
+    if (!karar.guncellemeVar) return;
+
+    // Diyalog, MaterialApp'ın ALTINDAKİ bir context ile açılmalı; kök State
+    // context'i Navigator'ın üstünde kaldığından diyalog hiç görünmüyordu.
+    final navContext = _navigatorKey.currentContext;
+    if (navContext == null || !navContext.mounted) return;
 
     await guncellemeDiyaloguGoster(
-      context,
+      navContext,
       surum: uzak,
       zorunlu: karar.zorunlu,
       kuruluSurum: kuruluSurum,
@@ -271,6 +288,7 @@ class _KutuphaneAppState extends State<KutuphaneApp> with WidgetsBindingObserver
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: _navigatorKey,
       debugShowCheckedModeBanner: false,
       title: "Kütüphane",
       theme: _buildTheme(),

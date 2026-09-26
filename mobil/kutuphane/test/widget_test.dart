@@ -1,23 +1,53 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
+// KutuphaneApp açılış akışı testleri.
 import 'package:flutter_test/flutter_test.dart';
-
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:kutuphane/main.dart';
 
+import 'support/mock_api.dart';
+
 void main() {
-  testWidgets('Uygulama açılışı bağlantı ekranını gösterir', (WidgetTester tester) async {
+  testWidgets('Uygulama açılışı bağlantı ekranını gösterir', (
+    WidgetTester tester,
+  ) async {
     SharedPreferences.setMockInitialValues({});
 
     await tester.pumpWidget(const KutuphaneApp());
     await tester.pumpAndSettle();
 
     expect(find.textContaining('Kütüphane sunucusuna bağlan'), findsOneWidget);
+  });
+
+  testWidgets('Yeni sürüm varsa açılışta güncelleme diyaloğu açılır (K13.4)', (
+    WidgetTester tester,
+  ) async {
+    PackageInfo.setMockInitialValues(
+      appName: 'Kutuphane',
+      packageName: 'com.example.kutuphane',
+      version: '1.1.6',
+      buildNumber: '4',
+      buildSignature: '',
+    );
+    SharedPreferences.setMockInitialValues({
+      'server_base_url': 'http://test.local',
+    });
+
+    await tester.pumpWidget(
+      KutuphaneApp(
+        httpClient: routingClient(
+          mobilSurum: {
+            'surum': '9.9.9',
+            'surumKodu': 999,
+            'minSurumKodu': 0,
+            'apkUrl': '/mobil/kutuphane.apk',
+          },
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Yeni sürüm mevcut'), findsOneWidget);
+    expect(find.text('Güncelle'), findsOneWidget);
   });
 }

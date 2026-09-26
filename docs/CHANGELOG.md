@@ -7,8 +7,12 @@ sunucuya yalnızca etiketli sürümler gönderilir (bkz. `docs/DEPLOY_CLOUD.md`)
 ## [1.1.10] — 2026-09-27
 
 Web katalog yenilendi, üye kitap gezintisi elden geçirildi ve oturum süresi
-hatası düzeltildi. Mobil sürüm **1.1.6** (`surumKodu` 4) olarak yayınlandı.
+hatası düzeltildi. Mobil sürüm **1.1.6** (`surumKodu` 5) olarak yayınlandı.
 
+- **Güncelleme bildirimi düzeltmesi (K13.4):** güncelleme diyaloğu MaterialApp'ın
+  **üstündeki** kök context ile açıldığından `Navigator` bulunamıyor ve diyalog
+  hiç görünmüyordu; `MaterialApp.navigatorKey` üzerinden gösterilecek şekilde
+  düzeltildi (açılışın yanında regresyon testi eklendi).
 - **Yazar seçimi (K9.9):** çok uzun yazar listesi çekmeceden çıkarılıp **tam ekran
   "Yazar seç" ekranına** taşındı: Türkçe alfabetik gruplar, sabit harf başlıkları,
   sağ kenarda **A–Z şeridi** (dokun/kaydır ile atlama) ve arama. API yazarları
