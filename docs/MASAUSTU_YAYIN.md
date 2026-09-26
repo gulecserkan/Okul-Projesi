@@ -19,6 +19,18 @@ Kısayol: `~/.local/share/applications/kutuphane-masaustu.desktop`.
 
 ## İlk kurulum (hedef bilgisayar)
 
+**Tek komut (önerilen, K13.10):**
+
+```bash
+bash <(curl -fsS http://89.252.153.171/masaustu/uzaktan-kur.sh)
+```
+
+Betik sunucu adaylarını (önce `https://okulkitapligi.tr`, sonra genel IP) dener,
+güncel paketi indirip `~/.local/share/kutuphane-masaustu` içine açar ve `kur.sh`
+çalıştırır. Adres zorlamak için: `MASAUSTU_ORIGIN=https://... bash uzaktan-kur.sh`.
+
+**Elle kurulum:**
+
 ```bash
 mkdir -p ~/.local/share/kutuphane-masaustu
 tar -xzf ~/İndirilenler/kutuphane-masaustu-vX.Y.Z-linux-x64.tar.gz \
@@ -26,8 +38,18 @@ tar -xzf ~/İndirilenler/kutuphane-masaustu-vX.Y.Z-linux-x64.tar.gz \
 bash ~/.local/share/kutuphane-masaustu/kur.sh
 ```
 
-Menüde **Kütüphane Yönetim Sistemi** olarak görünür. Giriş ekranından sunucu
-adresi girilir (varsayılan `http://127.0.0.1:8000/api`).
+Menüde **Kütüphane Yönetim Sistemi** olarak görünür. Sunucu adresi otomatik
+seçilir (alan adı → genel IP); erişilemezse uygulama sunucu adresini sorar.
+
+## Sunucu adresi (K13.11)
+
+- Aday listesi: `https://okulkitapligi.tr/api` → `http://89.252.153.171/api`
+  (`AppConfig.serverCandidates`).
+- Açılışta kayıtlı adres çalışıyorsa bırakılır; yoksa/çökmüşse adaylar **paralel**
+  yoklanır ve ilk ulaşan kaydedilir. Hiçbiri yoksa giriş ekranındaki sunucu alanı
+  kullanılır.
+- Alan adı + SSL aktif olunca **uygulama güncellenmeden** otomatik `https`'ye geçer.
+- Kullanıcının elle girdiği özel adres otomatik değiştirilmez.
 
 ## Güncelleme davranışı
 

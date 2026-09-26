@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 import 'api/library_api.dart';
+import 'api/sunucu_adresi.dart';
+import 'app_config.dart';
 import 'models/auth.dart';
 import 'models/mobil_surum.dart';
 import 'screens/book_list_screen.dart';
@@ -62,23 +64,38 @@ class _KutuphaneAppState extends State<KutuphaneApp> {
       _currentTheme = parsed;
     }
 
-    if (storedBaseUrl == null) {
-      setState(() => _loading = false);
-      return;
+    // Sunucu adresini çöz (K13.11): kayıtlı adres → doğrudan; yok/çöktü → adayları yokla.
+    String? baseUrl = storedBaseUrl;
+    var sunucuHazir = false;
+    if (baseUrl != null) {
+      sunucuHazir = (await LibraryApiClient(baseUrl: baseUrl).handshake()).ok;
     }
-
-    final handshake = await LibraryApiClient(
-      baseUrl: storedBaseUrl,
-    ).handshake();
-    if (!handshake.ok) {
+    if (!sunucuHazir) {
+      // Yalnız kayıtlı adres yoksa ya da bizim adaylarımızdan biriyse adayları yokla;
+      // kullanıcının elle girdiği özel bir adrese dokunma.
+      final adayMi = baseUrl == null ||
+          AppConfig.effectiveServerCandidates.contains(baseUrl);
+      if (adayMi) {
+        final bulunan = await enIyiSunucuAdresiYokla();
+        if (bulunan != null) {
+          baseUrl = bulunan;
+          sunucuHazir = true;
+          await _storage.saveBaseUrl(bulunan);
+          _rememberedBaseUrl = bulunan;
+        }
+      }
+    }
+    if (!sunucuHazir || baseUrl == null) {
       setState(() {
         _loading = false;
-        _handshakeError = handshake.message;
+        _handshakeError =
+            storedBaseUrl == null ? null : 'Sunucuya ulaşılamadı.';
         _baseUrl = null;
         _tokens = null;
       });
       return;
     }
+    final cozulenAdres = baseUrl;
 
     AuthTokens? refreshedTokens = storedTokens;
     if (storedTokens != null) {
@@ -94,7 +111,7 @@ class _KutuphaneAppState extends State<KutuphaneApp> {
       } else {
         try {
           final api = LibraryApiClient(
-            baseUrl: storedBaseUrl,
+            baseUrl: cozulenAdres,
             tokens: storedTokens,
           );
           refreshedTokens = await api.refreshToken(storedTokens.refreshToken);
@@ -114,14 +131,14 @@ class _KutuphaneAppState extends State<KutuphaneApp> {
     }
 
     setState(() {
-      _baseUrl = storedBaseUrl;
+      _baseUrl = cozulenAdres;
       _tokens = refreshedTokens;
       _loading = false;
       _handshakeError = null;
     });
 
     // Sunucudaki sürümle karşılaştır; yeni sürüm varsa bildir (K13.4).
-    await _guncellemeKontrolEt(storedBaseUrl);
+    await _guncellemeKontrolEt(cozulenAdres);
   }
 
   /// Kurulu sürümü sunucudaki sürümle karşılaştırır ve gerekirse diyalog açar.

@@ -8,6 +8,29 @@ sunucuya yalnızca etiketli sürümler gönderilir (bkz. `docs/DEPLOY_CLOUD.md`)
 
 - (geliştirme sürüyor)
 
+## [1.1.8] — 2026-09-26
+
+Alan adı (`okulkitapligi.tr`) hazırlığı + akıllı sunucu adresi.
+
+### Mobil + masaüstü
+- **Akıllı sunucu adresi (K13.11):** açılışta adaylar paralel yoklanır
+  (`https://okulkitapligi.tr` → `http://89.252.153.171`); kayıtlı/çalışan adres
+  korunur, hiçbiri yoksa kullanıcıdan istenir. Alan adı + SSL aktif olunca
+  uygulama güncellenmeden otomatik geçer.
+- Mobil varsayılanı `https://okulkitapligi.tr`; eski LAN adresi kaldırıldı.
+- Android: `usesCleartextTraffic=true` (HTTPS öncesi http fallback, K13.12).
+- Mobil sürüm `1.1.5+2`, masaüstü `1.1.8+2`.
+- Testler: `sunucu_adresi_test.dart` (mobil + masaüstü).
+
+### Masaüstü dağıtım
+- **Tek komutla kurulum (K13.10):** `GET /masaustu/uzaktan-kur.sh` sunucu
+  adaylarını deneyip paketi indirir, kurar; `MASAUSTU_ORIGIN` ile adres zorlanır.
+- `yukle_masaustu.sh` artık `uzaktan-kur.sh`'ı da yayınlar; indirme sayfasına
+  tek-komut satırı eklendi.
+
+### Doküman
+- `IS_KURALLARI.md` K13.10–K13.12; `MASAUSTU_YAYIN.md` + `MOBIL_YAYIN.md` güncellendi.
+
 ## [1.1.7] — 2026-09-26
 
 Masaüstü (Linux) uygulaması için sunucudan otomatik güncelleme (K13.6–K13.9).

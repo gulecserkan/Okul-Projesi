@@ -50,6 +50,10 @@ echo "Paket: $AD ($(du -h "$PAKET" | cut -f1)) sha256=$SHA"
 scp -q "$PAKET" "$SUNUCU:/tmp/$AD"
 ssh "$SUNUCU" "sudo install -o kutuphane -g kutuphane -m 644 /tmp/$AD $DIZIN/$AD && rm -f /tmp/$AD"
 
+# Tek komutla kurulum betiği (K13.10) dağıtılır.
+scp -q "$APP/uzaktan-kur.sh" "$SUNUCU:/tmp/kutuphane-masaustu-uzaktan-kur.sh"
+ssh "$SUNUCU" "sudo install -o kutuphane -g kutuphane -m 755 /tmp/kutuphane-masaustu-uzaktan-kur.sh $DIZIN/uzaktan-kur.sh && rm -f /tmp/kutuphane-masaustu-uzaktan-kur.sh"
+
 cat > /tmp/kutuphane-masaustu-surum.json <<JSON
 {"surum": "${TAG}", "surumKodu": ${KOD}, "minSurumKodu": ${MIN}, "url": "/masaustu/${AD}", "sha256": "${SHA}"}
 JSON
@@ -81,13 +85,15 @@ cat > /tmp/kutuphane-masaustu-index.html <<HTML
   <p class="surum">Sürüm ${TAG} · Linux (x64)</p>
   <a class="btn" href="/masaustu/${AD}" download>Paketi indir (.tar.gz)</a>
   <div class="not">
-    <strong>Kurulum (personel/admin bilgisayarı):</strong>
+    <strong>Tek komutla kurulum (önerilen):</strong>
+    <pre>bash &lt;(curl -fsS ${BASE_URL}/masaustu/uzaktan-kur.sh)</pre>
+    <strong>Elle kurulum:</strong>
     <pre>mkdir -p ~/.local/share/kutuphane-masaustu
 tar -xzf ~/İndirilenler/${AD} -C ~/.local/share/kutuphane-masaustu
 bash ~/.local/share/kutuphane-masaustu/kur.sh</pre>
     Kurulumdan sonra uygulama menüde <em>Kütüphane Yönetim Sistemi</em> olarak görünür.
-    Giriş ekranından sunucu adresini girin. Sonraki sürümler uygulama açılışında
-    otomatik kontrol edilip bu klasöre uygulanır.
+    Sunucu adresi otomatik seçilir (alan adı → genel IP); erişilemezse uygulama sorar.
+    Sonraki sürümler uygulama açılışında otomatik kontrol edilip bu klasöre uygulanır.
   </div>
 </main>
 </body>
@@ -105,3 +111,4 @@ echo "Yüklendi. Doğrulama:"
 echo -n "  surum.json: "; curl -fsS "${BASE_URL}/api/masaustu/surum/"; echo
 echo -n "  sayfa     : "; curl -fsS -o /dev/null -w "%{http_code}\n" "${BASE_URL}/masaustu/"
 echo -n "  paket     : "; curl -fsS -o /dev/null -w "%{http_code}\n" "${BASE_URL}/masaustu/${AD}"
+echo -n "  uzaktan-kur: "; curl -fsS -o /dev/null -w "%{http_code}\n" "${BASE_URL}/masaustu/uzaktan-kur.sh"

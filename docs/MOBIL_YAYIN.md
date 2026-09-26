@@ -27,6 +27,21 @@ açılışta sunucuyu kontrol edip güncelleme bildirir.
 - Kurulu sürüm `< surumKodu` → **opsiyonel** bildirim.
 - `surumKodu` her yayında **mutlaka artırılır** (Android aksi halde güncellemeyi kabul etmez).
 
+## Sunucu adresi (K13.11)
+
+- Uygulama açılışta `serverCandidates` listesini **paralel** yoklar:
+  `https://okulkitapligi.tr` → `http://89.252.153.171`. İlk ulaşan kaydedilir;
+  hiçbiri yoksa bağlantı ekranı açılır.
+- Alan adı + SSL aktif olunca uygulama **güncellenmeden** otomatik `https`'ye geçer.
+- Derlemede adres zorlamak için: `--dart-define=KUTUPHANE_SERVER=http://<adres>`.
+
+## Android cleartext (K13.12)
+
+HTTPS öncesi genel IP'ye `http` ile erişilebilmesi için `AndroidManifest.xml`'de
+`android:usesCleartextTraffic="true"` ayarlıdır. SSL (Let's Encrypt) aktif olunca
+`networkSecurityConfig` ile yalnız alan adına `https` izni verilecek şekilde
+daraltılabilir.
+
 ## Kritik: imza
 
 Android, bir uygulamanın güncellemesini ancak **aynı imza** ile kurar. Bu yüzden:

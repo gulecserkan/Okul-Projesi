@@ -6,7 +6,17 @@ import 'dart:io';
 /// Masaüstünde ~/.config/kutuphane_masaustu/config.json içinde tutulur
 /// (eski PyQt sürümü gibi dosya tabanlı).
 class AppConfig {
-  static const String defaultBaseUrl = 'http://127.0.0.1:8000/api';
+  /// Öncelik sıralı sunucu adayları (masaüstü API kökü, `/api` dahil):
+  ///   1) alan adı — SSL aktif olunca öne geçer
+  ///   2) genel IP — geçici erişim
+  /// Uygulama açılışta adayları paralel yoklar; ilk ulaşanı kullanır.
+  static const List<String> serverCandidates = [
+    'https://okulkitapligi.tr/api',
+    'http://89.252.153.171/api',
+  ];
+
+  /// Kayıtlı adres yoksa önerilen varsayılan adres (aday listesinin ilki).
+  static const String defaultBaseUrl = 'https://okulkitapligi.tr/api';
 
   /// Uygulama sürümü (derlemede `--dart-define=APP_VERSION=...` ile verilir).
   static const String appVersion =
@@ -39,6 +49,12 @@ class AppConfig {
     final data = _read();
     final url = (data['api']?['base_url'] as String?)?.trim();
     return (url == null || url.isEmpty) ? defaultBaseUrl : url;
+  }
+
+  /// Kullanıcı/ayarlar tarafından kaydedilmiş bir sunucu adresi var mı?
+  static bool get hasSavedBaseUrl {
+    final url = (_read()['api']?['base_url'] as String?)?.trim();
+    return url != null && url.isNotEmpty;
   }
 
   static set apiBaseUrl(String url) {

@@ -40,7 +40,7 @@ void main() {
     await tester.tap(find.text('Bağlantıyı kontrol et'));
     await tester.pumpAndSettle();
 
-    expect(connected, 'http://192.168.1.12:8000');
+    expect(connected, 'https://okulkitapligi.tr');
   });
 
   testWidgets('başarısız el sıkışmada hata gösterilir', (tester) async {

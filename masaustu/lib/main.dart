@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 
+import 'api/auth_api.dart';
 import 'api_client.dart';
 import 'config.dart';
 import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
+import 'sunucu_adresi.dart';
 import 'theme.dart';
 import 'update_dialog.dart';
 import 'update_service.dart';
@@ -50,8 +52,23 @@ class _BootstrapHomeState extends State<_BootstrapHome> {
   }
 
   Future<void> _startup() async {
+    await _sunucuAdresiniCoz();
     await _guncellemeKontrolEt();
     await _restoreSession();
+  }
+
+  /// Açılışta sunucu adresini çöz (K13.11): kayıtlı adres çalışıyorsa bırak;
+  /// yoksa/çökmüşse adayları yokla (alan adı → IP) ve ilk ulaşanı kaydet.
+  Future<void> _sunucuAdresiniCoz() async {
+    if (AppConfig.hasSavedBaseUrl) {
+      // Kullanıcının elle girdiği özel adres bizim adaylarımızdan değilse dokunma.
+      if (!AppConfig.serverCandidates.contains(AppConfig.apiBaseUrl)) return;
+      if (await AuthApi().healthCheck()) return;
+    }
+    final bulunan = await enIyiSunucuAdresiYokla();
+    if (bulunan != null) {
+      AppConfig.apiBaseUrl = bulunan;
+    }
   }
 
   /// Açılışta sunucudaki masaüstü sürümünü kontrol eder (K13.4).
