@@ -248,39 +248,42 @@ class _YazarSecimScreenState extends State<YazarSecimScreen> {
       );
     }
 
+    final ogeler = <Object>[];
+    for (final h in harfler) {
+      ogeler.add(h);
+      ogeler.addAll(gruplar[h]!);
+    }
+
     return Stack(
       children: [
         CustomScrollView(
           controller: _scrollController,
           slivers: [
-            for (final h in harfler) ...[
-              SliverPersistentHeader(
-                pinned: true,
-                delegate: _HarfBasligi(h, scheme),
+            SliverList(
+              delegate: SliverChildBuilderDelegate(
+                (context, i) {
+                  final oge = ogeler[i];
+                  if (oge is String) {
+                    return _harfBasligi(oge, scheme);
+                  }
+                  final a = oge as Author;
+                  final secili = a.id == widget.seciliId;
+                  return SizedBox(
+                    height: _satirYuksekligi,
+                    child: ListTile(
+                      dense: true,
+                      title: Text(a.adSoyad),
+                      selected: secili,
+                      trailing: secili
+                          ? Icon(Icons.check, color: scheme.primary)
+                          : null,
+                      onTap: () => Navigator.of(context).pop(YazarSecim(a)),
+                    ),
+                  );
+                },
+                childCount: ogeler.length,
               ),
-              SliverList(
-                delegate: SliverChildBuilderDelegate(
-                  (context, i) {
-                    final a = gruplar[h]![i];
-                    final secili = a.id == widget.seciliId;
-                    return SizedBox(
-                      height: _satirYuksekligi,
-                      child: ListTile(
-                        dense: true,
-                        title: Text(a.adSoyad),
-                        selected: secili,
-                        trailing: secili
-                            ? Icon(Icons.check, color: scheme.primary)
-                            : null,
-                        onTap: () =>
-                            Navigator.of(context).pop(YazarSecim(a)),
-                      ),
-                    );
-                  },
-                  childCount: gruplar[h]!.length,
-                ),
-              ),
-            ],
+            ),
           ],
         ),
         if (!aramaVar && harfler.length > 1)
@@ -293,40 +296,19 @@ class _YazarSecimScreenState extends State<YazarSecimScreen> {
       ],
     );
   }
-}
 
-/// Yapışkan harf başlığı.
-class _HarfBasligi extends SliverPersistentHeaderDelegate {
-  _HarfBasligi(this.harf, this.scheme);
-
-  final String harf;
-  final ColorScheme scheme;
-
-  @override
-  double get minExtent => _YazarSecimScreenState._baslikYuksekligi;
-
-  @override
-  double get maxExtent => _YazarSecimScreenState._baslikYuksekligi;
-
-  @override
-  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
+  Widget _harfBasligi(String harf, ColorScheme scheme) {
     return Container(
-      height: _YazarSecimScreenState._baslikYuksekligi,
+      height: _baslikYuksekligi,
       alignment: Alignment.centerLeft,
       padding: const EdgeInsets.symmetric(horizontal: 16),
       color: scheme.surfaceContainerHighest,
       child: Text(
         harf,
-        style: TextStyle(
-          fontWeight: FontWeight.w700,
-          color: scheme.primary,
-        ),
+        style: TextStyle(fontWeight: FontWeight.w700, color: scheme.primary),
       ),
     );
   }
-
-  @override
-  bool shouldRebuild(_HarfBasligi oldDelegate) => oldDelegate.harf != harf;
 }
 
 /// Sağ kenardaki A–Z şeridi; dokun/kaydır ile ilgili harfe atlar.

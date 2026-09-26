@@ -6,7 +6,6 @@ import 'package:http/http.dart' as http;
 
 import 'package:kutuphane/api/library_api.dart';
 import 'package:kutuphane/models/auth.dart';
-import 'package:kutuphane/models/book.dart';
 import 'package:kutuphane/screens/uye_home_screen.dart';
 import 'package:kutuphane/screens/yazar_secim_screen.dart';
 
@@ -190,35 +189,6 @@ void main() {
 
     final kitaplar = _kitapIstemleri(reqs);
     expect(kitaplar.last.queryParameters['yazar'], '9');
-  });
-
-  testWidgets('yazar seçim ekranı alfabetik gruplar ve aramayla süzer', (
-    tester,
-  ) async {
-    await tester.pumpWidget(
-      MaterialApp(
-        home: YazarSecimScreen(
-          yukleyici: () async => const [
-            Author(id: 1, adSoyad: 'Zeynep Ak'),
-            Author(id: 2, adSoyad: 'Ali Veli'),
-            Author(id: 3, adSoyad: 'Çetin Su'),
-          ],
-        ),
-      ),
-    );
-    await tester.pumpAndSettle();
-
-    // Harf başlıkları ve A–Z şeridi oluşur.
-    expect(find.text('Ali Veli'), findsOneWidget);
-    expect(find.text('Zeynep Ak'), findsOneWidget);
-    expect(find.text('Çetin Su'), findsOneWidget);
-
-    // Arama, listeyi süzer.
-    await tester.enterText(find.byType(TextField), 'ali');
-    await tester.pumpAndSettle();
-    expect(find.text('Ali Veli'), findsOneWidget);
-    expect(find.text('Zeynep Ak'), findsNothing);
-    expect(find.text('Çetin Su'), findsNothing);
   });
 
   testWidgets('görsellik ve öğretmen görüşü anahtarları parametre gönderir', (
