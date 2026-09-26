@@ -230,3 +230,10 @@ REST_FRAMEWORK = {
         "login": "10/min",
     },
 }
+
+# Testlerde hızlı şifre hash'i kullan (PBKDF2 yavaş; auth testleri çok sayıda
+# kullanıcı oluşturup giriş yaptığından test süresini belirgin kısaltır).
+import sys as _sys  # noqa: E402
+
+if "test" in _sys.argv:
+    PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]

@@ -88,6 +88,7 @@ class UyeSerializer(serializers.ModelSerializer):
         uye = super().create(validated_data)
         if sifre:
             self._set_borrower_password(uye, sifre)
+        self._sync_username(uye)
         return uye
 
     def update(self, instance, validated_data):
@@ -95,6 +96,7 @@ class UyeSerializer(serializers.ModelSerializer):
         uye = super().update(instance, validated_data)
         if sifre:
             self._set_borrower_password(uye, sifre)
+        self._sync_username(uye)
         return uye
 
     def _set_borrower_password(self, uye, raw_password):
@@ -116,6 +118,24 @@ class UyeSerializer(serializers.ModelSerializer):
         uye.user = user
         uye.parola_degistirilsin = True
         uye.save(update_fields=["user", "parola_degistirilsin"])
+
+    def _sync_username(self, uye):
+        """Üye no değişmişse bağlı giriş hesabının kullanıcı adını eşitle.
+
+        Mobil girişi kullanıcı adı = üye no ile yapılır; şifre verildikten sonra
+        üye no değişirse hesap eski numarada kalır ve giriş yapılamaz (K9.5.1).
+        """
+        user = uye.user
+        if user is None or not uye.uye_no:
+            return
+        if user.username == uye.uye_no:
+            return
+        if User.objects.filter(username=uye.uye_no).exclude(pk=user.pk).exists():
+            raise serializers.ValidationError(
+                {"uye_no": "Bu numara başka bir giriş hesabıyla kullanılıyor."}
+            )
+        user.username = uye.uye_no
+        user.save(update_fields=["username"])
 
 
 class YazarSerializer(serializers.ModelSerializer):

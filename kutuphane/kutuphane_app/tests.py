@@ -1933,3 +1933,48 @@ class ArsivAkisiTests(TestCase):
         self.assertFalse(ArsivBatch.objects.exists())
 
 
+class UyeGirisHesabiSenkronTests(APITestCase):
+    """K9.5.1: şifre verilen üyenin giriş hesabı kullanıcı adı = üye no; üye no
+    değişince hesap adı da eşitlenir (aksi halde mobil giriş başarısız olur)."""
+
+    def setUp(self):
+        self.admin = User.objects.create_superuser(username="admin", password="a1!")
+        self.rol_ogretmen, _ = Rol.objects.get_or_create(ad="Öğretmen")
+        self.client.force_authenticate(self.admin)
+
+    def test_sifre_ile_olusan_hesap_kullanici_adi_uye_no_olur(self):
+        resp = self.client.post(
+            "/api/uyeler/",
+            {
+                "ad": "Ruveyda", "soyad": "Güleç", "uye_no": "605264",
+                "rol_id": self.rol_ogretmen.id, "sifre": "Gecici123!",
+            },
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 201, resp.content)
+        uye = Uye.objects.get(uye_no="605264")
+        self.assertIsNotNone(uye.user)
+        self.assertEqual(uye.user.username, "605264")
+        self.assertTrue(uye.parola_degistirilsin)
+
+    def test_uye_no_degisince_kullanici_adi_guncellenir(self):
+        uye = Uye.objects.create(
+            ad="Ruveyda", soyad="Güleç", uye_no="606264", rol=self.rol_ogretmen
+        )
+        # Önce şifre ver → hesap 606264 ile oluşur.
+        self.client.patch(
+            f"/api/uyeler/{uye.id}/", {"sifre": "Gecici123!"}, format="json"
+        )
+        uye.refresh_from_db()
+        self.assertEqual(uye.user.username, "606264")
+
+        # Üye no düzeltilince hesap adı da güncellenmeli.
+        resp = self.client.patch(
+            f"/api/uyeler/{uye.id}/", {"uye_no": "605264"}, format="json"
+        )
+        self.assertEqual(resp.status_code, 200, resp.content)
+        uye.refresh_from_db()
+        self.assertEqual(uye.uye_no, "605264")
+        self.assertEqual(uye.user.username, "605264")
+
+
