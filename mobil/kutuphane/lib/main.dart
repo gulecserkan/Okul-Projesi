@@ -27,7 +27,7 @@ class KutuphaneApp extends StatefulWidget {
   State<KutuphaneApp> createState() => _KutuphaneAppState();
 }
 
-class _KutuphaneAppState extends State<KutuphaneApp> {
+class _KutuphaneAppState extends State<KutuphaneApp> with WidgetsBindingObserver {
   final SessionStorage _storage = SessionStorage();
   bool _loading = true;
   String? _baseUrl;
@@ -35,7 +35,9 @@ class _KutuphaneAppState extends State<KutuphaneApp> {
   AuthTokens? _tokens;
   String? _handshakeError;
   String? _sessionNotice;
-  final Duration _maxAuthAge = const Duration(hours: 12);
+
+  /// K9.11: "Beni hatırla" kapalıyken oturum 15 dk, açıkken 30 gün geçerli.
+  final Duration _maxAuthAge = const Duration(minutes: 15);
   static const Duration _maxRememberedAge = Duration(days: 30);
   bool _rememberMe = false;
   AppTheme _currentTheme = AppTheme.defaultLight;
@@ -43,7 +45,25 @@ class _KutuphaneAppState extends State<KutuphaneApp> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _bootstrap();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // K9.11: uygulama arka plana alınınca "son aktiflik" zamanını güncelle;
+    // böylece kısa süre sonra geri dönen kullanıcı yeniden giriş yapmaz.
+    if ((state == AppLifecycleState.paused ||
+            state == AppLifecycleState.inactive) &&
+        _tokens != null) {
+      _storage.saveLastAuthAt(DateTime.now());
+    }
   }
 
   Future<void> _bootstrap() async {

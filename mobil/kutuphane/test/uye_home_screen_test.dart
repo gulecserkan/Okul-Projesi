@@ -6,7 +6,9 @@ import 'package:http/http.dart' as http;
 
 import 'package:kutuphane/api/library_api.dart';
 import 'package:kutuphane/models/auth.dart';
+import 'package:kutuphane/models/book.dart';
 import 'package:kutuphane/screens/uye_home_screen.dart';
+import 'package:kutuphane/screens/yazar_secim_screen.dart';
 
 import 'support/fake_http.dart';
 import 'support/mock_api.dart';
@@ -133,7 +135,7 @@ void main() {
     expect(find.text('Sonuç bulunamadı.'), findsOneWidget);
   });
 
-  testWidgets('kategori çipi seçilince kategori filtresi gider (K9.9)', (
+  testWidgets('kategori çekmeceden seçilince kategori filtresi gider (K9.9)', (
     tester,
   ) async {
     final reqs = <http.Request>[];
@@ -146,14 +148,22 @@ void main() {
       onRequest: reqs.add,
     );
 
-    await tester.tap(find.text('Roman'));
+    await tester.tap(find.text('Filtre'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Kategoriler'));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.descendant(of: find.byType(Drawer), matching: find.text('Roman')),
+    );
     await tester.pumpAndSettle();
 
     final kitaplar = _kitapIstemleri(reqs);
     expect(kitaplar.last.queryParameters['kategori'], '2');
   });
 
-  testWidgets('yazar seçimi yazar filtresi gönderir', (tester) async {
+  testWidgets('yazar seçim ekranından seçilince yazar filtresi gönderir', (
+    tester,
+  ) async {
     final reqs = <http.Request>[];
     await pumpScreen(
       tester,
@@ -164,12 +174,15 @@ void main() {
       onRequest: reqs.add,
     );
 
-    await tester.tap(find.text('Yazar'));
+    await tester.tap(find.text('Filtre'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Yazarlar'));
     await tester.pumpAndSettle();
 
+    // Seçim ekranındaki yazara dokun (kitap kartındakiyle karışmasın diye kapsam dar).
     await tester.tap(
       find.descendant(
-        of: find.byType(BottomSheet),
+        of: find.byType(YazarSecimScreen),
         matching: find.text('Victor Hugo'),
       ),
     );
@@ -177,6 +190,35 @@ void main() {
 
     final kitaplar = _kitapIstemleri(reqs);
     expect(kitaplar.last.queryParameters['yazar'], '9');
+  });
+
+  testWidgets('yazar seçim ekranı alfabetik gruplar ve aramayla süzer', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: YazarSecimScreen(
+          yukleyici: () async => const [
+            Author(id: 1, adSoyad: 'Zeynep Ak'),
+            Author(id: 2, adSoyad: 'Ali Veli'),
+            Author(id: 3, adSoyad: 'Çetin Su'),
+          ],
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Harf başlıkları ve A–Z şeridi oluşur.
+    expect(find.text('Ali Veli'), findsOneWidget);
+    expect(find.text('Zeynep Ak'), findsOneWidget);
+    expect(find.text('Çetin Su'), findsOneWidget);
+
+    // Arama, listeyi süzer.
+    await tester.enterText(find.byType(TextField), 'ali');
+    await tester.pumpAndSettle();
+    expect(find.text('Ali Veli'), findsOneWidget);
+    expect(find.text('Zeynep Ak'), findsNothing);
+    expect(find.text('Çetin Su'), findsNothing);
   });
 
   testWidgets('görsellik ve öğretmen görüşü anahtarları parametre gönderir', (
@@ -189,6 +231,8 @@ void main() {
       onRequest: reqs.add,
     );
 
+    await tester.tap(find.text('Filtre'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Sadece görselli'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Öğretmen görüşü'));
@@ -207,6 +251,8 @@ void main() {
       onRequest: reqs.add,
     );
 
+    await tester.tap(find.text('Filtre'));
+    await tester.pumpAndSettle();
     await tester.tap(find.byIcon(Icons.sort));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Yayın yılı (yeni→eski)'));
@@ -224,10 +270,10 @@ void main() {
     await tester.tap(find.byIcon(Icons.view_agenda_outlined));
     await tester.pumpAndSettle();
 
-    // Raf modunda yatay, kontrollü bir ListView (kategori listesi kontrollü değil).
+    // Raf modunda iki satırlı, yatay, kontrollü bir GridView olur.
     final raf = find.byWidgetPredicate(
       (w) =>
-          w is ListView &&
+          w is GridView &&
           w.scrollDirection == Axis.horizontal &&
           w.controller != null,
     );

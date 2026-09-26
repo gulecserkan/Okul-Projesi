@@ -360,7 +360,7 @@ class UyeViewSet(viewsets.ModelViewSet):
         return Response(sonuc)
 
 class YazarViewSet(viewsets.ModelViewSet):
-    queryset = Yazar.objects.all()
+    queryset = Yazar.objects.order_by("ad_soyad")
     serializer_class = YazarSerializer
 
     def get_permissions(self):
@@ -1715,6 +1715,7 @@ class BookCatalogView(TemplateView):
         ctx["kategori_secili"] = kategori_id
         ctx["yazar_secili"] = yazar_ad
         ctx["filtre_var"] = bool(q or kategori_id or yazar_ad)
+        ctx["kurum"] = KurumAyarlari.get_solo()
         return ctx
 
 

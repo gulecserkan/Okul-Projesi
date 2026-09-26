@@ -30,6 +30,7 @@ from kutuphane_app.models import (
     Kategori,
     Kitap,
     KitapNusha,
+    KurumAyarlari,
     LoanPolicy,
     Uye,
     OduncKaydi,
@@ -1557,9 +1558,27 @@ class KatalogWebTests(TestCase):
 
     def test_filtre_secenekleri_ve_temizle(self):
         resp = self.client.get(reverse("katalog"), {"kategori": Kategori.objects.get(ad="Roman").id})
-        self.assertContains(resp, "Tüm kategoriler")
-        self.assertContains(resp, "yazar-list")
+        # Filtreler arama çubuğunda değil, yan panellerde sunulur (K11.1).
+        self.assertContains(resp, "Kategoriler")
+        self.assertContains(resp, "Yazarlar")
+        self.assertContains(resp, "Roman")
+        self.assertContains(resp, "Şiir")
+        self.assertContains(resp, "Victor Hugo")
         self.assertContains(resp, "Temizle")
+
+    def test_baslik_kurum_verisiyle_gelir(self):
+        kurum = KurumAyarlari.get_solo()
+        kurum.kutuphane_adi = "Atatürk İlkokulu Kütüphanesi"
+        kurum.okul_adi = "Atatürk İlkokulu"
+        kurum.save()
+        resp = self.client.get(reverse("katalog"))
+        self.assertContains(resp, "Atatürk İlkokulu Kütüphanesi")
+        self.assertContains(resp, "Atatürk İlkokulu")
+
+    def test_baslik_kurum_yoksa_varsayilan(self):
+        KurumAyarlari.objects.all().delete()
+        resp = self.client.get(reverse("katalog"))
+        self.assertContains(resp, "Kütüphane Kataloğu")
 
 
 @override_settings(MEDIA_ROOT=tempfile.mkdtemp())

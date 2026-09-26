@@ -4,6 +4,7 @@ import '../api/library_api.dart';
 import '../models/auth.dart';
 import '../models/book.dart';
 import 'book_inspect_screen.dart';
+import 'yazar_secim_screen.dart';
 
 /// K9: Üye (öğrenci/öğretmen) ekranı — salt-okunur.
 /// Kitaplarda gezinti/arama + kendi ödünç geçmişi + ceza bakiyesi.
@@ -38,6 +39,7 @@ enum _BrowseView { grid, shelf }
 
 class _UyeHomeScreenState extends State<UyeHomeScreen> {
   late final LibraryApiClient _api;
+  final _scaffoldKey = GlobalKey<ScaffoldState>();
   final _searchController = TextEditingController();
   final _gridController = ScrollController();
   final _shelfController = ScrollController();
@@ -108,6 +110,55 @@ class _UyeHomeScreenState extends State<UyeHomeScreen> {
       setState(() => _kategoriler = list);
     } catch (_) {
       // Kategori çipleri isteğe bağlı; yüklenemezse sessiz geç.
+    }
+  }
+
+  /// Yazarları getirir (önbelleğe alır); seçim ekranı bunu kullanır.
+  Future<List<Author>> _yazarlariGetir() async {
+    if (_yazarlar.isNotEmpty) return _yazarlar;
+    final list = await _api.fetchAuthors();
+    _yazarlar = list;
+    return list;
+  }
+
+  /// Çekmecedeki "Yazarlar" satırı → tam ekran yazar seçimi.
+  Future<void> _yazarSec() async {
+    final secim = await Navigator.of(context).push<YazarSecim>(
+      MaterialPageRoute(
+        builder: (_) => YazarSecimScreen(
+          yukleyici: _yazarlariGetir,
+          seciliId: _seciliYazarId,
+        ),
+      ),
+    );
+    if (!mounted || secim == null) return;
+    setState(() {
+      _seciliYazarId = secim.yazar?.id;
+      _yazarAdi = secim.yazar?.adSoyad;
+    });
+    _filtreSecVeKapat();
+  }
+
+  String? get _seciliKategoriAdi {
+    if (_seciliKategoriId == null) return null;
+    for (final k in _kategoriler) {
+      if (k.id == _seciliKategoriId) return k.ad;
+    }
+    return null;
+  }
+
+  String _sortEtiketi(_SortKey s) {
+    switch (s) {
+      case _SortKey.baslik:
+        return 'Başlık (A→Z)';
+      case _SortKey.baslikDesc:
+        return 'Başlık (Z→A)';
+      case _SortKey.yazar:
+        return 'Yazara göre';
+      case _SortKey.yayinYiliDesc:
+        return 'Yayın yılı (yeni→eski)';
+      case _SortKey.nushaDesc:
+        return 'Nüsha (çok→az)';
     }
   }
 
@@ -198,6 +249,12 @@ class _UyeHomeScreenState extends State<UyeHomeScreen> {
       _searchController.clear();
     });
     _resetBrowse();
+  }
+
+  /// Çekmeceden seçim yapılınca filtreyi uygular ve çekmeceyi kapatır.
+  void _filtreSecVeKapat() {
+    _resetBrowse();
+    Navigator.of(context).pop();
   }
 
   Future<void> _openBook(BookSummary b) async {
@@ -496,11 +553,21 @@ class _UyeHomeScreenState extends State<UyeHomeScreen> {
     return DefaultTabController(
       length: 3,
       child: Scaffold(
+        key: _scaffoldKey,
+        drawer: _buildFilterDrawer(),
         appBar: AppBar(
           toolbarHeight: 52,
           titleSpacing: 14,
+          automaticallyImplyLeading: false,
           title: _buildAppBarTitle(),
           actions: [
+            _actionButton(
+              icon: _filtreVar
+                  ? Icons.filter_alt
+                  : Icons.filter_alt_outlined,
+              label: 'Filtre',
+              onPressed: () => _scaffoldKey.currentState?.openDrawer(),
+            ),
             _actionButton(
               icon: Icons.key_outlined,
               label: 'Şifre',
@@ -553,7 +620,6 @@ class _UyeHomeScreenState extends State<UyeHomeScreen> {
             ),
           ),
         ),
-        _buildFilterBar(),
         if (_loadingBooks && _books.isEmpty)
           const Expanded(child: Center(child: CircularProgressIndicator()))
         else if (_booksError != null)
@@ -583,152 +649,156 @@ class _UyeHomeScreenState extends State<UyeHomeScreen> {
     );
   }
 
-  /// Kategori çipleri + filtre satırı (yazar, görsellik, görüş, sıralama, temizle).
-  Widget _buildFilterBar() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
-          child: SizedBox(
-            height: 36,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              children: [
-                ChoiceChip(
-                  label: const Text('Tümü'),
-                  selected: _seciliKategoriId == null,
-                  onSelected: (_) {
-                    setState(() => _seciliKategoriId = null);
-                    _resetBrowse();
-                  },
-                  visualDensity: VisualDensity.compact,
-                ),
-                for (final k in _kategoriler) ...[
-                  const SizedBox(width: 8),
-                  ChoiceChip(
-                    label: Text(k.ad),
-                    selected: _seciliKategoriId == k.id,
-                    onSelected: (_) {
-                      setState(() => _seciliKategoriId = k.id);
-                      _resetBrowse();
-                    },
-                    visualDensity: VisualDensity.compact,
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(12, 4, 12, 0),
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                ActionChip(
-                  avatar: const Icon(Icons.person_outline, size: 16),
-                  label: Text(_yazarAdi ?? 'Yazar'),
-                  onPressed: _showAuthorPicker,
-                  visualDensity: VisualDensity.compact,
-                ),
-                const SizedBox(width: 8),
-                FilterChip(
-                  avatar: const Icon(Icons.image_outlined, size: 16),
-                  label: const Text('Sadece görselli'),
-                  selected: _sadeceGorselli,
-                  onSelected: (v) {
-                    setState(() => _sadeceGorselli = v);
-                    _resetBrowse();
-                  },
-                  visualDensity: VisualDensity.compact,
-                ),
-                const SizedBox(width: 8),
-                FilterChip(
-                  avatar: const Icon(Icons.school_outlined, size: 16),
-                  label: const Text('Öğretmen görüşü'),
-                  selected: _goruslu,
-                  onSelected: (v) {
-                    setState(() => _goruslu = v);
-                    _resetBrowse();
-                  },
-                  visualDensity: VisualDensity.compact,
-                ),
-                const SizedBox(width: 8),
-                PopupMenuButton<_SortKey>(
-                  tooltip: 'Sırala',
-                  icon: const Icon(Icons.sort, size: 20),
-                  initialValue: _sort,
-                  onSelected: (v) {
-                    setState(() => _sort = v);
-                    _resetBrowse();
-                  },
-                  itemBuilder: (context) => const [
-                    PopupMenuItem(
-                      value: _SortKey.baslik,
-                      child: Text('Başlık (A→Z)'),
-                    ),
-                    PopupMenuItem(
-                      value: _SortKey.baslikDesc,
-                      child: Text('Başlık (Z→A)'),
-                    ),
-                    PopupMenuItem(
-                      value: _SortKey.yazar,
-                      child: Text('Yazara göre'),
-                    ),
-                    PopupMenuItem(
-                      value: _SortKey.yayinYiliDesc,
-                      child: Text('Yayın yılı (yeni→eski)'),
-                    ),
-                    PopupMenuItem(
-                      value: _SortKey.nushaDesc,
-                      child: Text('Nüsha (çok→az)'),
-                    ),
-                  ],
-                ),
-                if (_filtreVar) ...[
-                  const SizedBox(width: 4),
-                  TextButton.icon(
-                    onPressed: _clearFilters,
-                    icon: const Icon(Icons.filter_alt_off_outlined, size: 18),
-                    label: const Text('Temizle'),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ),
-      ],
+  /// Sol taraftan açılan, otomatik gizlenen kitap filtre çekmecesi.
+  ///
+  /// Kategoriler ve yazarlar birer açılır bölümdür (dokununca aç/kapan);
+  /// seçim yapılınca çekmece kapanır ve kitap listesi yenilenir.
+  Widget _drawerSecim({
+    required String etiket,
+    required bool secili,
+    required VoidCallback onTap,
+  }) {
+    final scheme = Theme.of(context).colorScheme;
+    return ListTile(
+      dense: true,
+      contentPadding: const EdgeInsets.only(left: 20, right: 12),
+      title: Text(etiket, overflow: TextOverflow.ellipsis),
+      selected: secili,
+      trailing: secili
+          ? Icon(Icons.check, size: 18, color: scheme.primary)
+          : null,
+      onTap: onTap,
     );
   }
 
-  Future<void> _showAuthorPicker() async {
-    if (_yazarlar.isEmpty) {
-      try {
-        final list = await _api.fetchAuthors();
-        if (!mounted) return;
-        setState(() => _yazarlar = list);
-      } catch (e) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Yazarlar yüklenemedi: $e')));
-        return;
-      }
-    }
-    if (!mounted) return;
-    final secilen = await showModalBottomSheet<Author>(
-      context: context,
-      showDragHandle: true,
-      isScrollControlled: true,
-      builder: (context) => _AuthorPickerSheet(authors: _yazarlar),
+  Widget _buildFilterDrawer() {
+    final scheme = Theme.of(context).colorScheme;
+
+    return Drawer(
+      child: SafeArea(
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 8, 8),
+              child: Row(
+                children: [
+                  Icon(Icons.tune, color: scheme.primary),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Kitap Filtreleri',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                    ),
+                  ),
+                  if (_filtreVar)
+                    TextButton(
+                      onPressed: _clearFilters,
+                      child: const Text('Temizle'),
+                    ),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+            ExpansionTile(
+              leading: const Icon(Icons.category_outlined),
+              title: const Text('Kategoriler'),
+              subtitle: Text(_seciliKategoriAdi ?? 'Tümü'),
+              childrenPadding: const EdgeInsets.only(bottom: 4),
+              children: [
+                _drawerSecim(
+                  etiket: 'Tümü',
+                  secili: _seciliKategoriId == null,
+                  onTap: () {
+                    setState(() => _seciliKategoriId = null);
+                    _filtreSecVeKapat();
+                  },
+                ),
+                for (final k in _kategoriler)
+                  _drawerSecim(
+                    etiket: k.ad,
+                    secili: _seciliKategoriId == k.id,
+                    onTap: () {
+                      setState(() => _seciliKategoriId = k.id);
+                      _filtreSecVeKapat();
+                    },
+                  ),
+                if (_kategoriler.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.all(16),
+                    child: Text('Kategori bulunamadı.'),
+                  ),
+              ],
+            ),
+            ListTile(
+              leading: const Icon(Icons.person_outline),
+              title: const Text('Yazarlar'),
+              subtitle: Text(_yazarAdi ?? 'Tümü'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: _yazarSec,
+            ),
+            const Divider(height: 1),
+            SwitchListTile(
+              secondary: const Icon(Icons.image_outlined),
+              title: const Text('Sadece görselli'),
+              value: _sadeceGorselli,
+              onChanged: (v) {
+                setState(() => _sadeceGorselli = v);
+                _resetBrowse();
+              },
+            ),
+            SwitchListTile(
+              secondary: const Icon(Icons.school_outlined),
+              title: const Text('Öğretmen görüşü'),
+              value: _goruslu,
+              onChanged: (v) {
+                setState(() => _goruslu = v);
+                _resetBrowse();
+              },
+            ),
+            PopupMenuButton<_SortKey>(
+              tooltip: 'Sırala',
+              initialValue: _sort,
+              onSelected: (v) {
+                setState(() => _sort = v);
+                _resetBrowse();
+              },
+              itemBuilder: (context) => const [
+                PopupMenuItem(
+                  value: _SortKey.baslik,
+                  child: Text('Başlık (A→Z)'),
+                ),
+                PopupMenuItem(
+                  value: _SortKey.baslikDesc,
+                  child: Text('Başlık (Z→A)'),
+                ),
+                PopupMenuItem(
+                  value: _SortKey.yazar,
+                  child: Text('Yazara göre'),
+                ),
+                PopupMenuItem(
+                  value: _SortKey.yayinYiliDesc,
+                  child: Text('Yayın yılı (yeni→eski)'),
+                ),
+                PopupMenuItem(
+                  value: _SortKey.nushaDesc,
+                  child: Text('Nüsha (çok→az)'),
+                ),
+              ],
+              child: ListTile(
+                leading: const Icon(Icons.sort),
+                title: const Text('Sıralama'),
+                subtitle: Text(_sortEtiketi(_sort)),
+                trailing: const Icon(Icons.arrow_drop_down),
+              ),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
     );
-    if (secilen == null || !mounted) return;
-    setState(() {
-      _seciliYazarId = secilen.id;
-      _yazarAdi = secilen.adSoyad;
-    });
-    _resetBrowse();
   }
 
   Widget _buildResultHeader() {
@@ -799,33 +869,31 @@ class _UyeHomeScreenState extends State<UyeHomeScreen> {
     );
   }
 
+  /// Yatay raf: kartlar **iki satır** hâlinde, yatay kayar ızgara.
   Widget _buildShelfList() {
-    return ListView.builder(
+    return GridView.builder(
       controller: _shelfController,
       scrollDirection: Axis.horizontal,
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 90),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        mainAxisExtent: 148,
+        crossAxisSpacing: 12,
+        mainAxisSpacing: 12,
+      ),
       itemCount: _books.length + (_hasMore ? 1 : 0),
       itemBuilder: (context, i) {
         if (i >= _books.length) {
-          return const Padding(
-            padding: EdgeInsets.all(24),
-            child: Center(
-              child: SizedBox(
-                width: 24,
-                height: 24,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              ),
+          return const Center(
+            child: SizedBox(
+              width: 24,
+              height: 24,
+              child: CircularProgressIndicator(strokeWidth: 2),
             ),
           );
         }
         final b = _books[i];
-        return Padding(
-          padding: const EdgeInsets.only(right: 12),
-          child: SizedBox(
-            width: 140,
-            child: _BookShelfCard(book: b, onTap: () => _openBook(b)),
-          ),
-        );
+        return _BookShelfCard(book: b, onTap: () => _openBook(b));
       },
     );
   }
@@ -1078,12 +1146,16 @@ class _BookShelfCard extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
       child: Column(
-        mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          AspectRatio(
-            aspectRatio: 3 / 4,
-            child: _BookCover(book: book),
+          Expanded(
+            child: Align(
+              alignment: Alignment.topCenter,
+              child: AspectRatio(
+                aspectRatio: 3 / 4,
+                child: _BookCover(book: book),
+              ),
+            ),
           ),
           const SizedBox(height: 4),
           Text(
@@ -1209,83 +1281,3 @@ class _BookCover extends StatelessWidget {
   }
 }
 
-/// Yazar filtresi için arama kutulu alt panel.
-class _AuthorPickerSheet extends StatefulWidget {
-  const _AuthorPickerSheet({required this.authors});
-
-  final List<Author> authors;
-
-  @override
-  State<_AuthorPickerSheet> createState() => _AuthorPickerSheetState();
-}
-
-class _AuthorPickerSheetState extends State<_AuthorPickerSheet> {
-  String _q = '';
-
-  @override
-  Widget build(BuildContext context) {
-    final q = _q.toLowerCase();
-    final filtered = widget.authors
-        .where((a) => a.adSoyad.toLowerCase().contains(q))
-        .toList();
-    return Padding(
-      padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).viewInsets.bottom,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-            child: Row(
-              children: [
-                Text(
-                  'Yazar seç',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const Spacer(),
-                IconButton(
-                  icon: const Icon(Icons.close),
-                  onPressed: () => Navigator.of(context).pop(),
-                ),
-              ],
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-            child: TextField(
-              autofocus: true,
-              onChanged: (v) => setState(() => _q = v),
-              decoration: const InputDecoration(
-                hintText: 'Yazar ara...',
-                prefixIcon: Icon(Icons.search),
-                border: OutlineInputBorder(),
-                isDense: true,
-              ),
-            ),
-          ),
-          Flexible(
-            child: ListView(
-              shrinkWrap: true,
-              children: [
-                for (final a in filtered)
-                  ListTile(
-                    dense: true,
-                    title: Text(a.adSoyad),
-                    onTap: () => Navigator.of(context).pop(a),
-                  ),
-                if (filtered.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.all(24),
-                    child: Center(child: Text('Eşleşen yazar yok')),
-                  ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}

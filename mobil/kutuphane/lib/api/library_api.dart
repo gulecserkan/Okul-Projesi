@@ -41,6 +41,9 @@ class LibraryApiClient {
   final String _baseUrl;
   AuthTokens? _tokens;
 
+  /// Aynı anda birden çok 401 gelirse tek bir yenileme çalıştırmak için.
+  Future<bool>? _refreshing;
+
   /// Yetkili bir istek 401 döndüğünde çağrılır (oturum süresi doldu).
   final void Function()? onUnauthorized;
 
@@ -189,19 +192,20 @@ class LibraryApiClient {
   }) async {
     _ensureAuthorized();
     final uri = _uri("/api/change-password/");
-    final response = await _client.post(
-      uri,
-      headers: _headers(),
-      body: jsonEncode({
-        "current_password": currentPassword,
-        "new_password": newPassword,
-        "new_password_confirm": newPasswordConfirm,
-      }),
+    final response = await _withAuthRetry(
+      () => _client.post(
+        uri,
+        headers: _headers(),
+        body: jsonEncode({
+          "current_password": currentPassword,
+          "new_password": newPassword,
+          "new_password_confirm": newPasswordConfirm,
+        }),
+      ),
     );
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return;
     }
-    _maybeNotifyUnauthorized(response);
     _throwError(response);
   }
 
@@ -284,27 +288,26 @@ class LibraryApiClient {
     _ensureAuthorized();
     final uri = _uri("/api/kitaplar/$id/");
 
-    // 1) Resim yükleme varsa multipart
+    // 1) Resim yükleme varsa multipart (401'de istek yeniden kurulup denenir)
     if (imageFile != null) {
-      final request = http.MultipartRequest("PATCH", uri);
-      request.headers.addAll(_headers(jsonBody: false, authorized: true));
-
-      if (aciklama != null) {
-        request.fields["aciklama"] = aciklama;
-      }
       final slot = imageSlot.clamp(1, 5);
       final fieldName = "resim$slot";
-      request.files.add(
-        await http.MultipartFile.fromPath(fieldName, imageFile.path),
-      );
-
-      final streamed = await request.send();
-      final response = await http.Response.fromStream(streamed);
+      final response = await _withAuthRetry(() async {
+        final request = http.MultipartRequest("PATCH", uri);
+        request.headers.addAll(_headers(jsonBody: false, authorized: true));
+        if (aciklama != null) {
+          request.fields["aciklama"] = aciklama;
+        }
+        request.files.add(
+          await http.MultipartFile.fromPath(fieldName, imageFile.path),
+        );
+        final streamed = await request.send();
+        return http.Response.fromStream(streamed);
+      });
       if (response.statusCode >= 200 && response.statusCode < 300) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
         return BookDetail.fromJson(data);
       }
-      _maybeNotifyUnauthorized(response);
       _throwError(response);
       throw ApiException("Kitap güncellenemedi");
     }
@@ -317,17 +320,14 @@ class LibraryApiClient {
       body["resim$slot"] = null;
     }
 
-    final response = await _client.patch(
-      uri,
-      headers: _headers(),
-      body: jsonEncode(body),
+    final response = await _withAuthRetry(
+      () => _client.patch(uri, headers: _headers(), body: jsonEncode(body)),
     );
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
       final data = jsonDecode(response.body) as Map<String, dynamic>;
       return BookDetail.fromJson(data);
     }
-    _maybeNotifyUnauthorized(response);
     _throwError(response);
     throw ApiException("Kitap güncellenemedi");
   }
@@ -345,10 +345,25 @@ class LibraryApiClient {
   }) async {
     _ensureAuthorized();
     final uri = _uri(path, query);
-    final response = await _client.get(
-      uri,
-      headers: _headers(jsonBody: false, authorized: true),
+    final response = await _withAuthRetry(
+      () => _client.get(uri, headers: _headers(jsonBody: false, authorized: true)),
     );
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return response;
+    }
+    _throwError(response);
+    throw ApiException("İstek başarısız");
+  }
+
+  /// 401 alınca refresh token ile bir kez yenileyip isteği tekrarlar.
+  /// Yenileme de başarısızsa oturumu bitirir (`onUnauthorized`).
+  Future<http.Response> _withAuthRetry(
+    Future<http.Response> Function() send,
+  ) async {
+    var response = await send();
+    if (response.statusCode == 401 && await _tryRefresh()) {
+      response = await send();
+    }
     if (response.statusCode == 401) {
       onUnauthorized?.call();
       throw ApiException(
@@ -356,11 +371,21 @@ class LibraryApiClient {
         statusCode: 401,
       );
     }
-    if (response.statusCode >= 200 && response.statusCode < 300) {
-      return response;
-    }
-    _throwError(response);
-    throw ApiException("İstek başarısız");
+    return response;
+  }
+
+  /// Refresh token ile erişim token'ını yeniler. Eşzamanlı çağrılar tek
+  /// yenilemeyi paylaşır; başarısızsa false döner.
+  Future<bool> _tryRefresh() {
+    final refresh = _tokens?.refreshToken ?? "";
+    if (refresh.isEmpty) return Future.value(false);
+    return _refreshing ??= refreshToken(refresh).then((_) {
+      return true;
+    }).catchError((Object _) {
+      return false;
+    }).whenComplete(() {
+      _refreshing = null;
+    });
   }
 
   Map<String, String> _headers({
@@ -394,12 +419,6 @@ class LibraryApiClient {
   void _ensureAuthorized() {
     if (_tokens == null || _tokens!.accessToken.isEmpty) {
       throw ApiException("Kimlik doğrulaması gerekiyor", statusCode: 401);
-    }
-  }
-
-  void _maybeNotifyUnauthorized(http.Response response) {
-    if (response.statusCode == 401) {
-      onUnauthorized?.call();
     }
   }
 

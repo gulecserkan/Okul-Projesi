@@ -4,9 +4,29 @@ Bu proje [Semantic Versioning](https://semver.org/) benzeri bir düzen kullanır
 `MAJOR.MINOR.PATCH`. Yayınlar git etiketiyle (`vX.Y.Z`) işaretlenir ve
 sunucuya yalnızca etiketli sürümler gönderilir (bkz. `docs/DEPLOY_CLOUD.md`).
 
-## [Unreleased]
+## [1.1.10] — 2026-09-27
 
-- (geliştirme sürüyor)
+Web katalog yenilendi, üye kitap gezintisi elden geçirildi ve oturum süresi
+hatası düzeltildi. Mobil sürüm **1.1.6** (`surumKodu` 3) olarak yayınlandı.
+
+- **Yazar seçimi (K9.9):** çok uzun yazar listesi çekmeceden çıkarılıp **tam ekran
+  "Yazar seç" ekranına** taşındı: Türkçe alfabetik gruplar, sabit harf başlıkları,
+  sağ kenarda **A–Z şeridi** (dokun/kaydır ile atlama) ve arama. API yazarları
+  artık alfabetik döndürür (`YazarViewSet`).
+- **Genel web katalog (K11.1):** kategori ve yazar filtreleri arama çubuğundan
+  **yan panellere** taşındı (kategoriler solda, yazarlar sağda; dikey kayan,
+  seçili vurgulu bağlantı listeleri). Dar ekranda paneller gizlenir ve
+  kenardan açılan **çekmece** olur. Arama çubuğu genişledi; başlık/üst alan
+  **kurum verisiyle** (`KurumAyarlari`: kütüphane adı, okul adı, logo) doldurulur.
+- **Üye kitap gezintisi (K9.9):** kategori/yazar filtreleri kitap alanını daraltan
+  çip satırından **sol taraftan açılan otomatik gizlenen çekmeceye** taşındı
+  (Kategoriler ve Yazarlar dokununca açılıp kapanan bölümler). Liste görünümü
+  **iki satırlı yatay ızgaraya** çevrildi; kapak ızgarası aynı kaldı.
+- **Oturum süresi hatası düzeltildi (K9.11):** access token ömrü 15 dk, refresh
+  30 gün (`settings.SIMPLE_JWT`). Mobil istemci 401'de refresh ile otomatik
+  yenileyip isteği tekrarlar (önceden 5 dk'da bir zorla çıkış yapıyordu).
+  "Beni hatırla" kapalı süresi 12 saat → **15 dk** (kurala uygun). Arka plana
+  alınınca "son aktiflik" güncellenir.
 
 ## [1.1.9] — 2026-09-26
 
