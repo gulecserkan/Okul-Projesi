@@ -274,13 +274,17 @@ makinesi dışında kütüphane bilgisayarında da aynı kurulu paket çalışı
 | K14.9 | Fiş ve etiket **aynı termal yazıcıya** atanmışsa "hangi rulo takılı" durumu tutulur (`tanimsiz`/`fiş`/`etiket`); durum üst çubukta **kalıcı çip** olarak görünür. İstenen türle uyuşmayan (veya `tanimsiz`) basım **onay diyaloğu** gerektirir: «X rulosu taktım → yazdır» (durumu günceller) / «Vazgeç»; yazıcı pasifse «Yine de dene» / «Vazgeç». Farklı yazıcılar atanmışsa onay/gösterge görünmez | `rulo_durum.dart` + `home_screen.dart` çipi + basım kancaları |
 | K14.10 | A4 çıktısı üç yola gider: (1) Ayarlar'da seçili **A4 kuyruğu hazırsa** `lp` ile basım; (2) A4 **"Dosyaya yaz (PDF)"** modundaysa `file_selector` ile dosya kaydedilir; (3) A4 kuyruğu **boş seçili/pasif** ise otomatik dosya kaydetme diyaloğuna düşer (yazıcı yoksa iş bloke olmaz) | `print_helpers.dart` `a4Bas` + `settings_screen.dart` |
 | K14.11 | Termal rulo beslemesi **cihazın kendi sensör kalibrasyonuna bırakılır**: program `PaperType`/`GapsHeight` gibi kağıt tipi/boşluk parametrelerini job'a (`lp -o`) ya da kuyruk varsayılanına (`lpadmin`) **göndermez**. Gerekçe: 4B-2074C gibi yazıcılar `SIZE`/`GAP` değerlerini kendi belleğine yazar ve kalibrasyonla ölçtüğü gerçek değerle besler; zorlama kaymalı/yarım etiket ve sürekli besleme hatası üretir (ve kalibrasyon sonrası fiş basımı bozulabilir). Basımda yalnız PDF sayfa ölçüsü (`-o media=Custom.WxH`) verilir. **Rulo ölçüleri ayarlardan değiştirilebilir** (etiket genişlik/yükseklik, fiş genişliği) ve yalnız PDF içerik yerleşiminde kullanılır; ilk "Etiket rulosu taktım" seçiminde ölçü kurulum diyaloğu sorulur. Kayma/boşluk hatasında kullanıcı yazıcı kılavuzundaki **gap/black-mark sensör kalibrasyonuna** yönlendirilir (Ayarlar›Yazıcılar›Termal rulo bilgi kutusu) | `rulo_durum.dart` + `printer_service.dart` `printPdf` + `settings_screen.dart` |
+| K14.12 | **Fiş/etiket içerik editörü:** hangi satırların basılacağını kullanıcı belirler. Her fiş sahnesi (ödünç, iade, şifre, borcu yoktur, ceza) ve etiket için alan listesi vardır; alan **açılır/kapanır** (zorunlu alanlar kilitli) ve **yeniden sıralanabilir**. Tercihler **yereldir** (`config.json` → `sablon`; tek kütüphane bilgisayarı varsayımı, backend değişmez). **Zorunlu alanlar:** fişlerde unvan + öğrenci; ödünç/iade'de kitap + barkod; şifre fişinde kullanıcı adı + şifre; borcu yoktur'da aktif ödünç + "borcu yoktur"; cezada tutar; etikette barkod (metin + çubuk). Bir alan kapanırsa ona ait **ayraç çizgisi de** kapanır. Fiş/etiket **kenar boşluğu (mm)** de ayarlanabilir (0–8; etikette barkod çubuğu daralır). Basım ve önizleme **aynı satır listesinden** beslenir: önizleme yapısaldır, doğruluk "Test bas" iledir | `printing/sablon.dart` + `receipt_pdf.dart`/`label_pdf.dart` (satır `kod` etiketi) + `config.dart` `BasimSablonu` + `sablon_editor_screen.dart` |
 
 Test: `PrinterServiceTests` (InMemory runner ile `lpstat` ayrıştırma, `lp` çağrısı ve
 kağıt tipi parametresi gönderilmemesi, yazıcı yoksa hata), `ReceiptPdfTests` (tür bazlı
 içerik + `%PDF` başı), `LabelPdfTests`
 (Code-128 sağlama/bitler, PDF başı), `RuloDurumTests` (ortak yazıcı tespiti, durum üretimi,
 onay diyaloğu, `lpadmin`/`lpoptions` çağrılmaması), `A4BasTests` (dosya/kuyruk
-yolları), Ayarlar "Yazıcılar" widget testi (kuyruk listesi + durum + test et + rulo bölümü).
+yolları), `BasimSablonTests` (varsayılan şablon = eski çıktı, kapalı alan ayracıyla birlikte
+gider, zorunlu alan kilidi, kenar boşluğu yüksekliği, JSON round-trip + eski config uyumu),
+Ayarlar "Yazıcılar" widget testi (kuyruk listesi + durum + test et + rulo bölümü) ve
+Ayarlar "Basım Şablonları" sekmesi (sahne geçişi + alan anahtarı + test bas).
 
 ### 4B-2074C termal yazıcı kalibrasyonu (destek notu)
 

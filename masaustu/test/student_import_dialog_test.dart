@@ -185,4 +185,33 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Öğrenci Aktarımı'), findsNothing);
   });
+
+  testWidgets('ayarlar: "Basım Şablonları" sekmesi her rol için açık',
+      (tester) async {
+    final eski = AppConfig.session;
+    addTearDown(() => AppConfig.session = eski);
+    tester.view.physicalSize = const Size(1400, 1100);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    AppConfig.session = const Session(
+        accessToken: 't', refreshToken: 'r', username: 'p', role: 'personel');
+    await tester.pumpWidget(
+      const MaterialApp(home: Scaffold(body: SettingsScreen())),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Basım Şablonları'), findsOneWidget);
+
+    await tester.tap(find.text('Basım Şablonları'));
+    await tester.pumpAndSettle();
+    // sahne seçici + alan anahtarları görünür
+    expect(find.text('Ödünç Fişi'), findsOneWidget);
+    expect(find.text('Sınıf'), findsOneWidget);
+    expect(find.text('Test bas'), findsOneWidget);
+    // zorunlu alan kilitli (anahtarı devre dışı)
+    final kilitli = tester.widget<SwitchListTile>(
+        find.widgetWithText(SwitchListTile, 'Fiş başlığı'));
+    expect(kilitli.onChanged, isNull);
+  });
 }

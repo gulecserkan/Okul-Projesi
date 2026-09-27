@@ -162,6 +162,107 @@ class AppConfig {
     }
     _write(data);
   }
+
+  /// Fiş/etiket içerik editörü tercihleri (yerel; K14.12).
+  static BasimSablonu get sablon {
+    final data = _read();
+    final s = data['sablon'];
+    return s is Map<String, dynamic>
+        ? BasimSablonu.fromJson(s)
+        : const BasimSablonu();
+  }
+
+  static set sablon(BasimSablonu s) {
+    final data = _read();
+    data['sablon'] = s.toJson();
+    _write(data);
+  }
+}
+
+/// Bir alanın açık/kapalı durumu (sıra `sahne` listesindeki konumu belirler).
+class SahneAlanDurumu {
+  final String kod;
+  final bool acik;
+
+  const SahneAlanDurumu(this.kod, {this.acik = true});
+
+  Map<String, dynamic> toJson() => {'kod': kod, 'acik': acik};
+
+  factory SahneAlanDurumu.fromJson(Map<String, dynamic> json) =>
+      SahneAlanDurumu((json['kod'] as String?) ?? '', acik: json['acik'] != false);
+}
+
+/// Fiş/etiket içerik editörü tercihleri (K14.12).
+///
+/// Alan listesi ve zorunluluk bilgisi `printing/sablon.dart` kataloğundadır;
+/// burada yalnız kullanıcının seçimi ve kenar boşlukları tutulur. Bilinmeyen
+/// alan kodları yok sayılır, eksik alanlar varsayılan (kapalı) sıraya eklenir.
+class BasimSablonu {
+  /// Sahne/etiket başına alan durumları: `odunc`, `iade`, `sifre`,
+  /// `borcuYoktur`, `ceza`, `etiket`.
+  final Map<String, List<SahneAlanDurumu>> alanlar;
+
+  /// Fiş/etiket kenar boşluğu (mm) — PDF içeriğinin kenar payı.
+  final double fisKenarMm;
+  final double etiketKenarMm;
+
+  const BasimSablonu({
+    this.alanlar = const {},
+    this.fisKenarMm = 3,
+    this.etiketKenarMm = 3,
+  });
+
+  /// Kenar boşluğu sınırları (mm) — daha büyük değer içeriği taşırır.
+  static const double kenarMinMm = 0;
+  static const double kenarMaxMm = 8;
+
+  /// Bir sahnenin alan durumları (yoksa boş liste → varsayılan kullanılır).
+  List<SahneAlanDurumu> alan(String sahne) =>
+      alanlar[sahne] ?? const <SahneAlanDurumu>[];
+
+  BasimSablonu copyWith({
+    Map<String, List<SahneAlanDurumu>>? alanlar,
+    double? fisKenarMm,
+    double? etiketKenarMm,
+  }) =>
+      BasimSablonu(
+        alanlar: alanlar ?? this.alanlar,
+        fisKenarMm: fisKenarMm ?? this.fisKenarMm,
+        etiketKenarMm: etiketKenarMm ?? this.etiketKenarMm,
+      );
+
+  Map<String, dynamic> toJson() => {
+        'alanlar': alanlar.map((k, v) => MapEntry(k, v.map((a) => a.toJson()).toList())),
+        'fis_kenar_mm': fisKenarMm,
+        'etiket_kenar_mm': etiketKenarMm,
+      };
+
+  factory BasimSablonu.fromJson(Map<String, dynamic> json) {
+    final alanlar = <String, List<SahneAlanDurumu>>{};
+    final ham = json['alanlar'];
+    if (ham is Map<String, dynamic>) {
+      for (final entry in ham.entries) {
+        final liste = entry.value;
+        if (liste is List) {
+          alanlar[entry.key] = liste
+              .whereType<Map<String, dynamic>>()
+              .map(SahneAlanDurumu.fromJson)
+              .where((a) => a.kod.isNotEmpty)
+              .toList();
+        }
+      }
+    }
+    double kenar(Object? v, double sabit) {
+      final d = (v as num?)?.toDouble() ?? sabit;
+      return d.clamp(kenarMinMm, kenarMaxMm);
+    }
+
+    return BasimSablonu(
+      alanlar: alanlar,
+      fisKenarMm: kenar(json['fis_kenar_mm'], 3),
+      etiketKenarMm: kenar(json['etiket_kenar_mm'], 3),
+    );
+  }
 }
 
 /// Fiş/etiket yazdırma ayarları (yerel; her bilgisayarda kendi donanımı).

@@ -42,6 +42,13 @@ PDF rapor fazı (aşağıda §3) ileride genişletilebilir.
   `docs/IS_KURALLARI.md` (4B-2074C destek notu).
 - [x] **A4 "Dosyaya yaz" (K14.10):** `a4Bas` rotası — seçili A4 kuyruğu hazırsa `lp`,
   "Dosyaya yaz (PDF)" veya boş/pasif kuyrukta dosya kaydetme diyaloğu.
+- [x] **Fiş/etiket içerik editörü (K14.12):** Ayarlar›Basım Şablonları — altı sahne
+  (beş fiş + etiket), alan aç/kapa (zorunlu alanlar kilitli), sıralama, fiş/etiket
+  kenar boşluğu, yapısal önizleme ve "Test bas". Tercihler yerel (`config.json` →
+  `sablon`); `masaustu/lib/printing/sablon.dart` + `sablon_editor_screen.dart`.
+  Etiket PDF'i `LabelElement` listesine, fiş satırları `kod` etiketine geçirildi;
+  alt bilgi `take(2)` kısıtı kaldırıldı (adres/telefon/e-posta/web ayrı alan).
+  Sıradaki: fiş rulosu alınınca donanım testi.
 
 ## 2. Gerçek Bildirimler (ertelendi)
 

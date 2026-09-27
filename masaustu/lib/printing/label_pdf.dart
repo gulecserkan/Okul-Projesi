@@ -3,6 +3,7 @@ import 'package:pdf/widgets.dart' as pw;
 
 import '../config.dart';
 import 'print_fonts.dart';
+import 'sablon.dart';
 
 /// Code-128 (Set B) desenleri — eski `kutuphane_desktop/printing/label_maker_qt.py`
 /// referansından taşındı (K14.4).
@@ -57,29 +58,130 @@ int _totalModules(List<int> codes) {
   return total;
 }
 
+/// Etiket öğesi tipi (K14.12).
+enum LabelTip { metin, bosluk, barkod }
+
+/// Tek etiket öğesi. Basım ve önizleme aynı listeden beslenir; `kod` alanın
+/// şablon anahtarıdır (boşsa koşulsuz basılır).
+class LabelElement {
+  final String kod;
+  final String text;
+  final double size;
+  final bool bold;
+  final int maxLines;
+  final double bosluk;
+  final LabelTip tip;
+  final bool center;
+
+  const LabelElement.metin(
+    this.kod,
+    this.text, {
+    this.size = 8,
+    this.bold = false,
+    this.maxLines = 1,
+    this.bosluk = 1,
+    this.center = false,
+  }) : tip = LabelTip.metin;
+
+  const LabelElement.bosluk({this.kod = '', this.bosluk = 4})
+      : text = '',
+        size = 0,
+        bold = false,
+        maxLines = 1,
+        tip = LabelTip.bosluk,
+        center = false;
+
+  const LabelElement.barkod(this.kod, this.text)
+      : size = 0,
+        bold = false,
+        maxLines = 1,
+        bosluk = 0,
+        tip = LabelTip.barkod,
+        center = false;
+
+  /// Yapısal önizleme için okunabilir metin (K14.12).
+  String get onizlemeMetni => switch (tip) {
+        LabelTip.barkod => '▌▌▌▌▌▌  $text  ▌▌▌▌▌▌',
+        LabelTip.bosluk => '',
+        LabelTip.metin => text,
+      };
+}
+
 /// Etiket PDF üretimi (K14.4). `genislikMm`/`yukseklikMm` verilmezse
 /// varsayılan 57×40 mm (K14.8) kullanılır; ayarlardan değiştirilebilir.
+/// `kenar` içerik kenar boşluğudur (K14.12, 0–8 mm).
 class LabelPdf {
   static const double mm = PdfPageFormat.mm;
   static const double genislikMm = 57;
   static const double yukseklikMm = 40;
   static const double kenarMm = 3;
 
-  static Future<List<int>> render({
+  /// Etiket öğeleri (varsayılan sıra = bugünkü çıktı sırası).
+  static List<LabelElement> etiketElemanlari({
     required KurumBilgisi kurum,
     required String baslik,
     required String yazar,
     required String kategori,
     required String barkodMetni,
+  }) {
+    return [
+      if (kurum.baslik.trim().isNotEmpty)
+        LabelElement.metin('kurumBasligi', kurum.baslik.trim(),
+            size: 8, bold: true, bosluk: 2),
+      LabelElement.metin('baslik', baslik.trim(), size: 12, bold: true, maxLines: 2, bosluk: 2),
+      if (yazar.trim().isNotEmpty)
+        LabelElement.metin('yazar', yazar.trim(), bosluk: 1),
+      if (kategori.trim().isNotEmpty)
+        LabelElement.metin('kategori', kategori.trim(), bosluk: 3),
+      LabelElement.metin('barkodMetni', barkodMetni.trim(),
+          size: 10, bold: true, bosluk: 2),
+      const LabelElement.bosluk(bosluk: 4),
+      LabelElement.barkod('barkodCubugu', barkodMetni.trim()),
+    ];
+  }
+
+  /// Şablona göre öğe süzme/sıralama (K14.12).
+  static List<LabelElement> sablonla(
+      List<LabelElement> elements, BasimSablonu sablon) {
+    return Sablon.sirala(elements, Sahne.etiket.kod, sablon,
+        kod: (e) => e.kod);
+  }
+
+  static Future<List<int>> render(
+    List<LabelElement> elements, {
     double? genislikMm,
     double? yukseklikMm,
+    double kenar = kenarMm,
   }) async {
     final regular = await PrintFonts.regular();
     final bold = await PrintFonts.bold();
 
     final w = (genislikMm ?? LabelPdf.genislikMm) * mm;
     final h = (yukseklikMm ?? LabelPdf.yukseklikMm) * mm;
-    final margin = kenarMm * mm;
+    final k = kenar.clamp(0.0, 20.0);
+    final margin = k * mm;
+    final icMm = ((genislikMm ?? LabelPdf.genislikMm) - 2 * k).clamp(10.0, 500.0);
+
+    final children = <pw.Widget>[];
+    for (final e in elements) {
+      switch (e.tip) {
+        case LabelTip.bosluk:
+          children.add(pw.SizedBox(height: e.bosluk));
+        case LabelTip.barkod:
+          children.add(_BarcodeView(e.text, icMm: icMm));
+        case LabelTip.metin:
+          children.add(pw.Container(
+            margin: pw.EdgeInsets.only(bottom: e.bosluk),
+            alignment:
+                e.center ? pw.Alignment.center : pw.Alignment.centerLeft,
+            child: pw.Text(e.text,
+                maxLines: e.maxLines,
+                overflow: pw.TextOverflow.clip,
+                style: pw.TextStyle(
+                    font: e.bold ? bold : regular, fontSize: e.size)),
+          ));
+      }
+    }
 
     final doc = pw.Document();
     doc.addPage(pw.Page(
@@ -87,40 +189,7 @@ class LabelPdf {
       build: (_) => pw.Column(
         crossAxisAlignment: pw.CrossAxisAlignment.start,
         mainAxisSize: pw.MainAxisSize.min,
-        children: [
-          if (kurum.baslik.trim().isNotEmpty)
-            pw.Container(
-              margin: const pw.EdgeInsets.only(bottom: 2),
-              child: pw.Text(kurum.baslik.trim(),
-                  style: pw.TextStyle(font: bold, fontSize: 8)),
-            ),
-          pw.Container(
-            margin: const pw.EdgeInsets.only(bottom: 2),
-            child: pw.Text(baslik.trim(),
-                maxLines: 2,
-                style: pw.TextStyle(font: bold, fontSize: 12)),
-          ),
-          if (yazar.trim().isNotEmpty)
-            pw.Container(
-              margin: const pw.EdgeInsets.only(bottom: 1),
-              child: pw.Text(yazar.trim(),
-                  style: pw.TextStyle(font: regular, fontSize: 8)),
-            ),
-          if (kategori.trim().isNotEmpty)
-            pw.Container(
-              margin: const pw.EdgeInsets.only(bottom: 3),
-              child: pw.Text(kategori.trim(),
-                  style: pw.TextStyle(font: regular, fontSize: 8)),
-            ),
-          pw.Container(
-            alignment: pw.Alignment.centerLeft,
-            margin: const pw.EdgeInsets.only(bottom: 2),
-            child: pw.Text(barkodMetni.trim(),
-                style: pw.TextStyle(font: bold, fontSize: 10)),
-          ),
-          pw.Spacer(),
-          _BarcodeView(barkodMetni.trim(), bottom: 0, genislikMm: w / mm),
-        ],
+        children: children,
       ),
     ));
     return doc.save();
@@ -129,18 +198,18 @@ class LabelPdf {
 
 /// Code-128 barkod görseli (dikdörtgenlerle çizilir).
 class _BarcodeView extends pw.StatelessWidget {
-  _BarcodeView(this.text, {this.bottom = 0, double? genislikMm})
-      : _genislikMm = genislikMm ?? LabelPdf.genislikMm;
+  _BarcodeView(this.text, {required this.icMm});
 
   final String text;
-  final double bottom;
-  final double _genislikMm;
+
+  /// Kullanılabilir iç genişlik (mm) — kenar boşluğu düşülmüş.
+  final double icMm;
 
   @override
   pw.Widget build(pw.Context context) {
     final codes = _code128Codes(text.isEmpty ? ' ' : text);
     final total = _totalModules(codes);
-    final available = _genislikMm * LabelPdf.mm - 2 * LabelPdf.kenarMm * LabelPdf.mm;
+    final available = icMm * LabelPdf.mm;
     double module = available / total;
     if (module > 1.2) module = 1.2;
     final barHeight = 30.0;

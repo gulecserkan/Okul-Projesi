@@ -11,6 +11,7 @@ import 'label_pdf.dart';
 import 'print_fonts.dart';
 import 'printer_service.dart';
 import 'receipt_pdf.dart';
+import 'sablon.dart';
 
 /// Açılışta kurum bilgisini getirir (çekilemezse yerel yedek; yoksa boş).
 /// Başarılıysa yedeği de günceller (K14.1).
@@ -36,8 +37,11 @@ String operatorAdi() {
 /// Fiş yazdırma yardımcısı.
 class FisYazdir {
   /// Belirtilen kuyruk varsayılandan geliyorsa geçerli ayarı kullanır.
+  /// `sahne` içerik şablonunu uygular (K14.12); katalog dışı sahne
+  /// (ör. "Test et") satırlara dokunmaz.
   static Future<PrintResult> yazdir(
     List<ReceiptLine> lines, {
+    String sahne = '',
     String? kuyruk,
     String title = 'kutuphane-fis',
   }) async {
@@ -49,8 +53,11 @@ class FisYazdir {
           'Yazıcı seçilmemiş. Ayarlar › Yazıcılar sekmesinden bir fiş yazıcısı seçin.');
     }
     final prefs = AppConfig.printer;
-    final pdf = await ReceiptPdf.render(lines,
-        genislikMm: prefs.fisGenislikMm);
+    final sablon = AppConfig.sablon;
+    final pdf = await ReceiptPdf.render(
+        ReceiptPdf.sablonla(lines, sahne, sablon),
+        genislikMm: prefs.fisGenislikMm,
+        kenar: sablon.fisKenarMm);
     return PrinterServices.instance.printPdf(q, pdf, title: title);
   }
 }
@@ -73,14 +80,20 @@ class EtiketYazdir {
           'Yazıcı seçilmemiş. Ayarlar › Yazıcılar sekmesinden bir etiket yazıcısı seçin.');
     }
     final prefs = AppConfig.printer;
+    final sablon = AppConfig.sablon;
     final pdf = await LabelPdf.render(
-      kurum: kurum,
-      baslik: baslik,
-      yazar: yazar,
-      kategori: kategori,
-      barkodMetni: barkod,
+      LabelPdf.sablonla(
+          LabelPdf.etiketElemanlari(
+            kurum: kurum,
+            baslik: baslik,
+            yazar: yazar,
+            kategori: kategori,
+            barkodMetni: barkod,
+          ),
+          sablon),
       genislikMm: prefs.etiketGenislikMm,
       yukseklikMm: prefs.etiketYukseklikMm,
+      kenar: sablon.etiketKenarMm,
     );
     return PrinterServices.instance
         .printPdf(q, pdf, title: 'kutuphane-etiket');
@@ -151,18 +164,25 @@ class TestPdf {
       ...ReceiptPdf.altBilgi(kurum),
     ];
     return ReceiptPdf.render(lines,
-        genislikMm: AppConfig.printer.fisGenislikMm);
+        genislikMm: AppConfig.printer.fisGenislikMm,
+        kenar: AppConfig.sablon.fisKenarMm);
   }
 
   static Future<List<int>> etiket(KurumBilgisi kurum) {
+    final sablon = AppConfig.sablon;
     return LabelPdf.render(
-      kurum: kurum,
-      baslik: 'TEST ETİKETİ',
-      yazar: 'Deneme Yazarı',
-      kategori: 'Genel',
-      barkodMetni: 'TEST-001',
+      LabelPdf.sablonla(
+          LabelPdf.etiketElemanlari(
+            kurum: kurum,
+            baslik: 'TEST ETİKETİ',
+            yazar: 'Deneme Yazarı',
+            kategori: 'Genel',
+            barkodMetni: 'TEST-001',
+          ),
+          sablon),
       genislikMm: AppConfig.printer.etiketGenislikMm,
       yukseklikMm: AppConfig.printer.etiketYukseklikMm,
+      kenar: sablon.etiketKenarMm,
     );
   }
 
@@ -279,7 +299,8 @@ Future<PrintResult?> oduncFisiBasJson(Map<String, dynamic> json) async {
   if (!AppConfig.printer.otomatikOduncFisi) return null;
   final kurum = await kurumGetir();
   return FisYazdir.yazdir(FisVerisi.oduncFromJson(json,
-      kurum: kurum, operator: operatorAdi()));
+      kurum: kurum, operator: operatorAdi()),
+      sahne: Sahne.odunc.kod);
 }
 
 Future<PrintResult?> iadeFisiBasJson(
@@ -299,7 +320,8 @@ Future<PrintResult?> iadeFisiBasJson(
       operator: operatorAdi(),
       durumEtiketi: durumEtiketi,
       cezaTutari: ceza.isNotEmpty ? 'Ceza: $ceza ₺' : '',
-      odemeNotu: odemeNotu));
+      odemeNotu: odemeNotu),
+      sahne: Sahne.iade.kod);
 }
 
 Future<PrintResult?> sifreFisiBas({
@@ -316,7 +338,8 @@ Future<PrintResult?> sifreFisiBas({
     ogrenci: ogrenci,
     kullaniciAdi: kullaniciAdi,
     sifre: sifre,
-  ));
+  ),
+      sahne: Sahne.sifre.kod);
 }
 
 /// K14.7: öğrenci detayından manuel "Borcu yoktur" belgesi.
@@ -333,7 +356,8 @@ Future<PrintResult?> borcuYokturBas({
     ogrenci: ogrenci,
     sinif: sinif,
     aktifOdunc: '$aktifOdunc',
-  ));
+  ),
+      sahne: Sahne.borcuYoktur.kod);
 }
 
 /// K14.4: tek/çoklu nüsha etiketi (kurum bilgisi içeriden çekilir).
@@ -361,7 +385,8 @@ Future<PrintResult?> cezaOdemeFisiBas({
     ogrenci: ogrenci,
     sinif: sinif,
     tutar: tutar,
-  ));
+  ),
+      sahne: Sahne.ceza.kod);
 }
 
 String formatTarihNow() {

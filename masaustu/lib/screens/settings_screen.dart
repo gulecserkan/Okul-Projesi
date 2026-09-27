@@ -9,6 +9,7 @@ import '../printing/print_helpers.dart';
 import '../printing/printer_service.dart';
 import '../printing/rulo_durum.dart';
 import '../theme.dart';
+import 'sablon_editor_screen.dart';
 import 'student_import_dialog.dart';
 
 /// A4 yazıcı seçiminde "Dosyaya yaz (PDF)" seçeneğinin gösterge değeri (K14.10).
@@ -30,6 +31,7 @@ class SettingsScreen extends StatelessWidget {
       const Tab(text: 'Görünüm'),
       const Tab(text: 'Sunucu'),
       const Tab(text: 'Yazıcılar'),
+      const Tab(text: 'Basım Şablonları'),
       if (_admin) const Tab(text: 'Öğrenci Aktarımı'),
       const Tab(text: 'Hesap'),
     ];
@@ -37,6 +39,7 @@ class SettingsScreen extends StatelessWidget {
       const _GorunumTab(),
       const _SunucuTab(),
       const _YazicilarTab(),
+      const SablonEditorScreen(),
       if (_admin) const _OgrenciAktarTab(),
       const _HesapTab(),
     ];

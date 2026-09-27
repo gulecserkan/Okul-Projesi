@@ -6,6 +6,19 @@ sunucuya yalnızca etiketli sürümler gönderilir (bkz. `docs/DEPLOY_CLOUD.md`)
 
 ## [Unreleased]
 
+### Eklendi
+
+- **Fiş/etiket içerik editörü (K14.12):** Ayarlar›**Basım Şablonları** sekmesinde
+  ödünç/iade/şifre/borcu yoktur/ceza fişleri ve etiket için hangi satırların
+  basılacağı seçilir: alan **açılır/kapanır** (zorunlu alanlar kilitli — unvan,
+  öğrenci, kitap, barkod, iade tarihi, şifre, tutar, etiket barkodu) ve
+  **sıralanabilir**; fiş/etiket **kenar boşluğu** (0–8 mm) ayarlanır. Önizleme
+  basımdaki satır listesinin aynısından üretilir (yapısal); doğrulama için
+  "Test bas" kullanılır. Tercihler kütüphane bilgisayarında yerel saklanır
+  (`config.json` → `sablon`), backend değişmez. Alan kapanınca ona ait ayraç çizgisi
+  de düşer; alt bilgide adres/telefon/e-posta/web artık **dördü de** basılabilir
+  (önceden ilk iki kaynak kırpılıyordu).
+
 ## [1.1.11] — 2026-09-27
 
 Masaüstünde **yazıcı / fiş / etiket** alt yapısı eklendi (K14.1–K14.11) — CUPS

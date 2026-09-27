@@ -269,13 +269,13 @@ printer DISABLI_Yazici disabled since Jan 01 00:00
     });
 
     test('etiket PDF istenen sayfa boyutunda (57×40 mm)', () async {
-      final pdf = await LabelPdf.render(
+      final pdf = await LabelPdf.render(LabelPdf.etiketElemanlari(
         kurum: kurum,
         baslik: 'Test Kitap',
         yazar: 'Yazar',
         kategori: 'Genel',
         barkodMetni: 'KIT123',
-      );
+      ));
       expect(pdf.length, greaterThan(500));
     });
   });
