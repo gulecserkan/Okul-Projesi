@@ -245,6 +245,17 @@ class KutuphaneApi {
     );
   }
 
+  /// Gecikme cezasını tahsil eder: POST /api/penalties/{loanId}/pay/.
+  /// Tutar verilmezse kayıtlı cezanın tamamı alınır.
+  Future<http.Response> payPenalty(int loanId, {String? amount}) {
+    return _client.request(
+      'POST',
+      'penalties/$loanId/pay/',
+      auth: true,
+      body: {if (amount != null && amount.trim().isNotEmpty) 'amount': amount.trim()},
+    );
+  }
+
   /// Üye aktif/pasif değişimi (yalnızca admin). Uyarıları döndürür.
   Future<({bool ok, List<String> warnings, String error})> setStudentStatus(
     int studentId,

@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import '../api/kutuphane_api.dart';
 import '../config.dart';
 import '../models.dart';
+import '../printing/print_helpers.dart';
+import '../printing/rulo_durum.dart';
 import '../theme.dart';
 import '../widgets/horizontal_menu.dart';
 import '../widgets/radial_menu.dart';
@@ -422,6 +424,18 @@ class _StudentListScreenState extends State<StudentListScreen> {
     );
     if (sifre != null && mounted) {
       _snack('Şifre güncellendi: $sifre — öğrenci ilk girişte değiştirecek.');
+      unawaited(() async {
+        if (!mounted) return;
+        if (!await ruloOnay(context, RuloTipi.fis)) return;
+        final sonuc = await sifreFisiBas(
+          ogrenci: o.adSoyad,
+          kullaniciAdi: o.uyeNo,
+          sifre: sifre,
+        );
+        if (sonuc != null && !sonuc.ok) {
+          _snack('Şifre fişi: ${sonuc.message}', error: true);
+        }
+      }());
     }
   }
 

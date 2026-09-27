@@ -1,9 +1,15 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../api/kutuphane_api.dart';
+import '../api_client.dart';
 import '../config.dart';
 import '../formatters.dart';
 import '../models.dart';
+import '../printing/print_helpers.dart';
+import '../printing/printer_service.dart';
+import '../printing/rulo_durum.dart';
 import '../theme.dart';
 import 'student_form_dialog.dart';
 import 'password_dialog.dart';
@@ -125,6 +131,135 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
     );
     if (sifre != null && mounted) {
       _snack('Şifre güncellendi: $sifre — öğrenci ilk girişte değiştirecek.');
+      _sifreFisiBas(sifre);
+    }
+  }
+
+  /// K14.3: geçici şifre fişi (anahtar kapalıysa helper null döner).
+  void _sifreFisiBas(String sifre) {
+    unawaited(() async {
+      if (!mounted) return;
+      if (!await ruloOnay(context, RuloTipi.fis)) return;
+      final sonuc = await sifreFisiBas(
+        ogrenci: widget.uye.adSoyad,
+        kullaniciAdi: widget.uye.uyeNo,
+        sifre: sifre,
+      );
+      if (sonuc != null && !sonuc.ok) {
+        _snack('Şifre fişi: ${sonuc.message}', error: true);
+      }
+    }());
+  }
+
+  /// K14.7: "Borcu yoktur" belgesi (ödünç/ceza durumu doğrulanarak basılır).
+  Future<void> _borcsuzlukBelgesi() async {
+    final context = this.context;
+    final o = widget.uye;
+    final rows = await _historyFuture;
+    final aktifOdunc =
+        rows.where((r) => r.durum == 'oduncte' || r.durum == 'gecikmis').length;
+    final ceza = await _penaltiesFuture;
+    if (!context.mounted) return;
+    final varsa = ceza.outstandingCount > 0;
+    if (varsa) {
+      final onay = await showDialog<bool>(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: const Text('Borcum görünüyor'),
+          content: const Text(
+              'Bu üyenin ödenmemiş gecikme cezası var. '
+              '"Borcu yoktur" belgesi yalnızca ödeme/alacak takibinde kullanılmak '
+              'üzere yine de basılabilir.'),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text('Vazgeç')),
+            FilledButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                child: const Text('Yine de yazdır')),
+          ],
+        ),
+      );
+      if (onay != true) return;
+    }
+    await _boolBelgesi(
+      () => borcuYokturBas(
+        ogrenci: o.adSoyad,
+        sinif: o.sinif?.ad ?? '',
+        aktifOdunc: aktifOdunc,
+      ),
+      rapor: 'Borçsüzlük',
+    );
+  }
+
+  /// Manuel belge basımı ortak akışı (K14.7).
+  Future<void> _boolBelgesi(
+    Future<PrintResult?> Function() uretici, {
+    required String rapor,
+  }) async {
+    if (!await ruloOnay(context, RuloTipi.fis)) return;
+    final res = await uretici();
+    if (!mounted) return;
+    if (res == null) {
+      showAppSnack(context, 'Fiş yazıcısı seçilmemiş.', error: true);
+      return;
+    }
+    if (res.ok) {
+      _snack('$rapor fişi yazıcıya gönderildi.');
+    } else {
+      _snack('$rapor fişi: ${res.message}', error: true);
+    }
+  }
+
+  /// K14.7: ödenmemiş cezayı tahsil eder + tahsilat fişi basar.
+  Future<void> _payCeza() async {
+    final context = this.context;
+    final o = widget.uye;
+    final p = await _penaltiesFuture;
+    if (!context.mounted) return;
+    if (p.outstandingCount == 0 || p.entries.isEmpty) {
+      _snack('Ödenmemiş ceza yok.', error: true);
+      return;
+    }
+    final entry = p.entries.first;
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Ceza tahsil et'),
+        content: Text(
+            '${o.adSoyad} — ₺${entry.gecikmeCezasi} '
+            '(${entry.kitap}, barkod ${entry.barkod}) tahsil edilecek. '
+            'Tahsilat fişi yazdırılacak. Onaylıyor musunuz?'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Vazgeç')),
+          FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Tahsil et')),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+    final resp = await _api.payPenalty(entry.id, amount: entry.gecikmeCezasi);
+    if (!mounted) return;
+    if (resp.statusCode >= 200 && resp.statusCode < 300) {
+      setState(_load);
+      _snack('₺${entry.gecikmeCezasi} tahsil edildi.');
+      unawaited(() async {
+        if (!mounted) return;
+        if (!await ruloOnay(context, RuloTipi.fis)) return;
+        final sonuc = await cezaOdemeFisiBas(
+          ogrenci: o.adSoyad,
+          sinif: o.sinif?.ad ?? '',
+          tutar: entry.gecikmeCezasi,
+        );
+        if (sonuc != null && !sonuc.ok) {
+          _snack('Ceza fişi: ${sonuc.message}', error: true);
+        }
+      }());
+    } else {
+      _snack(extractError(resp, fallback: 'Tahsil edilemedi.'), error: true);
     }
   }
 
@@ -169,22 +304,49 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
           FutureBuilder<PenaltySummary>(
             future: _penaltiesFuture,
             builder: (context, snap) {
-              if (snap.hasData && snap.data!.outstandingCount > 0) {
-                final p = snap.data!;
-                return Card(
-                  color: layerColor(context, dangerColor(context), alpha: 0.12),
-                  child: ListTile(
-                    leading: Icon(Icons.warning_amber_rounded,
-                        color: dangerColor(context)),
-                    title: Text('Ödenmemiş gecikme cezası: ${p.outstandingTotal} ₺',
-                        style: TextStyle(
-                            color: dangerColor(context),
-                            fontWeight: FontWeight.bold)),
-                    subtitle: Text('${p.outstandingCount} kayıt'),
+              final p = snap.data;
+              final cezaVar = (p?.outstandingCount ?? 0) > 0;
+              return Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Wrap(
+                    spacing: 12,
+                    runSpacing: 12,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      if (cezaVar)
+                        Icon(Icons.warning_amber_rounded,
+                            color: dangerColor(context)),
+                      ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 480),
+                        child: cezaVar
+                            ? Text(
+                                'Ödenmemiş gecikme cezası: '
+                                '${p!.outstandingTotal} ₺ (${p.outstandingCount} kayıt)',
+                                style: TextStyle(
+                                    color: dangerColor(context),
+                                    fontWeight: FontWeight.bold),
+                              )
+                            : Text('Gecikme borcu yok.',
+                                style: TextStyle(
+                                    color: successColor(context),
+                                    fontWeight: FontWeight.w600)),
+                      ),
+                      if (cezaVar)
+                        FilledButton.icon(
+                          onPressed: _payCeza,
+                          icon: const Icon(Icons.payments_outlined, size: 18),
+                          label: const Text('Ceza tahsil et'),
+                        ),
+                      OutlinedButton.icon(
+                        onPressed: _borcsuzlukBelgesi,
+                        icon: const Icon(Icons.print_outlined, size: 18),
+                        label: const Text('Borçsüzlük belgesi'),
+                      ),
+                    ],
                   ),
-                );
-              }
-              return const SizedBox.shrink();
+                ),
+              );
             },
           ),
           const SizedBox(height: 16),

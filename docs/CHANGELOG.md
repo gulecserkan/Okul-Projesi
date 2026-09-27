@@ -4,6 +4,48 @@ Bu proje [Semantic Versioning](https://semver.org/) benzeri bir düzen kullanır
 `MAJOR.MINOR.PATCH`. Yayınlar git etiketiyle (`vX.Y.Z`) işaretlenir ve
 sunucuya yalnızca etiketli sürümler gönderilir (bkz. `docs/DEPLOY_CLOUD.md`).
 
+## [Unreleased]
+
+## [1.1.11] — 2026-09-27
+
+Masaüstünde **yazıcı / fiş / etiket** alt yapısı eklendi (K14.1–K14.11) — CUPS
+`lp`/`lpstat` üzerinden, hiçbir yazıcı adı sabit değil; kuyruklar açılışta algılanır,
+Ayarlar›Yazıcılar'dan seçilir ve "Test et" ile doğrulanır. Kütüphane bilgisayarındaki
+aynı kurulu pakette de çalışır. Fiş/etiket **ortak termal yazıcıda** rulo yönetimiyle,
+A4 çıktısı ise "Dosyaya yaz" rotasıyla çalışır — backend/rules değişmedi.
+
+- **Kurum bilgisi + yazıcı seçimi (K14.1, K14.5):** fiş/etiket başlığı ve iletişim
+  `KurumAyarlari`'ndan (çekilemezse yerel yedek); canlı kuyruk listesi (`lpstat -p`) +
+  durum, fiş/etiket/A4 seçimi, otomatik fiş anahtarları, fiş/etiket/A4 için **test basımı**.
+- **Fiş basımı (K14.2, K14.3, K14.7):** ödünç ve iade anında otomatik fiş; Şifre Ver'de
+  otomatik **şifre fişi**; öğrenci detayından manuel **"Borcu yoktur"** belgesi ve **ceza
+  ödeme fişi**. Fiş 70 mm termal, başlık/iletişim `KurumAyarlari`'ndan.
+- **Etiket basımı (K14.4):** kitap detay›nüsha satırında tek tek, çoklu seçim + toplu,
+  ve nüsha eklenince "etiket basılsın mı?" önerisi. 57×40 mm, **Code-128** barkod.
+- **Açılış denetimi (K14.6):** `NotificationSettings.printer_warning_enabled` açıkken
+  seçili fiş yazıcısı hazır değilse engelleyici olmayan uyarı.
+- **Ortak rulo durumu + kalıcı çip (K14.9):** fiş ve etiket aynı termal yazıcıya
+  atanmışsa üst çubukta "Fiş rulosu / Etiket rulosu / Pasif / Tanımlı Değil" durumu
+  her ekranda görünür; tıklayınca hızlı rulo değiştirme menüsü. Rulo uyuşmazlığında
+  veya `tanımsız` durumda basım öncesi onay diyaloğu («X rulosu taktım → yazdır» /
+  «Vazgeç»); yazıcı pasifse «Yine de dene». Ayrı yazıcılar seçiliyse bu akış kapalıdır.
+- **Kağıt tipi zorlanmaz, cihaz kalibrasyonu esas alınır (K14.11):** uygulama
+  `PaperType`/`GapsHeight` göndermez; ne job'a (`lp -o`) ne kuyruk varsayılanına
+  (`lpadmin`) kağıt tipi yazılmaz, basımda yalnız PDF sayfa ölçüsü verilir. Gerekçe:
+  4B-2074C gibi termal yazıcılar etiket uzunluğu/boşluğu kendi sensör kalibrasyonuyla
+  ölçer ve `SIZE`/`GAP` değerlerini kendi belleğine yazar; zorlama etiketi iki etikete
+  bölüyor ("biri yarım kaldı, diğerine yazdı") ve kalibrasyonu bozuyordu. Ayarlar›Yazıcılar›
+  **Termal rulo** bölümü yalnız ölçüleri (etiket genişlik/yükseklik, fiş genişliği — PDF
+  yerleşimi için) tutar; gap/kağıt türü alanları kaldırıldı. Kayma/boşluk hataları için
+  markadan bağımsız **kalibrasyon bilgi kutusu** eklendi (ayrıntılı 4B-2074C adımları
+  `docs/IS_KURALLARI.md`'de).
+- **A4 "Dosyaya yaz" (K14.10):** A4 yazıcı seçimine «Dosyaya yaz (PDF)» seçeneği;
+  A4 kuyruğu boş/pasifse çıktı otomatik dosya kaydetme diyaloğuna düşer. "Test A4"
+  de bu rotadan çalışır (dosya yolu ekranda bildirilir).
+- Taşınabilirlik: `uzaktan-kur.sh` eksik `cups-client`/`cups` paketini otomatik kurar;
+  `pdf` paketi saf Dart (sistem paketi gerektirmez), PDF yazı tipleri uygulamayla birlikte
+  gelir.
+
 ## [1.1.10] — 2026-09-27
 
 Web katalog yenilendi, üye kitap gezintisi elden geçirildi ve oturum süresi

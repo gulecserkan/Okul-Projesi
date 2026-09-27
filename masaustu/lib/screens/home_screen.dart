@@ -7,6 +7,8 @@ import '../api/kutuphane_api.dart';
 import '../api_client.dart';
 import '../formatters.dart';
 import '../models.dart';
+import '../printing/printer_service.dart';
+import '../printing/rulo_durum.dart';
 import '../theme.dart';
 import '../widgets/horizontal_menu.dart';
 import '../widgets/radial_menu.dart';
@@ -94,6 +96,9 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         title: const Text('Kütüphane Yönetim Sistemi'),
         actions: [
+          _RuloDurumChip(
+            onAyarlar: () => setState(() => _selectedIndex = _isAdmin ? 5 : 4),
+          ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Center(
@@ -165,10 +170,66 @@ class _OverviewState extends State<_Overview> {
   bool _hizliBusy = false;
   String? _hizliMesaj;
 
+  /// K14.6: açılışta yazıcı denetimi (engellemeyen uyarı).
+  String? _yaziciUyarisi;
+
   @override
   void initState() {
     super.initState();
     _load();
+    _yaziciDenetimi();
+  }
+
+  /// K14.6: `printer_warning_enabled` açıksa fiş/etiket yazıcılarını denetler.
+  Future<void> _yaziciDenetimi() async {
+    try {
+      final ns = await _api.notificationSettingsGet();
+      final data = ns.data;
+      final acik = !(data?['printer_warning_enabled'] == false);
+      if (!acik) return;
+      if (!mounted) return;
+      final svc = PrinterServices.instance;
+      if (!await svc.cupsKurulu()) {
+        setState(() {
+          _yaziciUyarisi = 'Yazıcı araçları (CUPS) bulunamadı. '
+              'Fiş/etiket için sistem yöneticisinden '
+              '"sudo apt-get install -y cups-client cups" isteyin.';
+        });
+        return;
+      }
+      final list = await svc.listPrinters();
+      if (!mounted) return;
+      final prefs = AppConfig.printer;
+      String? eksik;
+      if (prefs.fisYazici.trim().isEmpty &&
+          prefs.etiketYazici.trim().isEmpty) {
+        eksik = 'Fiş/etiket yazıcısı henüz seçilmemiş '
+            '(Ayarlar › Yazıcılar).';
+      } else {
+        for (final q in [prefs.fisYazici, prefs.etiketYazici, prefs.a4Yazici]) {
+          final ad = q.trim();
+          if (ad.isEmpty) continue;
+          PrinterInfo? pr;
+          for (final p in list) {
+            if (p.name == ad) {
+              pr = p;
+              break;
+            }
+          }
+          final durum = pr?.state;
+          if (durum == null || durum == PrinterState.missing) {
+            eksik = '$ad bulunamadı — yazıcı kapalı veya bağlı değil.';
+            break;
+          }
+          if (durum == PrinterState.disabled) {
+            eksik = '$ad devre dışı — CUPS\'ta etkinleştirin '
+                '(cupsenable "$ad").';
+            break;
+          }
+        }
+      }
+      if (eksik != null) setState(() => _yaziciUyarisi = eksik);
+    } catch (_) {}
   }
 
   @override
@@ -508,6 +569,10 @@ class _OverviewState extends State<_Overview> {
         const SizedBox(height: 8),
         Text('Ödünç, iade ve üye işlemleri için soldaki menüyü kullanın.',
             style: theme.textTheme.bodyMedium),
+        if (_yaziciUyarisi != null) ...[
+          const SizedBox(height: 12),
+          _yaziciUyarisiKarti(theme),
+        ],
         const SizedBox(height: 16),
         _hizliIslemKarti(theme),
         const SizedBox(height: 24),
@@ -556,6 +621,31 @@ class _OverviewState extends State<_Overview> {
         _aktifOdunclerBolumu(theme),
       ],
     ),
+      ),
+    );
+  }
+
+  /// K14.6: kapatılabilir yazıcı uyarı kartı.
+  Widget _yaziciUyarisiKarti(ThemeData theme) {
+    return Card(
+      color: layerColor(context, warningColor(context)),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 4, 4, 4),
+        child: Row(
+          children: [
+            Icon(Icons.print_outlined, color: warningColor(context)),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(_yaziciUyarisi!,
+                  style: TextStyle(color: warningColor(context))),
+            ),
+            IconButton(
+              tooltip: 'Kapat',
+              icon: const Icon(Icons.close, size: 20),
+              onPressed: () => setState(() => _yaziciUyarisi = null),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -878,6 +968,103 @@ class _HizliIkinciDialogState extends State<_HizliIkinciDialog> {
         ),
         FilledButton(onPressed: _tamam, child: const Text('Tamam')),
       ],
+    );
+  }
+}
+
+/// K14.9: fiş ve etiket aynı yazıcıyı kullanınca üst çubuktaki rulo durum çipi.
+/// Tıklayınca hızlı rulo bildirimi / yenile / ayarlar menüsü açılır.
+class _RuloDurumChip extends StatefulWidget {
+  final VoidCallback onAyarlar;
+
+  const _RuloDurumChip({required this.onAyarlar});
+
+  @override
+  State<_RuloDurumChip> createState() => _RuloDurumChipState();
+}
+
+class _RuloDurumChipState extends State<_RuloDurumChip> {
+  RuloDurum? _guncel;
+
+  @override
+  void initState() {
+    super.initState();
+    _tazele();
+  }
+
+  Future<void> _tazele() async {
+    final d = await guncelRuloDurumu();
+    if (!mounted) return;
+    setState(() => _guncel = d);
+  }
+
+  Future<void> _sec(BuildContext context, String secim, String q) async {
+    switch (secim) {
+      case 'fis':
+        await ruloBildir(context, RuloTipi.fis);
+        await _tazele();
+      case 'etiket':
+        await ruloBildir(context, RuloTipi.etiket);
+        await _tazele();
+      case 'yenile':
+        await _tazele();
+      case 'ayarlar':
+        widget.onAyarlar();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<PrinterPrefs>(
+      valueListenable: AppConfig.printerNotifier,
+      builder: (context, prefs, _) {
+        final q = ortakKuyruk();
+        if (q == null) return const SizedBox.shrink();
+        final durum = _guncel ?? bildirileneGore(prefs);
+        final (etiket, renk, ikon) = switch (durum) {
+          RuloDurum.fis => (
+              'Fiş rulosu',
+              Colors.green.shade700,
+              Icons.receipt_long_outlined,
+            ),
+          RuloDurum.etiket => (
+              'Etiket rulosu',
+              Colors.blue.shade700,
+              Icons.sell_outlined,
+            ),
+          RuloDurum.pasif => (
+              'Pasif',
+              Colors.red.shade700,
+              Icons.error_outline,
+            ),
+          RuloDurum.tanimsiz => (
+              'Tanımlı Değil',
+              Colors.orange.shade800,
+              Icons.help_outline,
+            ),
+        };
+        return Padding(
+          padding: const EdgeInsets.only(right: 8),
+          child: PopupMenuButton<String>(
+            tooltip: 'Rulo durumu — $q',
+            onSelected: (v) => _sec(context, v, q),
+            itemBuilder: (_) => const [
+              PopupMenuItem(value: 'fis', child: Text('Fiş rulosundayım')),
+              PopupMenuItem(value: 'etiket', child: Text('Etiket rulosundayım')),
+              PopupMenuItem(value: 'yenile', child: Text('Durumu yenile')),
+              PopupMenuItem(value: 'ayarlar', child: Text('Ayarlar › Yazıcılar')),
+            ],
+            child: Chip(
+              avatar: Icon(ikon, size: 18, color: renk),
+              label: Text(etiket,
+                  style: TextStyle(
+                      fontSize: 12,
+                      color: renk,
+                      fontWeight: FontWeight.w600)),
+            ),
+          ),
+        );
+      },
     );
   }
 }

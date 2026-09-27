@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 
@@ -6,6 +7,8 @@ import '../api/kutuphane_api.dart';
 import '../api_client.dart';
 import '../formatters.dart';
 import '../models.dart';
+import '../printing/print_helpers.dart';
+import '../printing/rulo_durum.dart';
 import '../theme.dart';
 import '../widgets/return_dialog.dart';
 import '../widgets/row_table.dart';
@@ -84,10 +87,33 @@ class _LoanScreenState extends State<LoanScreen> {
     if (resp.statusCode >= 200 && resp.statusCode < 300) {
       _snack('$barkod ödünç verildi.');
       _search(_lastQ);
+      _oduncFisiBas(resp.bodyBytes);
     } else {
       _snack(extractError(resp, fallback: 'Ödünç verilemedi.'),
           error: true);
     }
+  }
+
+  /// K14.2: ödünç fişi — kapatılmış anahtar varsa basılmaz (helper null döner).
+  void _oduncFisiBas(List<int> bodyBytes) {
+    final json = _jsonOlcek(bodyBytes);
+    if (json == null) return;
+    unawaited(() async {
+      if (!mounted) return;
+      if (!await ruloOnay(context, RuloTipi.fis)) return;
+      final sonuc = await oduncFisiBasJson(json);
+      if (sonuc != null && !sonuc.ok) {
+        _snack('Ödünç fişi: ${sonuc.message}', error: true);
+      }
+    }());
+  }
+
+  Map<String, dynamic>? _jsonOlcek(List<int> bodyBytes) {
+    try {
+      final json = jsonDecode(utf8.decode(bodyBytes));
+      if (json is Map<String, dynamic>) return json;
+    } catch (_) {}
+    return null;
   }
 
   Future<void> _returnLoan(FastLoan loan) async {
@@ -112,10 +138,26 @@ class _LoanScreenState extends State<LoanScreen> {
     if (ok) {
       _snack('İade alındı (${durumLabel(action['durum']!)}).');
       _search(_lastQ);
+      _iadeFisiBas(resp.bodyBytes, action['durum']!);
     } else {
       _snack(extractError(resp, fallback: 'İşlem başarısız oldu.'),
           error: true);
     }
+  }
+
+  /// K14.2: iade/ceza/iptal fişi — kapatılmış anahtar varsa basılmaz.
+  void _iadeFisiBas(List<int> bodyBytes, String durumKodu) {
+    final json = _jsonOlcek(bodyBytes);
+    if (json == null) return;
+    final durumTekil = durumKodu == 'teslim' ? 'teslim' : durumLabel(durumKodu);
+    unawaited(() async {
+      if (!mounted) return;
+      if (!await ruloOnay(context, RuloTipi.fis)) return;
+      final sonuc = await iadeFisiBasJson(json, durumEtiketi: durumTekil);
+      if (sonuc != null && !sonuc.ok) {
+        _snack('İade fişi: ${sonuc.message}', error: true);
+      }
+    }());
   }
 
   @override

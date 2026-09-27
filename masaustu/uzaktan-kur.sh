@@ -28,6 +28,10 @@ INSTALL="${HOME}/.local/share/kutuphane-masaustu"
 declare -A ZORUNLU=(
   ["libgtk-3.so.0"]="libgtk-3-0"
 )
+# K14 yazdırma: `lpstat`/`lp` (CUPS istemcisi) fiş/etiket basımı için zorunludur.
+declare -A CUPS_KOMMUT=(
+  ["lpstat"]="cups-client cups"
+)
 # Ek/yeteneğe bağlı paketler boşlukla ayrılır (varsayılan boş):
 #   USB termal yazıcı için: MASAUSTU_EK_PAKETLER="libusb-1.0-0"
 BAGIMLILIK="${MASAUSTU_BAGIMLILIK:-1}"
@@ -64,6 +68,17 @@ bagimliliklari_kur() {
   for paket in ${MASAUSTU_EK_PAKETLER:-}; do
     dpkg-query -W -f='${Status}' "$paket" 2>/dev/null \
       | grep -q "install ok installed" || eksik+=("$paket")
+  done
+
+  # K14 yazdırma: lpstat/lp yoksa cups-client (+ cups) kurulur.
+  for komut in "${!CUPS_KOMMUT[@]}"; do
+    if command -v "$komut" >/dev/null 2>&1; then
+      continue
+    fi
+    for pkt in ${CUPS_KOMMUT[$komut]}; do
+      dpkg-query -W -f='${Status}' "$pkt" 2>/dev/null \
+        | grep -q "install ok installed" || eksik+=("$pkt")
+    done
   done
 
   if (( ${#eksik[@]} == 0 )); then

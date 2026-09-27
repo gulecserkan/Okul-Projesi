@@ -5,31 +5,43 @@
 > Yapıldığında ilgili satır güncellenir/çıkarılır ve gerekiyorsa `docs/IS_KURALLARI.md`
 > ile `kutuphane_app/rules.py` senkronlanır (bkz. `AGENTS.md` Faz A adımı).
 
-- Durum: V2.0 — masaüstü çekirdek akışları + K10 ayarları tamam; mobil ve yazdırma bekliyor.
+- Durum: V2.0 — masaüstü çekirdek akışları + K10 ayarları + yazıcı/fiş/etiket (K14) tamam; rulo/kağıt tipi/A4-dosya (K14.9–11) eklendi; mobil bekliyor.
 - İlgili: `06_BILINEN_SORUNLAR.md` (teknik borç), `04_MOBIL.md` (mobil), `03_MASUSTU.md` (eski PyQt5 referansı).
 
 ---
 
-## 1. Faz 2 — Yazıcı, Etiket ve Fiş (ertelendi)
+> **13. Fire bası/durum:** K14 (fiş/etiket/yazıcı) `masaustu/`'de uygulandı — bkz.
+> `docs/IS_KURALLARI.md` §14 ve `docs/CHANGELOG.md` [1.1.11]. Aşağıdaki Faz 2
+> maddeleri tamamlanmış sayılır; yalnız detaylı/tema düzenleme ve PDF rapor fazı (3)
+> ileride kaldı.
 
-Flutter masaüstünde (`masaustu/`) **hiç yazdırma yok**. Etiket/fiş yalnız eski
-PyQt5 istemcisinde (`kutuphane_desktop/printing/`) referans olarak duruyor.
-`KurumAyarlari` modeli bu amaçla hazır (şu an yalnızca saklanıyor).
+## 1. Faz 2 — Yazıcı, Etiket ve Fiş (tamamlandı — kapsam: K14)
 
-- [ ] **Etiket editörü + etiket basımı**
-  - Barkod etiketi (kitap/nüsha), çoklu seçim + toplu basım.
-  - Termal `LabelWithMark`, 203 dpi, opsiyonel -90° döndürme.
-  - `printer_guard`: yazıcı hazır mı, medya `LabelWithMark` mı → değilse `lpoptions`
-    ile otomatik düzelt veya uyar (K10 `printer_warning_enabled` burada devreye girer).
-  - Referans: `kutuphane_desktop/printing/label_maker_qt.py`, `template_renderer.py`.
-- [ ] **Fiş basımı**
-  - Şablonlar: `fine_payment` (masaüstünde var), `debt_statement` ("borcu yoktur"),
-    `general_notice` (bilgilendirme/genel) — 70 mm termal, `{{ anahtar }}` placeholder.
-  - Arayüz tetikleyicileri: öğrenci detayı ve/veya yönetici ekranı (06 sorun #B1).
-  - `build_receipt_context(summary)` benzeri zenginleştirme.
-- [ ] **KurumAyarlari entegrasyonu**: fiş başlığı/iletişim ve etiket metinlerinde kullan.
-- [ ] `printer_warning_enabled` ayarını açılışta yazıcı kontrolüne bağla.
-- [ ] CUPS/`lp` tabanlı yazdırma (Linux) — paket/bağımlılık notları.
+Flutter masaüstünde (`masaustu/`) yazdırma **K14** ile eklendi: CUPS `lp`/`lpstat`
+üzerinden (Linux), PDF Dart'ta üretilir (`pdf` paketi). Ayrıntı ve iş kuralları:
+`docs/IS_KURALLARI.md` §14, `docs/CHANGELOG.md` [1.1.11]. Eski PyQt5 referansı
+(`kutuphane_desktop/printing/`) tasarım kaynağı olarak duruyor; tema/editör ve
+PDF rapor fazı (aşağıda §3) ileride genişletilebilir.
+
+- [x] **Etiket basımı** — kitap detay›nüsha satırı, çoklu seçim + toplu, nüsha
+  eklenince "basılsın mı?" önerisi. 57×40 mm, Code-128 barkod (K14.4).
+  Still ayrıntı: `masaustu/lib/printing/label_pdf.dart`.
+- [x] **Fiş basımı** — ödünç/iade otomatik, şifre fişi, "Borcu yoktur", ceza ödeme.
+  70 mm termal (K14.2/14.3/14.7). Referans: `masaustu/lib/printing/receipt_pdf.dart`.
+- [x] **KurumAyarlari entegrasyonu**: fiş/etiket başlığı + iletişim; yerel yedekle
+  (K14.1).
+- [x] `printer_warning_enabled` açılışta engelleyici olmayan uyarıya bağlı (K14.6).
+- [x] CUPS/`lp` tabanlı yazdırma (Linux); `uzaktan-kur.sh` eksik `cups-client`/`cups`
+  paketini otomatik kurar.
+- [x] **Ortak rulo durumu (K14.9):** üst çubuk kalıcı çip (Fiş/Etiket/Pasif/Tanımlı
+  Değil) + basım öncesi onay diyaloğu; `masaustu/lib/printing/rulo_durum.dart`.
+- [x] **Kağıt tipi zorlanmaz, cihaz kalibrasyonu esas (K14.11):** PPD eşleyici ve
+  `lp -o`/`lpadmin` ile zorlama kaldırıldı; yalnız ölçü (etiket genişlik/yükseklik,
+  fiş genişliği) PDF yerleşimi için tutulur. Ayarlar›Yazıcılar "Termal rulo" bölümünde
+  kayma/boşluk için kalibrasyon bilgi kutusu; ayrıntılı adımlar
+  `docs/IS_KURALLARI.md` (4B-2074C destek notu).
+- [x] **A4 "Dosyaya yaz" (K14.10):** `a4Bas` rotası — seçili A4 kuyruğu hazırsa `lp`,
+  "Dosyaya yaz (PDF)" veya boş/pasif kuyrukta dosya kaydetme diyaloğu.
 
 ## 2. Gerçek Bildirimler (ertelendi)
 

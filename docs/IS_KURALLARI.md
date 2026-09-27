@@ -250,3 +250,47 @@ Her kural için en az bir test:
 | K13.12 | Genel erişim için alan adına **SSL** (Let's Encrypt) alınır; alan adı aktif olunca nginx `server_name` + `ALLOWED_HOSTS` + HTTP→HTTPS yönlendirme yapılır. HTTPS öncesi Android'de `usesCleartextTraffic` açıktır (http fallback); SSL aktif olunca daraltılabilir. | nginx + `/etc/kutuphane/.env`, `android/app/src/main/AndroidManifest.xml` |
 
 Test: `MobilSurumApiTests`/`MasaustuSurumApiTests` (K13.3/K13.7), `mobil_surum_test`/`update_dialog_test` (K13.4), `masaustu/test/update_service_test.dart` (K13.8), `sunucu_adresi_test.dart` mobil+masaüstü (K13.11).
+
+---
+
+## 14. YAZDIRMA — FİŞ VE ETİKET (K14 — masaüstü)
+
+Yazdırma yalnız masaüstündedir (mobil salt-okunur, kapsam K9.7). Alt yapı
+CUPS `lp`/`lpstat` (Linux) üzerinden çalışır; **hiçbir yazıcı adı/cihaz yolu kodda
+sabit değildir** — kuyruklar açılışta `lpstat -p` ile algılanır, kullanıcı
+Ayarlar›Yazıcılar'dan seçer ve "Test et" ile doğrular. Böylece geliştirme
+makinesi dışında kütüphane bilgisayarında da aynı kurulu paket çalışır.
+
+| # | Kural | İşlenir |
+|---|---|---|
+| K14.1 | Fiş/etiket başlığı, iletişim ve alt bilgisi **`KurumAyarlari`**'ndan gelir (K10.2, `GET /api/settings/kurum/`); çekilemezse son kaydedilen yerel yedek kullanılır (yoksa boş/uyarı) | masaüstü `PrinterPrefs` + `receipt_pdf.dart`/`label_pdf.dart` |
+| K14.2 | **Ödünç fişi** checkout başarılı olunca otomatik basılır; **iade fişi** kapatma başarılı olunca otomatik. Her biri Ayarlar›Yazıcılar'daki anahtarla kapatılabilir | `loan_screen.dart` (checkout/kapat kancaları) |
+| K14.3 | **Şifre fişi** üyeye geçici şifre atanınca (Şifre Ver) otomatik basılır (satır: kullanıcı adı = `uye_no`, geçici şifre, "ilk girişte değiştirin" notu); ayrı anahtarla kapatılabilir | şifre kancaları (`student_detail`/`PasswordDialog`) |
+| K14.4 | **Etiket basımı** üç yoldan: (1) kitap detay›her nüsha satırında tek tek, (2) nüsha listesinde çoklu seçim + toplu, (3) nüsha ekleme başarılı olunca "etiket basılsın mı?" önerisi (varsayılan odak Evet). Etiket 57×40 mm, **Code-128** barkod + kurum/başlık/yazar/kategori | `book_detail_screen.dart` + `label_pdf.dart` |
+| K14.5 | Yazıcı **hazır değilse basım yapılmaz**: önce kuyruk durumu denetlenir (eksik/devre dışı/hata → kullanıcıya Türkçe mesaj, Ayarlar›Yazıcılar'a yönlendirme); "Test et" ile kullanıcı başarıyı ekranda görür | `printer_service.dart` |
+| K14.6 | Açılışta, `NotificationSettings.printer_warning_enabled` açıksa seçili fiş yazıcısı hazır değilse **engelleyici olmayan uyarı** gösterilir (yazıcı bilgisayarda kurulmamış olabilir) | `home_screen.dart` açılış denetimi |
+| K14.7 | "Borcu yoktur" belgesi ve **ceza ödeme fişi** öğrenci detayından manuel basılır; tutarlar fişte gösterildiği gibi kaydedilir (K3.6 ödeme verileriyle tutarlı) | `student_detail_screen.dart` |
+| K14.8 | Fiş genişliği 70 mm, etiket 57×40 mm varsayılan; PDF üretimi Dart'ta yapılır (`pdf` paketi), basım `lp -d <kuyruk>` ile (mürekkep/A4 farkı yok — termal/A4 aynı CUPS altyapısı) | `receipt_pdf.dart`/`label_pdf.dart` + `printer_service.dart` |
+| K14.9 | Fiş ve etiket **aynı termal yazıcıya** atanmışsa "hangi rulo takılı" durumu tutulur (`tanimsiz`/`fiş`/`etiket`); durum üst çubukta **kalıcı çip** olarak görünür. İstenen türle uyuşmayan (veya `tanimsiz`) basım **onay diyaloğu** gerektirir: «X rulosu taktım → yazdır» (durumu günceller) / «Vazgeç»; yazıcı pasifse «Yine de dene» / «Vazgeç». Farklı yazıcılar atanmışsa onay/gösterge görünmez | `rulo_durum.dart` + `home_screen.dart` çipi + basım kancaları |
+| K14.10 | A4 çıktısı üç yola gider: (1) Ayarlar'da seçili **A4 kuyruğu hazırsa** `lp` ile basım; (2) A4 **"Dosyaya yaz (PDF)"** modundaysa `file_selector` ile dosya kaydedilir; (3) A4 kuyruğu **boş seçili/pasif** ise otomatik dosya kaydetme diyaloğuna düşer (yazıcı yoksa iş bloke olmaz) | `print_helpers.dart` `a4Bas` + `settings_screen.dart` |
+| K14.11 | Termal rulo beslemesi **cihazın kendi sensör kalibrasyonuna bırakılır**: program `PaperType`/`GapsHeight` gibi kağıt tipi/boşluk parametrelerini job'a (`lp -o`) ya da kuyruk varsayılanına (`lpadmin`) **göndermez**. Gerekçe: 4B-2074C gibi yazıcılar `SIZE`/`GAP` değerlerini kendi belleğine yazar ve kalibrasyonla ölçtüğü gerçek değerle besler; zorlama kaymalı/yarım etiket ve sürekli besleme hatası üretir (ve kalibrasyon sonrası fiş basımı bozulabilir). Basımda yalnız PDF sayfa ölçüsü (`-o media=Custom.WxH`) verilir. **Rulo ölçüleri ayarlardan değiştirilebilir** (etiket genişlik/yükseklik, fiş genişliği) ve yalnız PDF içerik yerleşiminde kullanılır; ilk "Etiket rulosu taktım" seçiminde ölçü kurulum diyaloğu sorulur. Kayma/boşluk hatasında kullanıcı yazıcı kılavuzundaki **gap/black-mark sensör kalibrasyonuna** yönlendirilir (Ayarlar›Yazıcılar›Termal rulo bilgi kutusu) | `rulo_durum.dart` + `printer_service.dart` `printPdf` + `settings_screen.dart` |
+
+Test: `PrinterServiceTests` (InMemory runner ile `lpstat` ayrıştırma, `lp` çağrısı ve
+kağıt tipi parametresi gönderilmemesi, yazıcı yoksa hata), `ReceiptPdfTests` (tür bazlı
+içerik + `%PDF` başı), `LabelPdfTests`
+(Code-128 sağlama/bitler, PDF başı), `RuloDurumTests` (ortak yazıcı tespiti, durum üretimi,
+onay diyaloğu, `lpadmin`/`lpoptions` çağrılmaması), `A4BasTests` (dosya/kuyruk
+yolları), Ayarlar "Yazıcılar" widget testi (kuyruk listesi + durum + test et + rulo bölümü).
+
+### 4B-2074C termal yazıcı kalibrasyonu (destek notu)
+
+Yazıcı, aldığı TSPL `SIZE`/`GAP` değerlerini kendi belleğine yazar; **güç döngüsü bu
+değerleri silmez**. Kalibrasyondan önce bozulmuşsa (yarım etiket, sürekli besleme):
+
+1. **Fabrika ayarı (başlatma):** yazıcı kapalıyken panel tuşuna basılı tutup aç → LED
+   **mavi** yanıp sönerken tuşu bırak. Cihaz varsayılanlara döner (fabrika gap 4 mm / 0.157").
+2. **Gap/black-mark sensör kalibrasyonu:** yazıcı kapalıyken tuş basılı tutup aç → LED
+   **kırmızı** yanıp sönerken bırak. Cihaz gerçek etiket uzunluğunu ve boşluğunu ölçer.
+3. Kalibrasyon etiket rulosu içindir; **fiş (sonsuz rulo) basınca tekrarlanır**.
+4. Uygulama hiçbir aşamada `PaperType`/`GapsHeight` göndermez (K14.11); kuyruk varsayılanı
+   `Normal` ("Use Currently Printer Setting") bırakılır.

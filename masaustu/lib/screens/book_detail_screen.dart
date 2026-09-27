@@ -1,9 +1,13 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../api/kutuphane_api.dart';
 import '../config.dart';
 import '../formatters.dart';
 import '../models.dart';
+import '../printing/print_helpers.dart';
+import '../printing/rulo_durum.dart';
 import '../theme.dart';
 import 'book_form_dialog.dart';
 
@@ -23,6 +27,8 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
   late Future<List<Nusha>> _copiesFuture;
   late Kitap _kitap = widget.kitap;
   late int _nushaSayi = widget.kitap.nushaSayisi;
+  final Set<String> _secili = {};
+  List<Nusha> _copies = const [];
 
   bool get _isAdmin => AppConfig.session?.role == 'admin';
 
@@ -86,8 +92,9 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
   }
 
   Future<void> _addCopy() async {
+    final context = this.context;
     final raflar = await _api.raflar();
-    if (!mounted) return;
+    if (!context.mounted) return;
     final barkodController = TextEditingController();
     int? rafId;
     final saved = await showDialog<bool>(
@@ -146,8 +153,75 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
       setState(() => _nushaSayi++);
       _loadCopies();
       _snack('Nüsha eklendi (${res.nusha!.barkod}).');
+      // K14.4: yeni nüsha için etiket basımı önerisi.
+      if (!context.mounted) return;
+      final bas = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Etiket yazdır'),
+          content: Text(
+              '${res.nusha!.barkod} — bu nüshanın (57×40 mm) etiketi '
+              'yazıcıya gönderilsin mi?'),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(false),
+                child: const Text('Şimdi değil')),
+            FilledButton(
+                onPressed: () => Navigator.of(dialogContext).pop(true),
+                child: const Text('Yazdır')),
+          ],
+        ),
+      );
+      if (bas == true) await _etiketYazdir(res.nusha!);
     } else {
       _snack(res.error ?? 'Nüsha eklenemedi.', error: true);
+    }
+  }
+
+  /// K14.4: tek nüsha etiketi.
+  Future<void> _etiketYazdir(Nusha n) async {
+    if (!await ruloOnay(context, RuloTipi.etiket)) return;
+    final res = await etiketBas(
+      baslik: _kitap.baslik,
+      yazar: _kitap.yazar?.adSoyad ?? '',
+      kategori: _kitap.kategori?.ad ?? '',
+      barkod: n.barkod,
+    );
+    if (!mounted) return;
+    if (res.ok) {
+      _snack('Etiket yazıcıya gönderildi (${n.barkod}).');
+    } else {
+      _snack('Etiket: ${res.message}', error: true);
+    }
+  }
+
+  /// K14.4: seçili nüshaların etiketlerini topluca basar.
+  Future<void> _topluEtiket(List<Nusha> copies) async {
+    final secili = copies.where((c) => _secili.contains(c.barkod)).toList();
+    if (secili.isEmpty) return;
+    if (!await ruloOnay(context, RuloTipi.etiket)) return;
+    var ok = 0;
+    final hatalar = <String>[];
+    for (final n in secili) {
+      final res = await etiketBas(
+        baslik: _kitap.baslik,
+        yazar: _kitap.yazar?.adSoyad ?? '',
+        kategori: _kitap.kategori?.ad ?? '',
+        barkod: n.barkod,
+      );
+      if (res.ok) {
+        ok++;
+      } else {
+        hatalar.add('${n.barkod}: ${res.message}');
+      }
+    }
+    if (!mounted) return;
+    if (hatalar.isEmpty) {
+      _snack('$ok etiket yazıcıya gönderildi.');
+    } else {
+      _snack(
+          '$ok başarılı; ${hatalar.length} başarısız — ${hatalar.join('; ')}',
+          error: true);
     }
   }
 
@@ -322,6 +396,14 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
                   style: Theme.of(context).textTheme.bodySmall),
               const SizedBox(width: 12),
               FilledButton.tonalIcon(
+                onPressed: _secili.isEmpty
+                    ? null
+                    : () => _topluEtiket(_copies),
+                icon: const Icon(Icons.sell_outlined, size: 18),
+                label: Text('Etiketler (${_secili.length})'),
+              ),
+              const SizedBox(width: 8),
+              FilledButton.tonalIcon(
                 onPressed: _addCopy,
                 icon: const Icon(Icons.add, size: 18),
                 label: const Text('Nüsha Ekle'),
@@ -343,6 +425,7 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
                     style: TextStyle(color: Theme.of(context).colorScheme.error));
               }
               final copies = snap.data ?? const [];
+              _copies = copies;
               if (copies.isEmpty) {
                 return const Card(
                   child: Padding(
@@ -351,22 +434,55 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
                   ),
                 );
               }
+              final hepsiSecili = copies.every(_secili.contains);
               return Card(
                 clipBehavior: Clip.antiAlias,
                 child: DataTable(
                   headingRowHeight: 44,
                   dataRowMinHeight: 40,
                   dataRowMaxHeight: 48,
-                  columns: const [
-                    DataColumn(label: Text('Barkod')),
-                    DataColumn(label: Text('Durum')),
-                    DataColumn(label: Text('Raf')),
-                    DataColumn(label: Text('')),
+                  columns: [
+                    DataColumn(
+                      label: Checkbox(
+                        value: _secili.isNotEmpty && hepsiSecili,
+                        onChanged: (v) => setState(() {
+                          if (v == true) {
+                            _secili.addAll(copies.map((c) => c.barkod));
+                          } else {
+                            for (final c in copies) {
+                              _secili.remove(c.barkod);
+                            }
+                          }
+                        }),
+                      ),
+                    ),
+                    const DataColumn(label: Text('Barkod')),
+                    const DataColumn(label: Text('Durum')),
+                    const DataColumn(label: Text('Raf')),
+                    const DataColumn(label: Text('')),
                   ],
                   rows: [
                     for (final n in copies)
                       DataRow(
+                        selected: _secili.contains(n.barkod),
+                        onSelectChanged: (v) => setState(() {
+                          if (v == true) {
+                            _secili.add(n.barkod);
+                          } else {
+                            _secili.remove(n.barkod);
+                          }
+                        }),
                         cells: [
+                          DataCell(Checkbox(
+                            value: _secili.contains(n.barkod),
+                            onChanged: (v) => setState(() {
+                              if (v == true) {
+                                _secili.add(n.barkod);
+                              } else {
+                                _secili.remove(n.barkod);
+                              }
+                            }),
+                          )),
                           DataCell(Text(n.barkod,
                               style: const TextStyle(fontWeight: FontWeight.w500))),
                           DataCell(Text(durumLabel(n.durum),
@@ -378,6 +494,8 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
                             tooltip: 'İşlemler',
                             onSelected: (v) {
                               switch (v) {
+                                case 'etiket':
+                                  _etiketYazdir(n);
                                 case 'raf':
                                   _changeRaf(n);
                                 case 'durum':
@@ -387,6 +505,8 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
                               }
                             },
                             itemBuilder: (_) => [
+                              const PopupMenuItem(
+                                  value: 'etiket', child: Text('Etiket Bas')),
                               const PopupMenuItem(
                                   value: 'raf', child: Text('Raf Değiştir')),
                               if (_isAdmin)
