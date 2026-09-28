@@ -23,6 +23,19 @@
   `transaction.atomic()` içinde yapılır (örn. ödünç kapatma + nüsha durumu).
 - **R1.5 — Yetki:** Hassas işlemler yalnızca `admin` rotlu personel (ve superuser/staff)
   tarafından yapılır (`IsAdminPersonel`).
+- **R1.6 — Türkçe metin araması:** Kullanıcı adı, kitap başlığı, yazar, kategori vb.
+  Türkçe metinler **yalnızca** denormalize edilmiş, `fold()` ile küçük harfe indirgenmiş
+  `arama` alanı üzerinden aranır (`arama__icontains=fold(q)`). Doğrudan Türkçe metin
+  alanında `__icontains` **kullanılmaz**: Django bunu `UPPER(sütun) LIKE UPPER(aranan)`
+  olarak der ve `UPPER('i') = 'I'` olduğu için noktalı `İ` ile küçük `i` eşleşmez
+  (baskıdaki "İnsan Olmak" araması "insan olmak" ile boş döner). Barkod / ISBN / raf kodu
+  gibi ASCII alanlar istisnadır (`icontains` doğrudan kullanılabilir). Şifreli alanlar
+  (`encryption.py`) zaten belirsiz aramaya kapalıdır.
+- **R1.7 — Türkçe metin normalizasyonu (baş harf):** Toplu içe aktarımda (K9.13) ve
+  `manage.py uye_adlari_normalize` komutuyla, üye `ad`/`soyad` alanları Türkçe baş harf
+  biçimine çevrilir: `i → İ`, `ı → I` (büyütürken), `I → ı`, `İ → i` (küçültürken);
+  fazla boşluklar daraltılır (`İSMAİL → İsmail`, `YILDIRIM → Yıldırım`, `KIZIL → Kızıl`).
+  Elle yazılan kayıtlar değiştirilmez; kural yalnızca toplu kaynakları normalize eder.
 
 ---
 
@@ -184,7 +197,7 @@ Not: Akıllı raf öneri sistemi (rafların program tarafından düzenli tutulma
 | K9.10 | **Sunucu adresi ayarı yalnız giriş akışındadır**: üye ve editör iç ekranlarında sunucu değiştirme **yoktur**. Giriş ekranında ayar, **kayıtlı sunucuya erişilemediğinde belirginleşir** (`/api/health/` kontrolü başarısız → "Kayıtlı sunucuya erişilemiyor" kutusu + "Sunucu değiştir"); erişim varken yalnız küçük `Sunucu: <adres>` bilgisi gösterilir. İlk kurulum/sunucu ulaşılamazlığında adres girişi el sıkışma ekranındadır (masaüstünde ayar login/yönetim ekranındandır) | mobil `LoginScreen` + `ConnectionScreen` (masaüstü `AppConfig.apiBaseUrl`) |
 | K9.11 | Mobil **hızlı giriş**: giriş ekranındaki **"Beni hatırla"** anahtarı açıkken kullanıcı adı/şifre **saklanmaz**; oturum, saklanan **refresh token ile yenilenir** (otomatik giriş, ~30 gün). Anahtar kapalıysa oturum **15 dk** içinde tazelenmemişse yeniden giriş istenir. **Sunucu token ömürleri**: access **15 dk**, refresh **30 gün** (`settings.SIMPLE_JWT`). İstemci **401'de refresh ile otomatik yeniler** ve isteği tekrarlar; yalnız yenileme de başarısızsa yeniden giriş istenir. Uygulama arka plana alınınca "son aktiflik" güncellenir. **Çıkış** token'ları temizler; şifre hiçbir zaman cihazda saklanmaz | mobil `LoginScreen` + `SessionStorage` + `_KutuphaneAppState` + `LibraryApiClient`; `settings.SIMPLE_JWT` |
 | K9.12 | **Mobil editör ekranı iki bölümlüdür** (alt gezinme çubuğu ile): **1) Editör** — mevcut kitap düzenleme ekranı; **2) Üye** — normal üyeye görünen üç sekmeli bölümün **birebir aynısı** (`Kitaplar`/`Ödünçlerim`/`Ceza`). Editöre özel ayrı "ödünçlerim" görünümü **kaldırılır**; ödünç ve ceza bilgisi yalnız üye bölümünden görülür. Bölümler arası geçişte her bölümün durumu korunur | mobil `EditorHomeScreen` + `main.dart` |
-| K9.13 | **Toplu öğrenci içe aktarma (dönem başı senkronu)**: masaüstünden CSV ile; yalnız **Öğrenci** rolü kapsanır (öğretmen/editör etkilenmez), şifre/hesap oluşturulmaz. CSV: `ogrenci_no`/`uye_no`, `ad`, `soyad`, `sinif`[, `rol`]; UTF-8 (CP1254 yedekli), ayraç `,`/`;`/`\t` otomatik; sınıf `5/A`→`5-A` normalize, eksik sınıf otomatik oluşturulur; rol varsayılan Öğrenci (öğrenci dışı rol yalnız admin, K9.5.2). **Önce `dry_run` önizleme** (`yeni`/`yenileme`/`çakışma`/`pasife çekilecek`/`hatalı`) gösterilir; onayla tek `atomic` işlem: (1) import-öncesi durum snapshot'ı alınır, (2) tüm aktif Öğrenciler pasife çekilir, (3) CSV satırları `uye_no`'dan eşlenir — **yok** → yeni aktif kayıt; **önceden aktif** → sınıf/ad-soyad güncelle + aktif (dönem içi yenileme); **önceden pasif** → **çakışma** (varsayılan atla + rapor; opsiyonel "yeniden kullan" ödünç geçmişi/cezayı devreder, önizlemede uyarılır); Öğretmen/Editör ile çakışma → hata, dokunulmaz. Listede olmayanlar pasif kalır (mezun). Hatalı satır işlemi kesmez, rapora yazılır. Yetki: personel/admin (`IsPersonel`), editör/üye 403. Admin panelde üye içe/dışa aktarma yoktur; bu madde tek yetkili aktarım yoludur. Yanıt `arsiv_aday` (3+ yıl pasif arşiv adayı sayısı) döner; masaüstü/admin'i arşiv için uyarır (arşivleme Django admin'de yapılır) | `UyeViewSet#import` + `rules.ogrenci_aktar_onizle/uygula` |
+| K9.13 | **Toplu öğrenci içe aktarma (dönem başı senkronu)**: masaüstünden CSV ile; yalnız **Öğrenci** rolü kapsanır (öğretmen/editör etkilenmez), şifre/hesap oluşturulmaz. CSV: `ogrenci_no`/`uye_no`, `ad`, `soyad`, `sinif`[, `rol`]; UTF-8 (CP1254 yedekli), ayraç `,`/`;`/`\t` otomatik; sınıf `5/A`→`5-A` normalize, eksik sınıf otomatik oluşturulur; **`ad`/`soyad` Türkçe baş harf biçimine normalize edilir (R1.7: `i→İ`, `I→ı`; önizlemede normalize hâli görünür)**; rol varsayılan Öğrenci (öğrenci dışı rol yalnız admin, K9.5.2). **Önce `dry_run` önizleme** (`yeni`/`yenileme`/`çakışma`/`pasife çekilecek`/`hatalı`) gösterilir; onayla tek `atomic` işlem: (1) import-öncesi durum snapshot'ı alınır, (2) tüm aktif Öğrenciler pasife çekilir, (3) CSV satırları `uye_no`'dan eşlenir — **yok** → yeni aktif kayıt; **önceden aktif** → sınıf/ad-soyad güncelle + aktif (dönem içi yenileme); **önceden pasif** → **çakışma** (varsayılan atla + rapor; opsiyonel "yeniden kullan" ödünç geçmişi/cezayı devreder, önizlemede uyarılır); Öğretmen/Editör ile çakışma → hata, dokunulmaz. Listede olmayanlar pasif kalır (mezun). Hatalı satır işlemi kesmez, rapora yazılır. Yetki: personel/admin (`IsPersonel`), editör/üye 403. Admin panelde üye içe/dışa aktarma yoktur; bu madde tek yetkili aktarım yoludur. Yanıt `arsiv_aday` (3+ yıl pasif arşiv adayı sayısı) döner; masaüstü/admin'i arşiv için uyarır (arşivleme Django admin'de yapılır) | `UyeViewSet#import` + `rules.ogrenci_aktar_onizle/uygula` |
 
 > Not: `Rol` (Öğrenci/Öğretmen/Editör) ödünç grubudur ve `RoleLoanPolicy` ile süre/limit/ceza belirler; Editör politikası Öğretmen ile aynıdır.
 
@@ -227,7 +240,8 @@ Her kural için en az bir test:
 - K10.5-K10.7: raf kodu zorunlu nüsha reddi/raf ile kabul; kayıp/hasarlı notsuz kapatma 400, notlu kapanış notu saklar; sessiz saatte bildirim atlanır, kapalıyken normal (K10IsleyisEntegrasyonTests).
 - K11: kök adres 200 + kitap başlıkları; kimlik gerektirmeme; büyük/küçük harfle arama; sonuç-yok mesajı (KatalogWebTests).
 - K9.12: editör ekranında iki bölüm (Editör/Üye) alt gezinmesi; üye bölümü üç sekmeyi (Kitaplar/Ödünçlerim/Ceza) gösterir (EditorHomeScreenTests).
- - K9.13: önizleme/uygula; sınıf `5/A`→`5-A` normalize + eksik sınıf oluşturma; yeni/yenile/aktifle; listede olmayan mezun pasif kalır; önceden pasif çakışmada varsayılan atla, "yeniden kullan" ile aktifleşir; Öğretmen/Editör dokunulmaz; rol kuralı (personel Öğrenci, admin diğer); ayraç/kodlama; yetki 403 (K9.13ImportTests).
+ - K9.13: önizleme/uygula; sınıf `5/A`→`5-A` normalize + eksik sınıf oluşturma; **ad/soyad baş harf normalize (`YILDIRIM`→`Yıldırım`, R1.7)**; yeni/yenile/aktifle; listede olmayan mezun pasif kalır; önceden pasif çakışmada varsayılan atla, "yeniden kullan" ile aktifleşir; Öğretmen/Editör dokunulmaz; rol kuralı (personel Öğrenci, admin diğer); ayraç/kodlama; yetki 403 (K9.13ImportTests).
+ - R1.6/R1.7: `bas_harf_buyut` dönüşümleri (Türkçe I/İ, çoklu boşluk); içe aktarmada normalize; envanter sayımı kitap adı araması `İnsan Olmak`/`insan olmak`/`İNSAN` yazımlarının üçünde de sonuç verir (R1.6Testleri, K13AramaTestleri).
  - E2E canlı smoke: checkout → kapat döngüsü.
 
 ---

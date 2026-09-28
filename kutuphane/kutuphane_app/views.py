@@ -935,9 +935,11 @@ class InventorySessionViewSet(viewsets.ModelViewSet):
             qs = qs.filter(seen=True)
         search = request.query_params.get("q")
         if search:
+            # R1.6: Türkçe metin `arama` (fold edilmiş) alanından aranır;
+            # barkod/raf_kodu ASCII'dir, doğrudan karşılaştırılabilir.
             qs = qs.filter(
                 Q(barkod__icontains=search)
-                | Q(kitap_baslik__icontains=search)
+                | Q(kitap_nusha__kitap__arama__icontains=fold(search))
                 | Q(raf_kodu__icontains=search)
             )
         total = qs.count()

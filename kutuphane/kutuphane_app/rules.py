@@ -14,7 +14,7 @@ from django.db.models import Q
 from django.utils import timezone
 
 from .models import Kategori, Kitap, KitapNusha, OduncKaydi, Raf, Rol, Sinif, Uye, Yazar
-from .turkish import fold
+from .turkish import bas_harf_buyut, fold
 
 # --- Ödünç kapanış geçişleri (K3) ---
 ODUNC_ACIK_DURUMLAR = {"oduncte", "gecikmis"}
@@ -295,8 +295,9 @@ def _ogrenci_analiz(parsed, *, is_superuser, yeniden_kullan):
     satirlar = []
     for r in parsed:
         uye_no = (r["uye_no"] or "").strip().upper()
-        ad = (r["ad"] or "").strip()
-        soyad = (r["soyad"] or "").strip()
+        # R1.7: ad/soyad Türkçe baş harf biçimine çevrilir (i→İ, I→ı).
+        ad = bas_harf_buyut(r["ad"])
+        soyad = bas_harf_buyut(r["soyad"])
         norm_sinif = _sinif_normalize(r["sinif"])
         rol_ad, rol_hata = _hedef_rol(r["rol"], is_superuser=is_superuser)
 

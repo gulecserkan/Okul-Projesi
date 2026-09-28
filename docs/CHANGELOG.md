@@ -6,6 +6,28 @@ sunucuya yalnızca etiketli sürümler gönderilir (bkz. `docs/DEPLOY_CLOUD.md`)
 
 ## [Unreleased]
 
+## [1.1.12] — 2026-09-28
+
+Öğrenci listesi içe aktarımı ve Türkçe arama düzeltmeleri. Masaüstü istemcisi
+değişmedi (istemci güncelleme kontrolü sürüm koduna baktığı için yeniden derleme
+gerekmez; `surumKodu` 3'te kalındı).
+
+- **R1.6 — Türkçe metin araması:** Öğrenci listesi yükseltildi. Sayım (envanter)
+  ekranındaki kitap adı araması, başlığında "İ" bulunan 207 kitapta (`"İnsan Olmak"`)
+  hiç sonuç vermiyordu — Django `__icontains` filtresini
+  `UPPER(sütun) LIKE UPPER(aranan)` olarak deriyor, `UPPER('i') = 'I'` olduğu için
+  noktalı `İ` ile küçük `i` eşleşmiyordu. Arama artık fold edilmiş `arama` alanından
+  yapılıyor; barkod/raf kodu araması korundu. Kural `docs/IS_KURALLARI.md` → R1.6'ya
+  işlendi (Türkçe metin alanında doğrudan `__icontains` kullanılmaz).
+- **R1.7 — Türkçe baş harf normalizasyonu:** e-okul listeleri büyük harfli geliyordu
+  (`YILDIRIM KIZIL`). `turkish.bas_harf_buyut()` ile ad/soyad Türkçe baş harf
+  biçimine çevrilir (`i→İ`, `ı→I`; `I→ı`, `İ→i`) — `İSMAİL→İsmail`,
+  `YILDIRIM→Yıldırım`, `KIZIL→Kızıl`. Toplu içe aktarmada (K9.13) uygulanır ve
+  **önizlemede normalize hâli görünür**; mevcut kayıtlar için
+  `manage.py uye_adlari_normalize` komutu eklendi (atomik, idempotent, `--dry-run`).
+- **Testler:** 3 yeni test sınıfı, 6 yeni test (baş harf dönüşümleri, öğrenci arama
+  anahtarı, sayım ekranı araması, içe aktarmada isim normalizasyonu); toplam 146 test.
+
 ## [1.1.11] — 2026-09-27
 
 Masaüstünde **yazıcı / fiş / etiket** alt yapısı ve içerik editörü eklendi (K14.1–K14.12) — CUPS

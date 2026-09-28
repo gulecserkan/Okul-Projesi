@@ -28,6 +28,8 @@ from kutuphane_app.models import (
     ArsivOdunc,
     ArsivUye,
     Kategori,
+    InventoryItem,
+    InventorySession,
     Kitap,
     KitapNusha,
     KurumAyarlari,
@@ -53,6 +55,7 @@ from kutuphane_app.rules import (
     suggested_loss_penalty,
     validate_transition,
 )
+from kutuphane_app.turkish import bas_harf_buyut, fold
 from kutuphane_app.book_lookup import (
     lookup_books,
     looks_like_isbn,
@@ -1803,6 +1806,30 @@ class K9_13ImportTests(APITestCase):
         resp = self._post(self.personel, dry_run=True, csv_metni="a;b;c\n1;2;3\n")
         self.assertEqual(resp.status_code, 400)
 
+    def test_isimler_turkce_bas_harf_normalize_edilir(self):
+        """R1.7/K9.13: e-okul'un büyük harfli isimleri baş harf biçimine çevrilir."""
+        csv_metni = (
+            "ogrenci_no;ad;soyad;sinif\n"
+            "700;YILDIRIM;KIZIL;5/A\n"
+            "701;İSMAİL;DİRİCANLI;5/A\n"
+        )
+        # Önizlemede normalize hâl görünür.
+        resp = self._post(self.personel, dry_run=True, csv_metni=csv_metni)
+        self.assertEqual(resp.status_code, 200, resp.content)
+        satirlar = {s["uye_no"]: s for s in resp.data["satirlar"]}
+        self.assertEqual(satirlar["700"]["ad"], "Yıldırım")
+        self.assertEqual(satirlar["700"]["soyad"], "Kızıl")
+        self.assertEqual(satirlar["701"]["ad"], "İsmail")
+        self.assertEqual(satirlar["701"]["soyad"], "Diricanlı")
+        # Uygulanmış hâli de normalize; arama alanı tazelenir.
+        self.assertTrue(
+            self._post(self.personel, dry_run=False, csv_metni=csv_metni).status_code == 200
+        )
+        ogr = Uye.objects.get(uye_no="700")
+        self.assertEqual((ogr.ad, ogr.soyad), ("Yıldırım", "Kızıl"))
+        self.assertEqual(ogr.arama, "yıldırım kızıl 700 5-a ogrenci")
+        self.assertTrue(Uye.objects.filter(arama__icontains="yildirim").exists())
+
     def test_yetki(self):
         # Anonim → 401
         self.client.force_authenticate(None)
@@ -2065,6 +2092,67 @@ class MasaustuSurumApiTests(APITestCase):
             with override_settings(MASAUSTU_DIST_DIR=d):
                 r = self.client.get(self.URL)
         self.assertEqual(r.status_code, status.HTTP_404_NOT_FOUND)
+
+
+class R1_6_7TurkceMetinTestleri(TestCase):
+    """R1.6 (Türkçe arama) + R1.7 (baş harf normalizasyonu)."""
+
+    def test_bas_harf_buyut(self):
+        self.assertEqual(bas_harf_buyut("İSMAİL"), "İsmail")
+        self.assertEqual(bas_harf_buyut("YILDIRIM"), "Yıldırım")
+        self.assertEqual(bas_harf_buyut("KIZIL"), "Kızıl")
+        self.assertEqual(bas_harf_buyut("DİRİCANLI"), "Diricanlı")
+        self.assertEqual(bas_harf_buyut("ISMAIL"), "Ismaıl")
+        self.assertEqual(bas_harf_buyut("YİĞİT  DOLUNAY"), "Yiğit Dolunay")
+        self.assertEqual(bas_harf_buyut(""), "")
+        self.assertEqual(bas_harf_buyut(None), "")
+
+    def test_uye_arama_alani_turkce_harf_duyarsiz(self):
+        """R1.6: Öğrenci araması `arama` alanından — büyük harfli kayıt bulunur."""
+        rol, _ = Rol.objects.get_or_create(ad="Öğrenci")
+        uye = Uye.objects.create(
+            ad="FURKAN", soyad="DİRİCANLI", uye_no="6194", rol=rol
+        )
+        self.assertEqual(uye.arama, "furkan diricanlı 6194 ogrenci")
+        for q in ("diricanli", "DİRİCANLI", "Furkan Diricanlı"):
+            self.assertTrue(
+                Uye.objects.filter(arama__icontains=fold(q)).exists(),
+                f"arama bulunamadı: {q}",
+            )
+
+
+class R1_6EnvanterAramaTestleri(APITestCase):
+    """R1.6: sayım ekranında kitap adı araması noktalı İ ile de çalışmalı."""
+
+    URL = "/api/inventory-sessions/{}/items/"
+
+    def setUp(self):
+        self.user = User.objects.create_superuser(username="admin", password="a1!")
+        self.client.force_authenticate(self.user)
+        self.kitap, self.nusha = make_book_and_copy("İnsan Olmak", barkod="KIT000700")
+        self.oturum = InventorySession.objects.create(name="Sayım 1", created_by=self.user)
+        InventoryItem.objects.create(
+            session=self.oturum,
+            kitap_nusha=self.nusha,
+            barkod="KIT000700",
+            kitap_baslik="İnsan Olmak",
+            raf_kodu="R10",
+        )
+
+    def _ara(self, q):
+        r = self.client.get(self.URL.format(self.oturum.id), {"q": q, "status": "all"})
+        self.assertEqual(r.status_code, status.HTTP_200_OK, r.content)
+        return r.data["results"]
+
+    def test_noktali_i_ile_arama(self):
+        """Eski hata: `kitap_baslik__icontains` 'İnsan Olmak' için 0 sonuç dönerdi."""
+        for q in ("İnsan Olmak", "insan olmak", "İNSAN OLM", "iNsAn"):
+            self.assertEqual(len(self._ara(q)), 1, f"bulunamadı: {q}")
+
+    def test_barkod_ve_raf_kodu_arama_korunur(self):
+        self.assertEqual(len(self._ara("KIT000700")), 1)
+        self.assertEqual(len(self._ara("R10")), 1)
+        self.assertEqual(len(self._ara("bulunmayan-kitap")), 0)
 
 
 
