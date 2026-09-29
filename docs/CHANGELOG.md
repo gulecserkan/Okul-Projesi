@@ -6,6 +6,30 @@ sunucuya yalnızca etiketli sürümler gönderilir (bkz. `docs/DEPLOY_CLOUD.md`)
 
 ## [Unreleased]
 
+## [1.1.14] — 2026-09-29
+
+Termal rulo ölçüleri: fiş genişliği 55 mm'de de kullanılabilir ve ölçü
+değişiklikleri artık kaybolmaz (**yalnızca masaüstü istemcisi**; backend
+değişmedi, sunucuya deploy gerekmez).
+
+- **R1.9 — Ayarlarda kaydetme tutarlılığı:** Açılır listeler/anahtarlar anında
+  kaydedilirken ölçü alanlarının yalnızca "Rulo ayarlarını kaydet" ile
+  kaydedilmesi "otomatik kaydediliyor" izlenimi bırakıyor ve kullanıcı fişi 55
+  yazdığı hâlde 70 mm'de çıkıyordu. Artık **Enter**, **alandan çıkış** (odak
+  kaybı) ve düğme aynı şekilde kaydeder; kaydedilmemiş değişiklik varken ekranda
+  uyarı görünür ve düğme etkinleşir, temiz durumda pasiftir. Geçersiz/eksik giriş
+  kaydedilen değere döner; virgüllü ondalık (`55,5`) kabul edilir.
+- **R1.10 — Fiş genişliği ve satır sarması:** Fiş genişliği serbest mm değeri
+  olarak **55 mm'de de çalışır**; değer PDF sayfa genişliğine, `lp -o
+  media=Custom.WxHpt` ile yazıcıya bildirilen özel kağıda ve sayfa yüksekliği
+  hesabına akar. Sayfa yüksekliği artık **satır sarmasını hesaba katar**
+  (LiberationSans için yaklaşık karakter genişlikleriyle **üst sınır**
+  tahmini → taşma yerine fazla boşluk): dar ruloda uzun kitap adı/kullanıcı satırı
+  ikinci satıra sarıp fişin altının kırpılmasını engeller. Kağıt tipi/gap hâlâ
+  yazıcının sensör kalibrasyonundadır.
+- Ölçü değişiklikleri kaydedilmediğinde fişler 70 mm üretiliyordu; artık
+  değişiklik yazıldığı anda `config.json`'a yazılır ve yeniden açılışta korunur.
+
 ## [1.1.13] — 2026-09-28
 
 Barkod okutma odak kilidi (**yalnızca masaüstü istemcisi**; backend değişmedi,

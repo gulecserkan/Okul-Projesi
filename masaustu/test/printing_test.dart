@@ -268,6 +268,39 @@ printer DISABLI_Yazici disabled since Jan 01 00:00
       expect(pdf.length, greaterThan(800));
     });
 
+    test('fiş sayfa genişliği verilen mm değerine uyar (55 mm altyapısı)', () {
+      final satirlar = <ReceiptLine>[
+        ...ReceiptPdf.baslik(kurum, 'TEST FİŞİ'),
+        const ReceiptLine('Kısa bir satır', size: 9),
+        ...ReceiptPdf.altBilgi(kurum),
+      ];
+      for (final mm in [70.0, 58.0, 55.0]) {
+        final o = ReceiptPdf.sayfaOlculeriPt(satirlar, genislikMm: mm, kenar: 3);
+        expect((o.genislikPt - mm * 2.834645669).abs(), lessThan(0.001),
+            reason: '$mm mm → ${o.genislikPt} pt');
+      }
+    });
+
+    test('dar rulo fişte yükseklik artar (sarma hesaba katılır)', () {
+      // 40 mm asgari sayfa yüksekliğini aşacak kadar satır (sarma farkı görünsün)
+      const uzun = [
+        ReceiptLine(
+            'KİTAP: İnsan Olmak ve Ötekilerle Birlikte Yaşamak Üzerine Bir Söyleşi Kitabı',
+            size: 11),
+        ReceiptLine('YAZAR: Michel Foucault — Söyle ve Özne, Bir Söyleşi Kitabı Baskısı',
+            size: 10),
+        ReceiptLine('BARKOD: 978-975-00000-11-2   KİTAP NO: 1140   RAF: 12-B',
+            size: 10),
+        ReceiptLine('ÖDÜNÇ TARİHİ: 27.09.2026   İADE TARİHİ: 11.10.2026', size: 10),
+        ReceiptLine('KULLANICI: Ahmet Yılmaz   SINIF: 10-A   NO: 15', size: 10),
+        ReceiptLine('NOT: Kütüphane kurallarına göre iade tarihinde teslim ediniz.',
+            size: 9),
+      ];
+      final genis = ReceiptPdf.sayfaOlculeriPt(uzun, genislikMm: 70, kenar: 3);
+      final dar = ReceiptPdf.sayfaOlculeriPt(uzun, genislikMm: 55, kenar: 3);
+      expect(dar.yukseklikPt, greaterThan(genis.yukseklikPt));
+    });
+
     test('etiket PDF istenen sayfa boyutunda (57×40 mm)', () async {
       final pdf = await LabelPdf.render(LabelPdf.etiketElemanlari(
         kurum: kurum,

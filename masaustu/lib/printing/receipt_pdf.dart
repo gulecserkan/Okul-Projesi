@@ -260,31 +260,99 @@ class ReceiptPdf {
 
   /// Fiş satırlarından geçen (tüm alanları açık) en yüksek ölçü — A4'e
   /// sığdırma ölçüsü ve yapısal önizleme aynı satırlardan beslenir (K14.12).
+  /// Satır sarması `genislikMm` (varsayılan 70 mm) üzerinden hesaba katılır;
+  /// böylece ölçü PDF'in gerçek yüksekliğiyle aynı mantıkta ilerler (R1.10).
   static double sayfaYuksekligiMm(List<ReceiptLine> lines,
-      {double kenar = kenarMm}) {
-    double h = kenar * 2;
+      {double kenar = kenarMm, double? genislikMm}) {
+    final kullanilabilirMm =
+        ((genislikMm ?? ReceiptPdf.genislikMm) - kenar.clamp(0.0, 20.0))
+            .clamp(1.0, 1000.0);
+    return _toplamYukseklikMm(lines, kenar * mm, kullanilabilirMm * mm);
+  }
+
+  /// Satır listesinin toplam yüksekliği (punto). `kullanilabilirPt` null ise
+  /// sarma hesaba katılmaz (genişlik bilinmiyor → eski davranış).
+  static double _toplamYukseklikMm(
+      List<ReceiptLine> lines, double kenarPt, double? kullanilabilirPt) {
+    var h = kenarPt * 2;
     for (final l in lines) {
-      h += (l.divider ? 3.0 : l.size * 1.35) + l.spaceAfter;
+      if (l.divider) {
+        h += 3.0 + l.spaceAfter;
+        continue;
+      }
+      final gorsel = kullanilabilirPt == null
+          ? 1
+          : _tahminiGorselSatir(l.text, kullanilabilirPt, l.size);
+      h += gorsel * l.size * 1.35 + l.spaceAfter;
     }
     return h;
   }
 
+  /// Bir fiş satırının kaç görsel satıra saracağını **üst sınır** olarak tahmin
+  /// eder (R1.10). Yazı tipi (LiberationSans) sabit aralıklı değildir; karakter
+  /// sınıflarına yaklaşık ilerleme genişlikleri (em) kullanılır. Kelime sarması
+  /// karakter sarmasından daha az satır üretir; bu yüzden sonuç **fazla** yükseklik
+  /// verir → fişin altı kırpılmaz, gerekirse boşluk kalır.
+  static int _tahminiGorselSatir(
+      String text, double kullanilabilirPt, double fontPt) {
+    if (text.isEmpty) return 1;
+    if (kullanilabilirPt <= 0) return 1;
+    final em = fontPt <= 0 ? 1.0 : fontPt;
+    var satirlar = 1;
+    var dolu = 0.0;
+    for (final rune in text.runes) {
+      final cw = em * _emGenislik(String.fromCharCode(rune));
+      if (dolu + cw > kullanilabilirPt) {
+        satirlar++;
+        dolu = cw;
+      } else {
+        dolu += cw;
+      }
+    }
+    return satirlar;
+  }
+
+  /// Yaklaşık karakter ilerleme genişliği (em) — LiberationSans/Arial metrikleri.
+  static double _emGenislik(String ch) {
+    const darKume = ' .,:;\'!|iljftr()[]{}-';
+    const genisKume = 'mwMW@';
+    const rakamKume = '0123456789';
+    const buyukKume = 'ABCDEFGHJKLNOPQRSTUVXYZ';
+    const kucukKume = 'abcdeghknopsuvxyz';
+    if (darKume.contains(ch)) return 0.30;
+    if (genisKume.contains(ch)) return 0.83;
+    if (rakamKume.contains(ch)) return 0.56;
+    if (buyukKume.contains(ch)) return 0.68;
+    if (kucukKume.contains(ch)) return 0.55;
+    return 0.55;
+  }
+
+  /// Sayfa ölçüleri (punto). `render` bunu kullanır; testler de "fiş genişliği
+  /// verilen mm'ye uyuyor mu / sarma yüksekliğe yansıyor mu" kontrolünü buradan
+  /// yapar (PDF sıkıştırıldığı için MediaBox ham baytlarda okunamaz).
+  static ({double genislikPt, double yukseklikPt}) sayfaOlculeriPt(
+      List<ReceiptLine> lines,
+      {double? genislikMm, double kenar = kenarMm}) {
+    final w = (genislikMm ?? ReceiptPdf.genislikMm) * mm;
+    final margin = kenar.clamp(0.0, 20.0) * mm;
+    final h = _toplamYukseklikMm(lines, margin, w - margin * 2);
+    final minH = minYukseklikMm * mm;
+    return (genislikPt: w, yukseklikPt: h < minH ? minH : h);
+  }
+
   /// Fiş satırlarını fiş genişliğinde PDF yapar (yükseklik içeriğe göre).
   /// `genislikMm` verilmezse varsayılan 70 mm (K14.8), `kenar` içerik kenar
-  /// boşluğudur (K14.12, 0–8 mm).
+  /// boşluğudur (K14.12, 0–8 mm). Yükseklik dar ruloda satır sarmasını hesaba
+  /// katarak büyür (R1.10).
   static Future<List<int>> render(List<ReceiptLine> lines,
       {double? genislikMm, double kenar = kenarMm}) async {
     final regular = await PrintFonts.regular();
     final bold = await PrintFonts.bold();
 
-    final w = (genislikMm ?? ReceiptPdf.genislikMm) * mm;
+    final o = sayfaOlculeriPt(lines, genislikMm: genislikMm, kenar: kenar);
+    final w = o.genislikPt;
     final margin = kenar.clamp(0.0, 20.0) * mm;
-    double h = margin * 2;
-    for (final l in lines) {
-      h += (l.divider ? 3.0 : l.size * 1.35) + l.spaceAfter;
-    }
-    final minH = minYukseklikMm * mm;
-    final pageH = h < minH ? minH : h;
+    final pageH = o.yukseklikPt;
 
     final children = <pw.Widget>[];
     for (final l in lines) {

@@ -6,6 +6,7 @@ import 'package:masaustu/printing/sablon.dart';
 
 /// K14.12: fiş/etiket içerik şablonu.
 void main() {
+  ruloGenislikTestleri();
   const kurum = KurumBilgisi(
     kutuphaneAdi: 'Okul Kütüphanesi',
     adres: 'Atatürk Mah. Gazi Cad. No:1',
@@ -230,5 +231,62 @@ void main() {
       final cok = ReceiptPdf.sayfaYuksekligiMm(oduncFisi(), kenar: 8);
       expect(cok, greaterThan(az));
     });
+  });
+}
+
+// ---------------------------------------------------------------- R1.10 testleri
+// Dar rulo (55 mm) altyapısı: sayfa yüksekliği satır sarmasını hesaba katmalı.
+void ruloGenislikTestleri() {
+  const kurum = KurumBilgisi(kutuphaneAdi: 'Okul Kütüphanesi');
+
+  List<ReceiptLine> fis({String kitap = 'Sefere Seven Yedi Kule'}) =>
+      ReceiptPdf.oduncFisi(
+        kurum: kurum,
+        operator: 'Kütüphane Personeli',
+        tarih: '27.09.2026 22:31',
+        ogrenci: 'Ali Yılmaz',
+        sinif: '10-A',
+        kitap: kitap,
+        yazar: 'Tolga Özçelik',
+        barkod: 'B-2026-000123',
+        oduncTarihi: '27.09.2026',
+        iadeTarihi: '11.10.2026',
+      );
+
+  // 55 mm'de de sarmalanan uzun başlık
+  const uzunKitap =
+      'İnsan Olmak ve Ötekilerle Birlikte Yaşamak Üzerine Bir Söyleşi Kitabı';
+
+  test('dar ruloda (55 mm) uzun satırlar sarmalandığı için yükseklik artar', () {
+    final lines = fis(kitap: uzunKitap);
+    final genis = ReceiptPdf.sayfaYuksekligiMm(lines, kenar: 3, genislikMm: 70);
+    final dar = ReceiptPdf.sayfaYuksekligiMm(lines, kenar: 3, genislikMm: 55);
+    expect(dar, greaterThan(genis),
+        reason: 'sarma üst sınırla hesaplanır → taşma yerine boşluk bırakır');
+  });
+
+  test('sarma, varsayılan 70 mm genişliğe göre hesaplanır', () {
+    final lines = fis(kitap: uzunKitap);
+    final varsayilan = ReceiptPdf.sayfaYuksekligiMm(lines, kenar: 3);
+    final dar = ReceiptPdf.sayfaYuksekligiMm(lines, kenar: 3, genislikMm: 55);
+    final cokGenis =
+        ReceiptPdf.sayfaYuksekligiMm(lines, kenar: 3, genislikMm: 500);
+    expect(dar, greaterThan(varsayilan));
+    expect(cokGenis, lessThan(varsayilan));
+  });
+
+  test('kısa satırlı standart fiş 55 mm genişliğe sığar (yükseklik değişmez)', () {
+    final lines = fis();
+    expect(
+      ReceiptPdf.sayfaYuksekligiMm(lines, kenar: 3, genislikMm: 55),
+      ReceiptPdf.sayfaYuksekligiMm(lines, kenar: 3, genislikMm: 70),
+    );
+  });
+
+  test('kenar boşluğu hâlâ yüksekliğe yansır', () {
+    final lines = fis(kitap: uzunKitap);
+    final az = ReceiptPdf.sayfaYuksekligiMm(lines, kenar: 0, genislikMm: 55);
+    final cok = ReceiptPdf.sayfaYuksekligiMm(lines, kenar: 8, genislikMm: 55);
+    expect(cok, greaterThan(az));
   });
 }

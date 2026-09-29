@@ -48,6 +48,20 @@
   girilir). Katalog ve Ayarlar ekranlarında da kilit yoktur (form/ayar alanları
   kullanıcının kalıcı odağını ister). Uygulama arka plandan `resumed` olduğunda odak
   yeniden verilir.
+- **R1.9 — Ayarlarda kaydetme tutarlılığı:** Ayarlar ekranındaki bir değer ya
+  **anında kalıcıdır** (açılır listeler, anahtarlar: `onChanged` → `AppConfig` yazar)
+  ya da **açık kaydetme eylemiyle** uygulanır (metin alanları: `Rulo ayarlarını
+  kaydet`); ikincisinde alandan çıkıldığında/Enter basıldığında da uygulanır ve
+  kaydedilmemiş değişiklik varken uyarı görünür. "Otomatik kaydediliyor" izlenimi
+  bırakılmaz.
+- **R1.10 — Fiş genişliği ve sarım:** Fiş genişliği (varsayılan 70 mm) serbest mm
+  değeridir; **altyapı 55 mm'de de çalışır** (K14.8/K14.11). Değer üç yere akar:
+  (1) PDF sayfa genişliği, (2) `lp -o media=Custom.WxHpt` ile CUPS'a bildirilen
+  özel kağıt, (3) sayfa yüksekliği hesabı. Yükseklik **sarmalama hesaba katılarak**
+  önceden hesaplanır (sarma üst sınırla tahmin edilir: fazla boşluk olur, taşma
+  olmaz) — dar ruloda uzun satırlar ikinci satıra sarıp fişin altının kırpılmasına
+  yol açmasın. Kağıt tipi/boşluk (gap) yazıcının kendi sensör kalibrasyonundadır,
+  program zorlamaz.
 
 ---
 

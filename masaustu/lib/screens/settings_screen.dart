@@ -411,7 +411,7 @@ class _YazicilarTabState extends State<_YazicilarTab> {
             ),
             if (_ortakYaziciVar) ...[
               const Divider(height: 32),
-              _TermalRuloBolumu(prefs: _prefs, onRulo: _ruloSec, onKaydet: _kaydet),
+              TermalRuloBolumu(prefs: _prefs, onRulo: _ruloSec, onKaydet: _kaydet),
             ],
             const Divider(height: 32),
             Text('Otomatik fiş basımı', style: theme.textTheme.titleMedium),
@@ -627,35 +627,83 @@ class _KuyrukSecici extends StatelessWidget {
 
 /// K14.9/11: fiş ve etiket aynı yazıcıyı kullanınca "Termal rulo" bölümü.
 /// Rulo durumu bildirimi + etiket ölçüleri + fiş genişliği.
-class _TermalRuloBolumu extends StatefulWidget {
+/// Termal rulo ayarları bölümü. Test edilebilmesi için `lib` içinde herkese
+/// açık; ayarlar ekranı dışında kullanılmaz.
+class TermalRuloBolumu extends StatefulWidget {
   final PrinterPrefs prefs;
   final void Function(RuloTipi) onRulo;
   final ValueChanged<PrinterPrefs> onKaydet;
 
-  const _TermalRuloBolumu({
+  const TermalRuloBolumu({
+    super.key,
     required this.prefs,
     required this.onRulo,
     required this.onKaydet,
   });
 
   @override
-  State<_TermalRuloBolumu> createState() => _TermalRuloBolumuState();
+  State<TermalRuloBolumu> createState() => _TermalRuloBolumuState();
 }
 
-class _TermalRuloBolumuState extends State<_TermalRuloBolumu> {
+class _TermalRuloBolumuState extends State<TermalRuloBolumu> {
   late final TextEditingController _etGenislik;
   late final TextEditingController _etYukseklik;
   late final TextEditingController _fisGenislik;
+  late final FocusNode _etGenislikOdak;
+  late final FocusNode _etYukseklikOdak;
+  late final FocusNode _fisGenislikOdak;
+
+  /// Kaydedilmemiş metin girişi var mı (R1.9 uyarısı).
+  bool _kirli = false;
+
+  /// Son **kaydedilen** ölçüler. "Temiz mi?" karşılaştırması ebeveynin yeniden
+  /// çizimine değil bunlara bakar; böylece uyarı çizim sırasına takılmaz.
+  late double _kEtiketG;
+  late double _kEtiketY;
+  late double _kFisG;
 
   @override
   void initState() {
     super.initState();
-    _etGenislik =
-        TextEditingController(text: widget.prefs.etiketGenislikMm.toStringAsFixed(0));
-    _etYukseklik =
-        TextEditingController(text: widget.prefs.etiketYukseklikMm.toStringAsFixed(0));
-    _fisGenislik =
-        TextEditingController(text: widget.prefs.fisGenislikMm.toStringAsFixed(0));
+    final p = widget.prefs;
+    _kEtiketG = p.etiketGenislikMm;
+    _kEtiketY = p.etiketYukseklikMm;
+    _kFisG = p.fisGenislikMm;
+    _etGenislik = TextEditingController(text: _yaz(_kEtiketG))
+      ..addListener(_degisim);
+    _etYukseklik = TextEditingController(text: _yaz(_kEtiketY))
+      ..addListener(_degisim);
+    _fisGenislik = TextEditingController(text: _yaz(_kFisG))
+      ..addListener(_degisim);
+    // Odak kaybı `onEditingComplete`'i tetiklemez; kullanıcı alandan ayrılınca da
+    // kaydedilsin (R1.9) — en sık kullanılan yol budur.
+    _etGenislikOdak = FocusNode(debugLabel: 'etiketG')..addListener(_odakKaybi);
+    _etYukseklikOdak = FocusNode(debugLabel: 'etiketY')..addListener(_odakKaybi);
+    _fisGenislikOdak = FocusNode(debugLabel: 'fisG')..addListener(_odakKaybi);
+  }
+
+  static String _yaz(double v) =>
+      v == v.roundToDouble() ? v.toStringAsFixed(0) : v.toString();
+
+  static bool _ayni(double a, double b) => (a - b).abs() < 0.001;
+
+  void _degisim() {
+    final kirli = !_ayni(_sayi(_etGenislik.text, _kEtiketG), _kEtiketG) ||
+        !_ayni(_sayi(_etYukseklik.text, _kEtiketY), _kEtiketY) ||
+        !_ayni(_sayi(_fisGenislik.text, _kFisG), _kFisG);
+    if (kirli == _kirli) return;
+    setState(() => _kirli = kirli);
+  }
+
+  /// Odak bu üç alandan birinden başka yere taşındığında kaydet.
+  void _odakKaybi() {
+    final odak = FocusManager.instance.primaryFocus;
+    if (odak == _etGenislikOdak ||
+        odak == _etYukseklikOdak ||
+        odak == _fisGenislikOdak) {
+      return;
+    }
+    _kaydetAyar(sessiz: true);
   }
 
   @override
@@ -663,6 +711,9 @@ class _TermalRuloBolumuState extends State<_TermalRuloBolumu> {
     _etGenislik.dispose();
     _etYukseklik.dispose();
     _fisGenislik.dispose();
+    _etGenislikOdak.dispose();
+    _etYukseklikOdak.dispose();
+    _fisGenislikOdak.dispose();
     super.dispose();
   }
 
@@ -671,15 +722,45 @@ class _TermalRuloBolumuState extends State<_TermalRuloBolumu> {
     return (d == null || d <= 0) ? sabit : d;
   }
 
-  void _kaydetAyar() {
-    final p = widget.prefs;
-    widget.onKaydet(p.copyWith(
-      etiketGenislikMm: _sayi(_etGenislik.text, p.etiketGenislikMm),
-      etiketYukseklikMm: _sayi(_etYukseklik.text, p.etiketYukseklikMm),
-      fisGenislikMm: _sayi(_fisGenislik.text, p.fisGenislikMm),
+  static void _yazAlan(TextEditingController c, double v) {
+    final t = _yaz(v);
+    if (c.text != t) c.text = t;
+  }
+
+  /// Ölçüleri uygular. `onSubmitted`/`onEditingComplete`/odak kaybı ile de
+  /// çağrılır (Enter, alandan çıkış — R1.9). Kaydedilecek değişiklik yoksa
+  /// yalnızca geçersiz metin temizlenir; bildirim gösterilmez.
+  void _kaydetAyar({bool sessiz = false}) {
+    if (!mounted) return;
+    final etG = _sayi(_etGenislik.text, _kEtiketG);
+    final etY = _sayi(_etYukseklik.text, _kEtiketY);
+    final fisG = _sayi(_fisGenislik.text, _kFisG);
+    final degisti = !_ayni(etG, _kEtiketG) ||
+        !_ayni(etY, _kEtiketY) ||
+        !_ayni(fisG, _kFisG);
+    if (!degisti) {
+      _yazAlan(_etGenislik, etG);
+      _yazAlan(_etYukseklik, etY);
+      _yazAlan(_fisGenislik, fisG);
+      return;
+    }
+    widget.onKaydet(widget.prefs.copyWith(
+      etiketGenislikMm: etG,
+      etiketYukseklikMm: etY,
+      fisGenislikMm: fisG,
       etiketKurulumYapildi: true,
     ));
-    showAppSnack(context, 'Termal rulo ayarları kaydedildi.');
+    setState(() {
+      _kEtiketG = etG;
+      _kEtiketY = etY;
+      _kFisG = fisG;
+      _kirli = false;
+    });
+    // Geçersiz/eksik girişte alan kaydedilen değere döner.
+    _yazAlan(_etGenislik, etG);
+    _yazAlan(_etYukseklik, etY);
+    _yazAlan(_fisGenislik, fisG);
+    if (!sessiz) showAppSnack(context, 'Termal rulo ayarları kaydedildi.');
   }
 
   @override
@@ -734,7 +815,10 @@ class _TermalRuloBolumuState extends State<_TermalRuloBolumu> {
             Expanded(
               child: TextField(
                 controller: _etGenislik,
+                focusNode: _etGenislikOdak,
                 keyboardType: TextInputType.number,
+                onSubmitted: (_) => _kaydetAyar(sessiz: true),
+                onEditingComplete: () => _kaydetAyar(sessiz: true),
                 decoration: const InputDecoration(
                   labelText: 'Etiket genişliği (mm)',
                   isDense: true,
@@ -746,7 +830,10 @@ class _TermalRuloBolumuState extends State<_TermalRuloBolumu> {
             Expanded(
               child: TextField(
                 controller: _etYukseklik,
+                focusNode: _etYukseklikOdak,
                 keyboardType: TextInputType.number,
+                onSubmitted: (_) => _kaydetAyar(sessiz: true),
+                onEditingComplete: () => _kaydetAyar(sessiz: true),
                 decoration: const InputDecoration(
                   labelText: 'Etiket yüksekliği (mm)',
                   isDense: true,
@@ -762,7 +849,10 @@ class _TermalRuloBolumuState extends State<_TermalRuloBolumu> {
             Expanded(
               child: TextField(
                 controller: _fisGenislik,
+                focusNode: _fisGenislikOdak,
                 keyboardType: TextInputType.number,
+                onSubmitted: (_) => _kaydetAyar(sessiz: true),
+                onEditingComplete: () => _kaydetAyar(sessiz: true),
                 decoration: const InputDecoration(
                   labelText: 'Fiş genişliği (mm)',
                   isDense: true,
@@ -772,13 +862,37 @@ class _TermalRuloBolumuState extends State<_TermalRuloBolumu> {
             ),
           ],
         ),
+        const SizedBox(height: 8),
+        if (_kirli)
+          Row(
+            children: [
+              Icon(Icons.edit_outlined,
+                  size: 16, color: theme.colorScheme.tertiary),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  'Kaydedilmemiş değişiklik var — Enter tuşuna basın, alandan '
+                  'çıkın ya da "Rulo ayarlarını kaydet" düğmesini kullanın.',
+                  style: theme.textTheme.bodySmall
+                      ?.copyWith(color: theme.colorScheme.tertiary),
+                ),
+              ),
+            ],
+          )
+        else
+          Text(
+            'Ölçüler "Rulo ayarlarını kaydet" ile kaydedilir; Enter veya alandan '
+            'çıkış da kaydeder. Kaydedilen genişlik PDF ölçüsü ve yazıcıya '
+            'bildirilen kağıt boyutu olarak kullanılır (55 mm de çalışır).',
+            style: theme.textTheme.bodySmall,
+          ),
         const SizedBox(height: 12),
         _KalibrasyonBilgisi(),
         const SizedBox(height: 8),
         Align(
           alignment: Alignment.centerRight,
           child: FilledButton.tonalIcon(
-            onPressed: _kaydetAyar,
+            onPressed: _kirli ? _kaydetAyar : null,
             icon: const Icon(Icons.check, size: 18),
             label: const Text('Rulo ayarlarını kaydet'),
           ),
