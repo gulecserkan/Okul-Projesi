@@ -58,7 +58,14 @@ class FisYazdir {
         ReceiptPdf.sablonla(lines, sahne, sablon),
         genislikMm: prefs.fisGenislikMm,
         kenar: sablon.fisKenarMm);
-    return PrinterServices.instance.printPdf(q, pdf, title: title);
+    // Termal rulo yazıcılarda sürekli rulo modu şart: `Normal` (etiket/gap)
+    // kipi kırmızı ışığa alıyor ve kesim yerini bozuyor. PPD bu seçeneği
+    // bilmiyorsa `lp` hata döner; o durumda seçeneksiz tekrar denenir.
+    final svc = PrinterServices.instance;
+    final r = await svc.printPdf(q, pdf,
+        title: title, ekSecenekler: const ['PaperType=Continue']);
+    if (r.ok) return r;
+    return svc.printPdf(q, pdf, title: title);
   }
 }
 

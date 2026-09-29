@@ -140,6 +140,7 @@ class PrinterService {
     List<int> pdfBytes, {
     String title = 'kutuphane-basım',
     String? media,
+    List<String> ekSecenekler = const [],
   }) async {
     final q = queue.trim();
     if (q.isEmpty) {
@@ -156,6 +157,9 @@ class PrinterService {
           : _mediaArgFromPdf(pdfBytes);
       if (mediaArg != null) {
         args.addAll(['-o', 'media=$mediaArg']);
+      }
+      for (final sec in ekSecenekler) {
+        if (sec.trim().isNotEmpty) args.addAll(['-o', sec.trim()]);
       }
       args.addAll(['-t', title, file.path]);
       final r = await _runner('lp', args);

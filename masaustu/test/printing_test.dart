@@ -301,6 +301,44 @@ printer DISABLI_Yazici disabled since Jan 01 00:00
       expect(dar.yukseklikPt, greaterThan(genis.yukseklikPt));
     });
 
+    test('fiş sayfası içeriğin etrafında sıkı kalır (altta boşluk bırakmaz)',
+        () async {
+      // Tahmin yüksekliği (satır aralığı katsayısı + sarma payı) kasıtlı olarak
+      // uzundur; üretilen sayfa ise gerçek içerikten ölçülür. Aradaki fark
+      // yalnızca kenar boşluğu + birkaç punto güven payı olmalı.
+      const kurum2 = KurumBilgisi(kutuphaneAdi: 'Okul Kütüphanesi');
+      final satirlar = ReceiptPdf.oduncFisi(
+        kurum: kurum2,
+        operator: 'Kütüphane Personeli',
+        tarih: '29.09.2026 10:00',
+        ogrenci: 'Ali Yılmaz',
+        sinif: '10-A',
+        kitap: 'Sefere Seven Yedi Kule',
+        yazar: 'Tolga Özçelik',
+        barkod: 'B-2026-000123',
+        oduncTarihi: '29.09.2026',
+        iadeTarihi: '11.10.2026',
+      );
+      for (final mm in [55.0, 70.0]) {
+        final tahmin =
+            ReceiptPdf.sayfaOlculeriPt(satirlar, genislikMm: mm, kenar: 3);
+        final akis = await ReceiptPdf.olcumAkisi(
+            satirlar, tahmin.genislikPt, 3 * 2.834645669);
+        final icerik = ReceiptPdf.olcIcerikYuksekligiPt(akis);
+        expect(icerik, isNotNull, reason: 'içerik ölçülebilmeli');
+        final sayfa = await ReceiptPdf.sayfaYuksekligiPt(satirlar,
+            genislikMm: mm, kenar: 3, olcumAkisi: akis);
+        final bosluk =
+            sayfa - icerik! - 2 * 3 * 2.834645669; // kenar boşlukları hariç
+        expect(bosluk, lessThan(1.5 * 2.834645669),
+            reason: '\${mm} mm: tahmin ${tahmin.yukseklikPt.toStringAsFixed(1)} pt, '
+            'sayfa ${sayfa.toStringAsFixed(1)} pt, içerik ${icerik.toStringAsFixed(1)} pt '
+            '→ fazla boşluk ${(bosluk / 2.834645669).toStringAsFixed(1)} mm');
+        expect(sayfa, lessThan(tahmin.yukseklikPt),
+            reason: 'ölçülen sayfa tahminden kısa olmalı');
+      }
+    });
+
     test('etiket PDF istenen sayfa boyutunda (57×40 mm)', () async {
       final pdf = await LabelPdf.render(LabelPdf.etiketElemanlari(
         kurum: kurum,

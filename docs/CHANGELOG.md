@@ -27,8 +27,27 @@ değişmedi, sunucuya deploy gerekmez).
   tahmini → taşma yerine fazla boşluk): dar ruloda uzun kitap adı/kullanıcı satırı
   ikinci satıra sarıp fişin altının kırpılmasını engeller. Kağıt tipi/gap hâlâ
   yazıcının sensör kalibrasyonundadır.
+- **R1.11 — Fişte alt boşluk (gerçek sayfa yüksekliği):** Sayfa yüksekliği
+  tahminle hesaplanıyordu (satır aralığı katsayısı + sarma üst sınırı) ve 55 mm
+  fişte **~16 mm** gereksiz alt boşluk bırakıyordu; kullanıcı fişi kısa
+  görüyordu. Artık sayfa, **PDF'in gerçek dikey kullanımı ölçülerek** belirlenir:
+  içerik sıkıştırılmamış, çok uzun bir ölçüm sayfasına basılır, yalnız içerik
+  akışındaki `cm/Td/Tm/Tf/re` konumları okunup gerçek tepe/dip bulunur ve asıl
+  sayfa buna göre kırpılır. Ölçüm başarısız olursa eski tahmine düşülür.
+  Ölçüm sırasında **gömülü fontun ham baytları taranmaz** (sadece `/Contents`
+  akışı okunur). Ayrıca ayraç satırlarının `spaceAfter` boşluğu hiç uygulanmıyordu,
+  düzeltildi. 55 mm fiş **92.4 mm → 82.4 mm**; fiziksel ölçümde üst boşluk
+  **5 mm**, alt boşluk **≤5 mm** (hedef 1.5 cm).
+- **R1.12 — Termal rulo kip ve kırmızı ışık:** 4B-2074C'nin kuyruk varsayılanı
+  `PaperType=Normal` (etiket/gap kipi); sonsuz rulo ile basılınca **gap sensörü
+  bulunamayınca kırmızı LED yanıp sönüyor** ve basım güç döngüsü gerektiriyordu.
+  Fiş basımı artık `PaperType=Continue` ile gider; PPD bu seçeneği bilmiyorsa
+  `lp` hata döndürür, uygulama seçeneksiz tekrar dener. `GapsHeight` ve
+  `PostAction` gönderilmez — **`TearOff` kalmalı**: `PostAction=None` denendi,
+  fiş kesme yerinin arkasında kaldı ve kesilemedi.
 - Ölçü değişiklikleri kaydedilmediğinde fişler 70 mm üretiliyordu; artık
   değişiklik yazıldığı anda `config.json`'a yazılır ve yeniden açılışta korunur.
+- Testler: 3 yeni test (ölçüm sıkılığı, `PaperType` geçişi); toplam 108 test.
 
 ## [1.1.13] — 2026-09-28
 

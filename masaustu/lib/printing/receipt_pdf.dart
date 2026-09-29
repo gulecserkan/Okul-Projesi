@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
@@ -340,6 +342,153 @@ class ReceiptPdf {
     return (genislikPt: w, yukseklikPt: h < minH ? minH : h);
   }
 
+  /// Fişin **gerçek** sayfa yüksekliği.
+  ///
+  /// Önce çok uzun bir sayfaya *sıkıştırılmamış* bir ölçüm geçişi basılır ve
+  /// içeriğin PDF'teki gerçek dikey uzunluğu okunur; asıl sayfa buna göre
+  /// kırpılır. Böylece satır aralığı katsayısı ya da sarma tahmini ne kadar
+  /// fazla olursa olsun fişin altında boşluk kalmaz (ölçüm: `olc()`).
+  /// Ölçüm başarısız olursa `tahmin` kullanılır.
+  static Future<double> sayfaYuksekligiPt(
+      List<ReceiptLine> lines,
+      {double? genislikMm,
+      double kenar = kenarMm,
+      required String olcumAkisi}) async {
+    final margin = kenar.clamp(0.0, 20.0) * mm;
+    final minH = minYukseklikMm * mm;
+    final olcu = olcIcerikYuksekligiPt(olcumAkisi);
+    if (olcu == null || olcu <= 0 || olcu > 2000) {
+      return sayfaOlculeriPt(lines, genislikMm: genislikMm, kenar: kenar)
+          .yukseklikPt;
+    }
+    // Son satırın alt boşluğu taban çizgisi dışında kaldığı için ölçümde yoktur
+    // (ayraç çubuğunun kendisi `re` ile ölçülür, yalnızca kenar boşluğu eklenir).
+    final sonAralik = lines.isEmpty
+        ? 0.0
+        : (lines.last.divider ? 2.0 : lines.last.spaceAfter);
+    final h = olcu + sonAralik + margin * 2;
+    return h < minH ? minH : h;
+  }
+
+  /// Ölçüm geçişinin ham PDF akışını üretir (sıkıştırma kapalı, çok uzun sayfa).
+  /// Testler de çağırır (sayfa yüksekliği ölçümünü doğrulamak için).
+  static Future<String> olcumAkisi(List<ReceiptLine> lines, double w,
+      double margin) async {
+    return _olcumAkisi(
+        lines, w, margin, await PrintFonts.regular(), await PrintFonts.bold());
+  }
+
+  static Future<String> _olcumAkisi(
+      List<ReceiptLine> lines, double w, double margin, pw.Font duzen,
+      pw.Font kalin) async {
+    final doc = pw.Document(compress: false);
+    doc.addPage(pw.Page(
+      pageFormat: PdfPageFormat(w, 2000, marginAll: margin),
+      build: (_) => _sutun(lines, duzen, kalin),
+    ));
+    return _icerikAkisi(await doc.save());
+  }
+
+  /// PDF'ten yalnızca sayfanın **içerik akışını** çıkarır. Sıkıştırma kapalı
+  /// olduğu için gömülü fontun ham baytlarıyla karışmaz.
+  static String _icerikAkisi(List<int> bayt) {
+    final s = latin1.decode(bayt);
+    final c = RegExp(r'/Contents\s+(\d+)\s+0\s+R').firstMatch(s);
+    if (c == null) return '';
+    final govde = RegExp('(^|\\n)${c.group(1)} 0 obj(.*?)endobj',
+            multiLine: true, dotAll: true)
+        .firstMatch(s);
+    if (govde == null) return '';
+    final ak = RegExp(r'stream\r?\n(.*?)\r?\nendstream', dotAll: true)
+        .firstMatch(govde.group(2)!);
+    return ak?.group(1) ?? '';
+  }
+
+  /// PDF akışından içeriğin gerçek dikey uzunluğu (punto).
+  ///
+  /// Metin taban çizgileri `Td/Tm` ile konumlanır, mutlak konum `cm` dönüşüm
+  /// zincirinden gelir. Metin için ascent/descent, ayraçlar (`re`) için gerçek
+  /// kutu yüksekliği dikkate alınır.
+  static double? olcIcerikYuksekligiPt(String akis) {
+    var tepe = double.negativeInfinity;
+    var dip = double.infinity;
+    void ekle(double ust, double alt) {
+      if (ust > tepe) tepe = ust;
+      if (alt < dip) dip = alt;
+    }
+
+    final desen = RegExp(
+        r'\bq\b|\bQ\b'
+        r'|([0-9.-]+)\s+([0-9.-]+)\s+([0-9.-]+)\s+([0-9.-]+)\s+([0-9.-]+)\s+([0-9.-]+)\s+cm'
+        r'|([0-9.-]+)\s+([0-9.-]+)\s+([0-9.-]+)\s+([0-9.-]+)\s+([0-9.-]+)\s+([0-9.-]+)\s+Tm'
+        r'|([0-9.-]+)\s+([0-9.-]+)\s+Td'
+        r'|([0-9.-]+)\s+Tf'
+        r'|([0-9.-]+)\s+([0-9.-]+)\s+([0-9.-]+)\s+([0-9.-]+)\s+re'
+        r'|\bBT\b|\bET\b');
+    var ctmY = 0.0;
+    final yedek = <double>[];
+    var lineY = 0.0;
+    var boyut = 0.0;
+    for (final m in desen.allMatches(akis)) {
+      final t = m.group(0)!;
+      if (t == 'q') {
+        yedek.add(ctmY);
+      } else if (t == 'Q') {
+        ctmY = yedek.isEmpty ? 0.0 : yedek.removeLast();
+      } else if (m.group(6) != null) {
+        ctmY += double.parse(m.group(6)!); // cm: dikey kayma (6. sayı)
+      } else if (m.group(12) != null) {
+        lineY = double.parse(m.group(12)!); // Tm: dikey taban
+      } else if (m.group(14) != null) {
+        lineY = double.parse(m.group(14)!); // Td: dikey taban
+      } else if (m.group(17) != null) {
+        final y = double.parse(m.group(17)!); // ayraç çubuğu
+        final h = double.parse(m.group(19)!);
+        ekle(ctmY + y + h, ctmY + y);
+      } else if (m.group(15) != null) {
+        boyut = double.parse(m.group(15)!); // Tf: punto
+      } else if (t == 'BT') {
+        lineY = 0.0;
+      } else if (t == 'ET') {
+        final taban = ctmY + lineY;
+        // LiberationSans hhea: ascent 1854/2048, descent 434/2048
+        ekle(taban + boyut * 0.9053, taban - boyut * 0.2119);
+      }
+    }
+    if (tepe == double.negativeInfinity) return null;
+    return tepe - dip;
+  }
+
+  /// Fiş sütunu — ölçüm geçişi ve asıl basım aynı yerleşimi kullanır.
+  static pw.Widget _sutun(List<ReceiptLine> lines, pw.Font duzen, pw.Font kalin) {
+    final children = <pw.Widget>[];
+    for (final l in lines) {
+      // `spaceAfter` her satır için geçerlidir; ayraçta da uygulanmazsa
+      // ayraçlar arası boşluk tahminle uyuşmaz ve ölçülen sayfa yanlış çıkar.
+      if (l.divider) {
+        children.add(pw.Container(
+          margin: pw.EdgeInsets.only(bottom: l.spaceAfter),
+          child: pw.Container(
+              height: 2,
+              margin: const pw.EdgeInsets.symmetric(vertical: 1),
+              color: PdfColors.black),
+        ));
+        continue;
+      }
+      children.add(pw.Container(
+        alignment: l.center ? pw.Alignment.center : pw.Alignment.centerLeft,
+        margin: pw.EdgeInsets.only(bottom: l.spaceAfter),
+        child: pw.Text(l.text,
+            style: pw.TextStyle(font: l.bold ? kalin : duzen, fontSize: l.size)),
+      ));
+    }
+    return pw.Column(
+      crossAxisAlignment: pw.CrossAxisAlignment.stretch,
+      mainAxisSize: pw.MainAxisSize.min,
+      children: children,
+    );
+  }
+
   /// Fiş satırlarını fiş genişliğinde PDF yapar (yükseklik içeriğe göre).
   /// `genislikMm` verilmezse varsayılan 70 mm (K14.8), `kenar` içerik kenar
   /// boşluğudur (K14.12, 0–8 mm). Yükseklik dar ruloda satır sarmasını hesaba
@@ -352,34 +501,14 @@ class ReceiptPdf {
     final o = sayfaOlculeriPt(lines, genislikMm: genislikMm, kenar: kenar);
     final w = o.genislikPt;
     final margin = kenar.clamp(0.0, 20.0) * mm;
-    final pageH = o.yukseklikPt;
-
-    final children = <pw.Widget>[];
-    for (final l in lines) {
-      if (l.divider) {
-        children.add(pw.Container(
-            height: 2,
-            margin: const pw.EdgeInsets.symmetric(vertical: 1),
-            color: PdfColors.black));
-        continue;
-      }
-      final text = pw.Text(l.text,
-          style: pw.TextStyle(font: l.bold ? bold : regular, fontSize: l.size));
-      children.add(pw.Container(
-        alignment: l.center ? pw.Alignment.center : pw.Alignment.centerLeft,
-        margin: pw.EdgeInsets.only(bottom: l.spaceAfter),
-        child: text,
-      ));
-    }
+    final akis = await _olcumAkisi(lines, w, margin, regular, bold);
+    final pageH = await sayfaYuksekligiPt(lines,
+        genislikMm: genislikMm, kenar: kenar, olcumAkisi: akis);
 
     final doc = pw.Document();
     doc.addPage(pw.Page(
       pageFormat: PdfPageFormat(w, pageH, marginAll: margin),
-      build: (_) => pw.Column(
-        crossAxisAlignment: pw.CrossAxisAlignment.stretch,
-        mainAxisSize: pw.MainAxisSize.min,
-        children: children,
-      ),
+      build: (_) => _sutun(lines, regular, bold),
     ));
     return doc.save();
   }
