@@ -11,6 +11,7 @@ import '../printing/printer_service.dart';
 import '../printing/rulo_durum.dart';
 import '../theme.dart';
 import '../widgets/horizontal_menu.dart';
+import '../widgets/odak_kilidi.dart';
 import '../widgets/radial_menu.dart';
 import '../widgets/return_dialog.dart';
 import 'book_detail_screen.dart';
@@ -668,25 +669,28 @@ class _OverviewState extends State<_Overview> {
               ],
             ),
             const SizedBox(height: 8),
-            TextField(
-              controller: _hizliController,
-              focusNode: _hizliFocus,
-              autofocus: true,
-              enabled: !_hizliBusy,
-              onSubmitted: _hizliIslem,
-              decoration: InputDecoration(
-                hintText: 'Barkod veya üye no okutun...',
-                prefixIcon: _hizliBusy
-                    ? const Padding(
-                        padding: EdgeInsets.all(12),
-                        child: SizedBox(
-                            height: 18,
-                            width: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2)),
-                      )
-                    : const Icon(Icons.qr_code_scanner),
-                border: const OutlineInputBorder(),
-                isDense: true,
+            OdakKilitli(
+              node: _hizliFocus,
+              child: TextField(
+                controller: _hizliController,
+                focusNode: _hizliFocus,
+                autofocus: true,
+                enabled: !_hizliBusy,
+                onSubmitted: _hizliIslem,
+                decoration: InputDecoration(
+                  hintText: 'Barkod veya üye no okutun...',
+                  prefixIcon: _hizliBusy
+                      ? const Padding(
+                          padding: EdgeInsets.all(12),
+                          child: SizedBox(
+                              height: 18,
+                              width: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2)),
+                        )
+                      : const Icon(Icons.qr_code_scanner),
+                  border: const OutlineInputBorder(),
+                  isDense: true,
+                ),
               ),
             ),
             const SizedBox(height: 6),

@@ -7,6 +7,7 @@ import '../config.dart';
 import '../models.dart';
 import '../theme.dart';
 import '../widgets/horizontal_menu.dart';
+import '../widgets/odak_kilidi.dart';
 import '../widgets/radial_menu.dart';
 import '../widgets/row_table.dart';
 import 'book_detail_screen.dart';
@@ -23,6 +24,8 @@ class _BookListScreenState extends State<BookListScreen> {
   final _api = KutuphaneApi();
   final _searchController = TextEditingController();
   final _scrollController = ScrollController();
+  // R1.8: kitap barkodu okutulan alan; odak tıklama ile kaçmasın (menü açıkken kapanır).
+  final _searchFocus = FocusNode();
 
   List<Kitap> _items = [];
   int _total = 0;
@@ -50,6 +53,7 @@ class _BookListScreenState extends State<BookListScreen> {
     _kapatMenu();
     _debounce?.cancel();
     _scrollController.dispose();
+    _searchFocus.dispose();
     super.dispose();
   }
 
@@ -218,15 +222,21 @@ class _BookListScreenState extends State<BookListScreen> {
           child: Row(
             children: [
               Expanded(
-                child: TextField(
-                  controller: _searchController,
-                  autofocus: true,
-                  onChanged: _onSearchChanged,
-                  decoration: const InputDecoration(
-                    hintText: 'Başlık, ISBN, yazar, kategori veya raf ara...',
-                    prefixIcon: Icon(Icons.search),
-                    border: OutlineInputBorder(),
-                    isDense: true,
+                child: OdakKilitli(
+                  node: _searchFocus,
+                  // Satır menüsü/overlay açıkken odak geri verilmez (R1.8).
+                  kilitAcik: () => _menuEntry == null,
+                  child: TextField(
+                    controller: _searchController,
+                    focusNode: _searchFocus,
+                    autofocus: true,
+                    onChanged: _onSearchChanged,
+                    decoration: const InputDecoration(
+                      hintText: 'Başlık, ISBN, yazar, kategori veya raf ara...',
+                      prefixIcon: Icon(Icons.search),
+                      border: OutlineInputBorder(),
+                      isDense: true,
+                    ),
                   ),
                 ),
               ),

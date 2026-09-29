@@ -10,6 +10,7 @@ import '../models.dart';
 import '../printing/print_helpers.dart';
 import '../printing/rulo_durum.dart';
 import '../theme.dart';
+import '../widgets/odak_kilidi.dart';
 import '../widgets/return_dialog.dart';
 import '../widgets/row_table.dart';
 
@@ -24,6 +25,8 @@ class LoanScreen extends StatefulWidget {
 class _LoanScreenState extends State<LoanScreen> {
   final _api = KutuphaneApi();
   final _searchController = TextEditingController();
+  // R1.8: okutulan barkod/üye no bu alana gitsin; odak tıklama ile kaçmasın.
+  final _searchFocus = FocusNode();
 
   bool _loading = false;
   bool _busy = false;
@@ -34,6 +37,7 @@ class _LoanScreenState extends State<LoanScreen> {
   @override
   void dispose() {
     _searchController.dispose();
+    _searchFocus.dispose();
     super.dispose();
   }
 
@@ -169,15 +173,19 @@ class _LoanScreenState extends State<LoanScreen> {
           child: Row(
             children: [
               Expanded(
-                child: TextField(
-                  controller: _searchController,
-                  autofocus: true,
-                  onSubmitted: (_) => _search(_searchController.text),
-                  decoration: const InputDecoration(
-                    hintText: 'Barkod, üye no, ISBN veya kitap adı...',
-                    prefixIcon: Icon(Icons.qr_code_scanner),
-                    border: OutlineInputBorder(),
-                    isDense: true,
+                child: OdakKilitli(
+                  node: _searchFocus,
+                  child: TextField(
+                    controller: _searchController,
+                    focusNode: _searchFocus,
+                    autofocus: true,
+                    onSubmitted: (_) => _search(_searchController.text),
+                    decoration: const InputDecoration(
+                      hintText: 'Barkod, üye no, ISBN veya kitap adı...',
+                      prefixIcon: Icon(Icons.qr_code_scanner),
+                      border: OutlineInputBorder(),
+                      isDense: true,
+                    ),
                   ),
                 ),
               ),

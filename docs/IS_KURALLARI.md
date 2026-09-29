@@ -36,6 +36,18 @@
   biçimine çevrilir: `i → İ`, `ı → I` (büyütürken), `I → ı`, `İ → i` (küçültürken);
   fazla boşluklar daraltılır (`İSMAİL → İsmail`, `YILDIRIM → Yıldırım`, `KIZIL → Kızıl`).
   Elle yazılan kayıtlar değiştirilmez; kural yalnızca toplu kaynakları normalize eder.
+- **R1.8 — Barkod okutma odak kilidi:** Barkod okuyucular klavye emülasyonudur (kodu
+  harf harf + Enter yazar); Flutter tuşları **odaklı widget'a** verdiği için
+  **sürekli okutma yapılan alanlar görünürken odağını korur**: Genel Bakış hızlı işlem
+  alanı, Ödünç/İade arama alanı, Kitaplar arama alanı. Kullanıcı bir karta, satıra,
+  butona tıklayınca veya pencere odağını kaybedince odak **post-frame'da geri verilir**
+  (görsel uyarı yok, sessiz). Geri verilmez: diyalog/kilit ekranı açıkken
+  (`ModalRoute.isCurrent` değilse — üye no penceresi, iade/ceza diyaloğu, açılan detay
+  ekranı odak kendisindendir), alan `enabled: false` iken (işlem sürüyor), ekran menüsü
+  açıkken, ve **Üyeler listesi arama alanında** (öğrencide barkod yoktur; numara elle
+  girilir). Katalog ve Ayarlar ekranlarında da kilit yoktur (form/ayar alanları
+  kullanıcının kalıcı odağını ister). Uygulama arka plandan `resumed` olduğunda odak
+  yeniden verilir.
 
 ---
 
@@ -241,7 +253,9 @@ Her kural için en az bir test:
 - K11: kök adres 200 + kitap başlıkları; kimlik gerektirmeme; büyük/küçük harfle arama; sonuç-yok mesajı (KatalogWebTests).
 - K9.12: editör ekranında iki bölüm (Editör/Üye) alt gezinmesi; üye bölümü üç sekmeyi (Kitaplar/Ödünçlerim/Ceza) gösterir (EditorHomeScreenTests).
  - K9.13: önizleme/uygula; sınıf `5/A`→`5-A` normalize + eksik sınıf oluşturma; **ad/soyad baş harf normalize (`YILDIRIM`→`Yıldırım`, R1.7)**; yeni/yenile/aktifle; listede olmayan mezun pasif kalır; önceden pasif çakışmada varsayılan atla, "yeniden kullan" ile aktifleşir; Öğretmen/Editör dokunulmaz; rol kuralı (personel Öğrenci, admin diğer); ayraç/kodlama; yetki 403 (K9.13ImportTests).
- - R1.6/R1.7: `bas_harf_buyut` dönüşümleri (Türkçe I/İ, çoklu boşluk); içe aktarmada normalize; envanter sayımı kitap adı araması `İnsan Olmak`/`insan olmak`/`İNSAN` yazımlarının üçünde de sonuç verir (R1.6Testleri, K13AramaTestleri).
+  - R1.6/R1.7: `bas_harf_buyut` dönüşümleri (Türkçe I/İ, çoklu boşluk); içe aktarmada normalize; envanter sayımı kitap adı araması `İnsan Olmak`/`insan olmak`/`İNSAN` yazımlarının üçünde de sonuç verir (R1.6Testleri, K13AramaTestleri).
+  - R1.8: `OdakKilitli` — odak bırakılınca geri gelir; diyalog/route açıkken, `kilitAcik` kapalıyken ve alan `enabled: false` iken geri gelmez; Genel Bakış hızlı işlem, Ödünç/İade ve Kitaplar arama alanları tıklamadan sonra odakta kalır (`odak_kilidi_test.dart` + `odak_kilidi_ekran_test.dart`).
+
  - E2E canlı smoke: checkout → kapat döngüsü.
 
 ---

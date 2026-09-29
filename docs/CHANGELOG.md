@@ -6,6 +6,26 @@ sunucuya yalnızca etiketli sürümler gönderilir (bkz. `docs/DEPLOY_CLOUD.md`)
 
 ## [Unreleased]
 
+## [1.1.13] — 2026-09-28
+
+Barkod okutma odak kilidi (**yalnızca masaüstü istemcisi**; backend değişmedi,
+sunucuya deploy gerekmez).
+
+- **R1.8 — Barkod okutma odak kilidi:** Barkod okuyucu klavye emülasyonudur (kodu
+  harf harf + Enter yazar) ve Flutter tuşları **odaklı widget'a** verir. Kullanıcı
+  Genel Bakış'ta bir karta/satıra/butona tıklayınca odak hızlı işlem alanından
+  gidiyor ve sonraki okutmalar **sessizce kayboluyordu**. Artık **Genel Bakış hızlı
+  işlem**, **Ödünç/İade arama** ve **Kitaplar arama** alanları görünürken odağını
+  korur; odak kaybında post-frame'da geri verilir (sessiz, görsel uyarı yok).
+  Geri verilmez: diyalog/kilit ekranı açıkken (üye no penceresi, iade/ceza diyaloğu,
+  açılan detay ekranı odak kendisindendir), alan `enabled: false` iken (işlem sürüyor),
+  ekran menüsü açıkken ve uygulama arka plandayken; alt-tab'dan dönünce `resumed`
+  ile odak yeniden verilir. **Üyeler listesi araması kilitlenmez** (öğrencide barkod
+  yoktur, numara elle girilir); Katalog ve Ayarlar'da da kilit yoktur.
+- Yeni `masaustu/lib/widgets/odak_kilidi.dart` (`OdakKilitli`); `loan_screen.dart`
+  ve `book_list_screen.dart` alanlarına `FocusNode` + kilit.
+- Testler: 8 yeni test (5 birim + 3 ekran kablolaması); toplam 93 test.
+
 ## [1.1.12] — 2026-09-28
 
 Öğrenci listesi içe aktarımı ve Türkçe arama düzeltmeleri. Masaüstü istemcisi
