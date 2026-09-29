@@ -341,3 +341,9 @@ değerleri silmez**. Kalibrasyondan önce bozulmuşsa (yarım etiket, sürekli b
 4. Uygulama `GapsHeight` göndermez (K14.11). Fiş basımı `PaperType=Continue` ile
    gider (sonsuz rulo); kuyruk varsayılanı `Normal` kalır, elle basımda
    "Use Currently Printer Setting" kullanılır.
+5. **Kullanıcı yönergesi programda:** "Etiket rulosu taktım" bildiriminden sonra
+   kalibrasyon penceresi açılır; 4B/Tazga sınıfı modellerde LED renkleriyle
+   (mavi = fabrika ayarı, kırmızı = gap sensörü kalibrasyonu) adımlar, diğer
+   modellerde genel yönerge verilir. Fiş bildiriminde pencere açılmaz
+   (fişe dönüşte kalibrasyon gerekmez). Model `lpoptions -p <kuyruk>` →
+   `printer-make-and-model` ile okunur.

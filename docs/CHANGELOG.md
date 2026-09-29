@@ -6,6 +6,35 @@ sunucuya yalnızca etiketli sürümler gönderilir (bkz. `docs/DEPLOY_CLOUD.md`)
 
 ## [Unreleased]
 
+## [1.1.15] — 2026-09-29
+
+Yazıcı rozeti, etiket kalibrasyon yönergesi ve kapalı yazıcı uyarısı
+(**yalnızca masaüstü istemcisi**; backend değişmedi, sunucuya deploy gerekmez).
+
+- **R1.13 — Kuyruk rozeti yanıltıcıydı:** A4 yazıcısı açılır kutudan seçilmiş
+  olmasına rağmen rozet "Seçilmedi" diyordu. Kayıtlı kuyruk adı CUPS'taki
+  gerçek adla birebir karşılaştırılıyordu (`HP-LaserJet-1020` ≠
+  `Hewlett-Packard-HP-LaserJet-1020`); küçük/harf ve boşluk farkı yok sayılmıyor.
+  Seçili ama listede olmayan kuyruk artık **"Bulunamadı"** (kırmızı) gösteriyor ve
+  tek ve açık bir eşleşme varsa **"Düzelt: …"** düğmesi çıkıyor.
+- **R1.14 — "Etiketi taktım" sonrası kalibrasyon yönergesi:** Uygulama gap'i
+  göndermediği (K14.11) için etiket değişince yazıcının kendi sensörü
+  kalibrasyonu gerekiyordu; bu yalnız ayarlar ekranındaki bilgi kutusunda
+  vardı. Artık **"Etiket rulosu taktım"** bildiriminden sonra kalibrasyon
+  penceresi açılıyor: Tazga/4B gibi modellerde **LED mavi** (fabrika ayarı) ve
+  **LED kırmızı** (gap/black-mark kalibrasyonu) adımları, diğer modellerde
+  genel yönerge. Fiş bildiriminde pencere açılmaz (fişe dönüşte kalibrasyon
+  gerekmez). Model `lpoptions` üzerinden okunur (`printer-make-and-model`).
+- **R1.15 — Kapalı yazıcıda kuyruğa eklememe:** Yazıcı kapalı/bağlı değilken
+  `lp` işi kabul edip kuyrukta bekletiyordu; uygulama "Yazdırıldı" deyip
+  kâğıt çıkmıyordu. Artık kuyruk listesi alınabiliyorsa ve yazıcı çıkış
+  yapamıyorsa iş hiç gönderilmiyor, "Yazıcıya ulaşılamıyor: … (devre dışı).
+  Yazıcıyı açıp USB kablosunu kontrol edin" uyarısı veriliyor. Başarı mesajı
+  "Yazdırıldı" yerine **"Yazıcıya iletildi (kuyruğa alındı)"**. Kuyruk listesi
+  alınamıyorsa basım engellenmiyor.
+- Testler: 9 yeni test (rozet/düzeltme, kalibrasyon penceresi, kapalı yazıcı);
+  toplam 117 test.
+
 ## [1.1.14] — 2026-09-29
 
 Termal rulo ölçüleri: fiş genişliği 55 mm'de de kullanılabilir ve ölçü

@@ -84,6 +84,23 @@ class PrinterService {
     return r.ok;
   }
 
+  /// Kuyruğun yazıcı modelini döner (ör. `4B-2074C`); bilinmiyorsa boş dize.
+  ///
+  /// Kalibrasyon ipuçları modele göre değişir (gap/black-mark sensörü olan
+  /// termal etiket yazıcıları LED renkleriyle adım tarif eder) [K14.11].
+  Future<String> makeAndModel(String queue) async {
+    final q = queue.trim();
+    if (q.isEmpty) return '';
+    final r = await _runner('lpoptions', ['-p', q]);
+    if (!r.ok) return '';
+    for (final satir in r.stdout.split(RegExp(r'[\s\n]+'))) {
+      if (satir.startsWith('printer-make-and-model=')) {
+        return satir.substring('printer-make-and-model='.length).trim();
+      }
+    }
+    return '';
+  }
+
   /// Tüm CUPS kuyrukları (ad + durum) [K14.5].
   Future<List<PrinterInfo>> listPrinters() async {
     final r = await _runner('lpstat', ['-p']);
@@ -147,6 +164,23 @@ class PrinterService {
       return const PrintResult(false,
           'Yazıcı seçilmemiş. Ayarlar › Yazıcılar sekmesinden bir yazıcı seçin.');
     }
+    // Yazıcı kapalı/bağlı değilken `lp` işi kuyruğa alıp sessizce bekletir;
+    // kullanıcı "yazdı" sanar ama kâğıt çıkmaz. Durum **biliniyorsa** ve
+    // çıkış yapılamıyorsa işi hiç göndermeyiz. Kuyruk listesi alınamadıysa
+    // (lpstat yok/erişilemiyor) engellemiyoruz: basım çalışıyor olabilir.
+    final kuyruklar = await listPrinters();
+    if (kuyruklar.isNotEmpty) {
+      final durum = kuyruklar.firstWhere(
+        (p) => p.name.trim() == q,
+        orElse: () => PrinterInfo(
+            name: q, state: PrinterState.missing, detail: 'Kuyruk bulunamadı.'),
+      );
+      if (!durum.cikisYapabilir) {
+        return PrintResult(false,
+            'Yazıcıya ulaşılamıyor: $q (${_durumMetni(durum)}). '
+            'Yazıcıyı açıp USB kablosunu kontrol edin, sonra tekrar deneyin.');
+      }
+    }
     final file = File(
         '${Directory.systemTemp.path}/kutuphane_${DateTime.now().millisecondsSinceEpoch}.pdf');
     try {
@@ -164,7 +198,7 @@ class PrinterService {
       args.addAll(['-t', title, file.path]);
       final r = await _runner('lp', args);
       if (r.ok) {
-        return PrintResult(true, 'Yazdırıldı: $q');
+        return PrintResult(true, 'Yazıcıya iletildi: $q (kuyruğa alındı)');
       }
       final msg = r.stderr.trim().isNotEmpty ? r.stderr.trim() : 'lp hatası ${r.exitCode}';
       return PrintResult(false, 'Yazdırılamadı ($q): $msg');
@@ -174,6 +208,14 @@ class PrinterService {
       } catch (_) {}
     }
   }
+
+  static String _durumMetni(PrinterInfo p) => switch (p.state) {
+        PrinterState.disabled => 'devre dışı',
+        PrinterState.error => 'hata',
+        PrinterState.missing => 'bulunamadı',
+        PrinterState.busy => 'meşgul',
+        _ => p.detail.isEmpty ? 'hazır değil' : p.detail,
+      };
 
   /// PDF `MediaBox`'ından `Custom.WxHpt` biçiminde media seçeneği üretir.
   /// A4/Letter benzeri standart boyutlar için `null` (kuyruk varsayılanını korur).
@@ -194,6 +236,10 @@ class PrinterService {
       return null;
     }
   }
+
+  /// Testler: PDF'ten üretilen media argümanını görmek için.
+  static String? mediaArgFromPdfForTest(List<int> pdfBytes) =>
+      _mediaArgFromPdf(pdfBytes);
 
   static bool _standartSayfa(double w, double h) {
     bool near(double a, double b) => (a - b).abs() / a < 0.02;

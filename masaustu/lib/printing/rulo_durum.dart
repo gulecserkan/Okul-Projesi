@@ -113,8 +113,9 @@ RuloDurum _durumOf(RuloTipi tip) =>
 /// ölçü kurulumunu sorar. Kağıt tipi/besleme ayarı zorlanmaz (K14.11).
 Future<void> ruloBildir(
   BuildContext context,
-  RuloTipi tip,
-) async {
+  RuloTipi tip, {
+  bool kalibrasyonGoster = false,
+}) async {
   var prefs = AppConfig.printer;
   if (tip == RuloTipi.etiket && !prefs.etiketKurulumYapildi) {
     final kurulum = await _etiketKurulumDialog(context, prefs);
@@ -126,6 +127,124 @@ Future<void> ruloBildir(
   AppConfig.printer = prefs;
   if (!context.mounted) return;
   showAppSnack(context, '${ruloTipiEtiketi(tip)} rulosu bildirildi.');
+  // Etiket takıldığında yazıcının gap sensörü kalibrasyonu gerekir: uygulama
+  // boşluğu göndermez (K14.11), ölçüm cihazın kendi sensöründedir. Bildirim
+  // ayarlardan yapıldığında adımlar gösterilir; basım öncesi onay akışında
+  // (otomatik çağrı) modal açılmaz.
+  if (tip == RuloTipi.etiket && kalibrasyonGoster) {
+    await etiketKalibrasyonBilgisi(context);
+  }
+}
+
+/// "Etiket rulosu taktım" sonrası kalibrasyon yönergesi (K14.11).
+///
+/// Etiket takıldığında yazıcının kendi `SIZE`/`GAP` değerlerini ölçmesi gerekir;
+/// bu değerler cihaz belleğinde kalır ve güç döngüsü silmez. Fiş (sonsuz rulo)
+/// taktığında kalibrasyon gerekmez: uygulama `PaperType=Continue` gönderir.
+Future<void> etiketKalibrasyonBilgisi(BuildContext context) async {
+  final q = ortakKuyruk() ??
+      (AppConfig.printer.etiketYazici.trim().isNotEmpty
+          ? AppConfig.printer.etiketYazici.trim()
+          : '');
+  final model = q.isEmpty
+      ? ''
+      : await PrinterServices.instance.makeAndModel(q);
+  if (!context.mounted) return;
+  await showDialog<void>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: const Text('Etiket rulosunu kalibre et'),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Uygulama etiket boşluğunu (gap) yazıcıya göndermez; yazıcı gerçek '
+              'etiket uzunluğunu ve aralığı kendi sensörüyle ölçer. Etiket '
+              'değiştirdiyseniz ya da basım bir etiketin ortasından başlıp '
+              'diğerinin ortasında bitiyorsa kalibrasyon gerekir.',
+            ),
+            const SizedBox(height: 12),
+            if (termalEtiketYazici(model)) ...[
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Theme.of(ctx).colorScheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: const [
+                    Text('Bu yazıcı için adımlar '
+                        '(panel tuşu = FEED/İLERİ):',
+                        style: TextStyle(fontWeight: FontWeight.w600)),
+                    SizedBox(height: 8),
+                    Text('1. Etiket rulosu takılı olsun, yazıcı kapalı.'),
+                    Text.rich(TextSpan(children: [
+                      TextSpan(text: '2. Tuşu basılı tutup gücü açın; LED '),
+                      TextSpan(
+                          text: 'mavi',
+                          style: TextStyle(fontWeight: FontWeight.bold)),
+                      TextSpan(
+                          text: ' yanıp sönerken tuşu bırakın (fabrika ayarı).'),
+                    ])),
+                    Text.rich(TextSpan(children: [
+                      TextSpan(
+                          text: '3. Aynı şekilde tekrar yapın; LED '),
+                      TextSpan(
+                          text: 'kırmızı',
+                          style: TextStyle(fontWeight: FontWeight.bold)),
+                      TextSpan(
+                          text:
+                              ' yanıp sönerken tuşu bırakın (gap/black-mark '
+                              'sensörü kalibrasyonu — etiket boyu ve boşluğu '
+                              'ölçer).'),
+                    ])),
+                    Text('4. Ayarlar › Yazıcılar › «Test etiketi» ile '
+                        'deneyin.'),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+            ] else
+              const Text(
+                'Genel adım: cihaz açılırken panel tuşu basılı tutularak '
+                '"gap/black mark (boşluk) sensörü kalibrasyonu" yapılır; '
+                'yazıcı yanıp söndükçe uygun anda tuşu bırakın. Ayrıntılı '
+                'adımlar yazıcınızın kendi kılavuzundadır.',
+              ),
+            const SizedBox(height: 8),
+            Text(
+              'Not: Etiket kalibrasyonundan sonra fiş (sonsuz rulo) '
+              'basacaksanız kalibrasyonu tekrarlayın; cihaz etiket ölçüsüne '
+              'kilitlenir. Fişe dönüşte kalibrasyon gerekmez.',
+              style: Theme.of(ctx).textTheme.bodySmall,
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        FilledButton(
+          onPressed: () => Navigator.of(ctx).pop(),
+          child: const Text('Anladım'),
+        ),
+      ],
+    ),
+  );
+}
+
+/// Gap/black-mark sensörü olan termal etiket yazıcısı mı?
+/// (LED renkleriyle adım tarif edilen 4B serisi vb.)
+bool termalEtiketYazici(String model) {
+  final m = model.toLowerCase();
+  if (m.isEmpty) return false;
+  const isaretler = [
+    '4b-', '4b20', '2074', 'tazga', 'dxp-', 'hprt', 'xprinter', 'gprinter',
+    'zebra', 'zq-', 'rongta', 'pos58', 'pos80', 'tspl',
+  ];
+  return isaretler.any(m.contains);
 }
 
 /// İlk etiket rulosu bildiriminde ölçü kurulumu (K14.11).

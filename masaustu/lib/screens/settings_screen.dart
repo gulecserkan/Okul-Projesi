@@ -299,7 +299,8 @@ class _YazicilarTabState extends State<_YazicilarTab> {
 
   /// K14.9/11: ortak yazıcıda rulo bildirimi (durum + ölçü kurulumu).
   Future<void> _ruloSec(RuloTipi tip) async {
-    await ruloBildir(context, tip);
+    // Ayarlardan bildirildiğinde etiketse kalibrasyon adımları gösterilir.
+    await ruloBildir(context, tip, kalibrasyonGoster: true);
     if (!mounted) return;
     setState(() => _prefs = AppConfig.printer);
     await _yenile();
@@ -317,13 +318,6 @@ class _YazicilarTabState extends State<_YazicilarTab> {
     }
     final list = set.toList()..sort();
     return list;
-  }
-
-  PrinterInfo? _bul(String? name) {
-    for (final p in _printers) {
-      if (p.name == name) return p;
-    }
-    return null;
   }
 
   @override
@@ -384,21 +378,21 @@ class _YazicilarTabState extends State<_YazicilarTab> {
               etiket: 'Fiş yazıcısı (termal, 70 mm)',
               value: _prefs.fisYazici,
               kuyruklar: _kuyrukAdlari(),
-              printer: _bul(_prefs.fisYazici),
+              printers: _printers,
               onChanged: (v) => _kaydet(_prefs.copyWith(fisYazici: v)),
             ),
             _KuyrukSecici(
               etiket: 'Etiket yazıcısı (57×40 mm)',
               value: _prefs.etiketYazici,
               kuyruklar: _kuyrukAdlari(),
-              printer: _bul(_prefs.etiketYazici),
+              printers: _printers,
               onChanged: (v) => _kaydet(_prefs.copyWith(etiketYazici: v)),
             ),
             _KuyrukSecici(
               etiket: 'A4 yazıcı (raporlar)',
               value: _prefs.a4Dosya ? _a4DosyaModu : _prefs.a4Yazici,
               kuyruklar: _kuyrukAdlari(),
-              printer: _prefs.a4Dosya ? null : _bul(_prefs.a4Yazici),
+              printers: _prefs.a4Dosya ? const [] : _printers,
               ozelSecenekDeger: _a4DosyaModu,
               ozelSecenekEtiket: 'Dosyaya yaz (PDF)',
               onChanged: (v) {
@@ -528,7 +522,7 @@ class _KuyrukSecici extends StatelessWidget {
   final String etiket;
   final String value;
   final List<String> kuyruklar;
-  final PrinterInfo? printer;
+  final List<PrinterInfo> printers;
   final ValueChanged<String> onChanged;
   final String? ozelSecenekDeger;
   final String? ozelSecenekEtiket;
@@ -537,17 +531,41 @@ class _KuyrukSecici extends StatelessWidget {
     required this.etiket,
     required this.value,
     required this.kuyruklar,
-    required this.printer,
+    required this.printers,
     required this.onChanged,
     this.ozelSecenekDeger,
     this.ozelSecenekEtiket,
   });
 
+  /// Kayıtlı kuyruk listede yoksa, tek ve açık bir eşleşme arar
+  /// (ör. `HP-LaserJet-1020` → `Hewlett-Packard-HP-LaserJet-1020`).
+  String? _onerilenKuyruk() {
+    final n = value.trim();
+    if (n.isEmpty || ozelSecenekDeger == n) return null;
+    final mevcut = printers.map((p) => p.name.trim()).toList();
+    if (mevcut.contains(n)) return null;
+    String? eslesen;
+    for (final p in mevcut) {
+      final a = p.toLowerCase();
+      final b = n.toLowerCase();
+      if (a.endsWith(b) || b.endsWith(a) || a.contains(b) || b.contains(a)) {
+        if (eslesen != null) return null; // belirsiz: öneri yok
+        eslesen = p;
+      }
+    }
+    return eslesen;
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final durum = printer;
     final ozelSecili = ozelSecenekDeger != null && value == ozelSecenekDeger;
+    final durum = ozelSecili
+        ? null
+        : printers
+            .where((p) => p.name.trim() == value.trim())
+            .firstOrNull;
+    final onerilen = _onerilenKuyruk();
     final durumText = ozelSecili
         ? 'Dosyaya yaz (PDF)'
         : switch (durum?.state) {
@@ -556,7 +574,11 @@ class _KuyrukSecici extends StatelessWidget {
             PrinterState.disabled => 'Devre dışı',
             PrinterState.missing => 'Bulunamadı',
             PrinterState.unknown => 'Durum bilinmiyor',
-            _ => 'Seçilmedi',
+            // Boş seçim "Seçilmedi"; seçili ama CUPS'te olmayan kuyruk
+            // "Bulunamadı" (kuyruk silinmiş/yeniden adlandırılmış olabilir).
+            _ => value.trim().isEmpty || ozelSecili
+                ? 'Seçilmedi'
+                : 'Bulunamadı',
           };
     final renk = ozelSecili
         ? Colors.teal.shade700
@@ -564,7 +586,9 @@ class _KuyrukSecici extends StatelessWidget {
             PrinterState.ready => theme.colorScheme.primary,
             PrinterState.busy => Colors.orange.shade700,
             PrinterState.disabled || PrinterState.missing => theme.colorScheme.error,
-            _ => theme.colorScheme.onSurfaceVariant,
+            _ => value.trim().isNotEmpty && durum == null
+                ? theme.colorScheme.error
+                : theme.colorScheme.onSurfaceVariant,
           };
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
@@ -601,6 +625,12 @@ class _KuyrukSecici extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 12),
+          if (onerilen != null)
+            TextButton(
+              onPressed: () => onChanged(onerilen),
+              child: Text('Düzelt: $onerilen'),
+            ),
+          if (onerilen != null) const SizedBox(width: 8),
           Tooltip(
             message: durumText,
             child: Container(

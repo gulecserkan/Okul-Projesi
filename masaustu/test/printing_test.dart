@@ -8,6 +8,11 @@ import 'package:masaustu/printing/print_helpers.dart';
 import 'package:masaustu/printing/printer_service.dart';
 import 'package:masaustu/printing/receipt_pdf.dart';
 
+/// Kapalı/bağlı değil (CUPS: "Unplugged or turned off").
+const _lpstatKapakli =
+    'printer Tazga-PRN-400D disabled since Jan 01 00:00\n'
+    '        Unplugged or turned off\n';
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -129,6 +134,33 @@ printer DISABLI_Yazici disabled since Jan 01 00:00
           media: 'w4h6');
       final ix = args!.indexOf('-o');
       expect(args![ix + 1], 'media=w4h6');
+    });
+
+    test('yazıcı devre dışıysa iş kuyruğa alınmaz', () async {
+      var lpCagrildi = false;
+      final ps = PrinterService(runner: (e, a) async {
+        if (e == 'lp') {
+          lpCagrildi = true;
+          return const ProcResult(0, '', '');
+        }
+        return ProcResult(0, _lpstatKapakli, '');
+      });
+      final r = await ps.printPdf('Tazga-PRN-400D', [0x25, 0x50, 0x44, 0x46]);
+      expect(r.ok, isFalse);
+      expect(r.message, contains('Yazıcıya ulaşılamıyor'));
+      expect(r.message, contains('devre dışı'));
+      expect(lpCagrildi, isFalse, reason: 'kuyruğa eklenmemeli');
+    });
+
+    test('kuyruk listesi alınamıyorsa basım engellenmez', () async {
+      String? exe;
+      final ps = PrinterService(runner: (e, a) async {
+        exe = e;
+        return const ProcResult(0, '', '');
+      });
+      final r = await ps.printPdf('ETIKET', _pdfWithMedia('0 0 161.57 113.39'));
+      expect(r.ok, isTrue);
+      expect(exe, 'lp');
     });
 
     test('printPdf boş kuyrukta seçilmedi mesajı verir', () async {
