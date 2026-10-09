@@ -89,10 +89,15 @@ class _KutuphaneAppState extends State<KutuphaneApp> with WidgetsBindingObserver
       _currentTheme = parsed;
     }
 
-    // Sunucu adresini çöz (K13.11): kayıtlı adres → doğrudan; yok/çöktü → adayları yokla.
+    // Sunucu adresini çöz (K13.11): en öncelikli aday (alan adı) çalışıyorsa onu
+    // kullan; aksi halde adayları öncelik sırasıyla yokla (alan adı → IP).
+    // Kayıtlı adres eski IP gibi düşük öncelikliyse alan adına yükseltilir;
+    // kullanıcının elle girdiği özel adrese dokunulmaz.
+    final adaylar = AppConfig.effectiveServerCandidates;
     String? baseUrl = storedBaseUrl;
     var sunucuHazir = false;
-    if (baseUrl != null) {
+    final ozelAdres = baseUrl != null && !adaylar.contains(baseUrl);
+    if (baseUrl != null && (ozelAdres || baseUrl == adaylar.first)) {
       sunucuHazir =
           (await LibraryApiClient(baseUrl: baseUrl, httpClient: widget.httpClient)
                   .handshake())

@@ -3,28 +3,40 @@ import 'dart:async';
 import 'api/auth_api.dart';
 import 'config.dart';
 
-/// Sunucu adaylarını **paralel** yoklar ve ilk yanıt veren adresi döner.
+/// Sunucu adaylarını **öncelik sırasıyla** yoklar.
 ///
-/// Amaç: alan adı (SSL) öncelikli, alan adı yoksa genel IP'ye otomatik düşmek.
-/// İlk başarılı aday gelir gelmez döner; başarısız adaylar arka planda elenir
-/// (ölü alan adı ek gecikme yaratmaz). Hiçbiri ulaşmazsa `null`.
+/// Önce listenin ilk adayı (alan adı + SSL) tek başına denenir; başarılıysa
+/// doğrudan döner. Yalnız ilk aday ulaşılamazsa kalan adaylar **paralel**
+/// yoklanır ve ilk yanıt veren döner. Böylece alan adı kesin önceliklidir;
+/// alan adı ölüyse genel IP'ye düşülür. Hiçbiri ulaşmazsa `null`.
 Future<String?> enIyiSunucuAdresiYokla({
   List<String>? adaylar,
   Future<bool> Function(String baseUrl)? saglikKontrol,
-}) {
+}) async {
   final liste = (adaylar ?? AppConfig.serverCandidates)
       .map((s) => s.trim())
       .where((s) => s.isNotEmpty)
       .toSet()
       .toList();
-  if (liste.isEmpty) return Future.value(null);
+  if (liste.isEmpty) return null;
 
   final kontrol = saglikKontrol ??
       (String baseUrl) => AuthApi(baseUrl: baseUrl).healthCheck();
-  final completer = Completer<String?>();
-  var bekleyen = liste.length;
 
-  for (final aday in liste) {
+  // 1) En öncelikli aday: kesin öncelik için tek başına dene.
+  try {
+    if (await kontrol(liste.first)) return liste.first;
+  } catch (_) {
+    // ilk aday ulaşılamaz → kalan adaylara düş
+  }
+
+  // 2) Kalan adaylar: paralel yokla, ilk yanıt vereni dön.
+  final kalan = liste.sublist(1);
+  if (kalan.isEmpty) return null;
+  final completer = Completer<String?>();
+  var bekleyen = kalan.length;
+
+  for (final aday in kalan) {
     kontrol(aday)
         .then((ok) {
           if (ok && !completer.isCompleted) completer.complete(aday);

@@ -41,6 +41,16 @@ void main() {
     expect(sonuc, 'https://okulkitapligi.tr/api');
   });
 
+  test('ikisi de çalışıp hızlı yanıtlasa da domain seçilir', () async {
+    final sonuc = await enIyiSunucuAdresiYokla(
+      adaylar: adaylar,
+      saglikKontrol: _kontrol(
+        calisanHostlar: {'okulkitapligi.tr', '89.252.153.171'},
+      ),
+    );
+    expect(sonuc, 'https://okulkitapligi.tr/api');
+  });
+
   test('hiçbiri ulaşılamazsa null', () async {
     final sonuc = await enIyiSunucuAdresiYokla(
       adaylar: adaylar,

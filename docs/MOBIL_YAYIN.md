@@ -29,10 +29,12 @@ açılışta sunucuyu kontrol edip güncelleme bildirir.
 
 ## Sunucu adresi (K13.11)
 
-- Uygulama açılışta `serverCandidates` listesini **paralel** yoklar:
-  `https://okulkitapligi.tr` → `http://89.252.153.171`. İlk ulaşan kaydedilir;
-  hiçbiri yoksa bağlantı ekranı açılır.
-- Alan adı + SSL aktif olunca uygulama **güncellenmeden** otomatik `https`'ye geçer.
+- Uygulama açılışta `serverCandidates` listesini **öncelik sırasıyla** yoklar:
+  önce `https://okulkitapligi.tr` tek başına denenir, çalışıyorsa o seçilir;
+  başarısızsa `http://89.252.153.171` **paralel** yoklanır. Kayıtlı adres düşük
+  öncelikliyse (eski IP) alan adına yükseltilir. Hiçbiri yoksa bağlantı ekranı açılır.
+- Alan adı + SSL aktif olunca uygulama **güncellenmeden, aynı sürümle** garanti
+  biçimde `https`'ye geçer (eski kayıtlı IP adresleri de alan adına taşınır).
 - Derlemede adres zorlamak için: `--dart-define=KUTUPHANE_SERVER=http://<adres>`.
 
 ## Android cleartext (K13.12)

@@ -59,10 +59,12 @@ Kontrol/`apt` yoksa sessizce devam eder.
 
 - Aday listesi: `https://okulkitapligi.tr/api` → `http://89.252.153.171/api`
   (`AppConfig.serverCandidates`).
-- Açılışta kayıtlı adres çalışıyorsa bırakılır; yoksa/çökmüşse adaylar **paralel**
-  yoklanır ve ilk ulaşan kaydedilir. Hiçbiri yoksa giriş ekranındaki sunucu alanı
-  kullanılır.
-- Alan adı + SSL aktif olunca **uygulama güncellenmeden** otomatik `https`'ye geçer.
+- Açılışta adaylar **öncelik sırasıyla** yoklanır: önce alan adı tek başına denenir;
+  başarısızsa genel IP **paralel** yoklanır. Kayıtlı adres en öncelikli aday değilse
+  (örn. eski IP) alan adına yükseltilir; özel adres otomatik değiştirilmez.
+  Hiçbiri yoksa giriş ekranındaki sunucu alanı kullanılır.
+- Alan adı + SSL aktif olunca **uygulama güncellenmeden ve aynı sürümle garanti**
+  biçimde `https`'ye geçer (eski kayıtlı IP adresleri de alan adına taşınır).
 - Kullanıcının elle girdiği özel adres otomatik değiştirilmez.
 
 ## Güncelleme davranışı

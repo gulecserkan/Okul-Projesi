@@ -6,6 +6,23 @@ sunucuya yalnızca etiketli sürümler gönderilir (bkz. `docs/DEPLOY_CLOUD.md`)
 
 ## [Unreleased]
 
+## [1.1.16] — 2026-10-10
+
+Sunucu adresi çözümü artık **garanti biçimde alan adını** (`https://okulkitapligi.tr`)
+kullanır (**masaüstü + mobil**; backend değişmedi, sunucuya deploy gerekmez).
+
+- **R1.16 — Eski kayıtlı IP adresleri HTTPS'e geçmiyordu:** Adaylar paralel
+  yoklanıp ilk yanıt veren (TLS'siz genel IP) kazanıyordu; ayrıca kayıtlı adres
+  çalıştığı sürece yeniden yoklama yapılmıyordu. Bu yüzden HTTPS hazır olmasına
+  rağmen kurulu istemciler eski `http://89.252.153.171/api` ile çalışmaya devam
+  ediyordu. Artık adaylar **öncelik sıralı** yoklanır (önce alan adı tek başına;
+  başarısızsa genel IP paralel) ve kayıtlı adres en öncelikli aday değilse (örn.
+  eski IP) alan adına **yükseltilir**. Kullanıcının elle girdiği özel adres
+  otomatik değiştirilmez. Bu sayede eski kurulumlar güncelleme beklemeden HTTPS'e
+  geçer; kalıcı çözüm için bu sürüm dağıtılır.
+- Testler: masaüstü + mobil'e "ikisi de hızlı çalışıyorken domain seçilir" testi;
+  toplam masaüstü 118, mobil 5 (sunucu adresi).
+
 ## [1.1.15] — 2026-09-29
 
 Yazıcı rozeti, etiket kalibrasyon yönergesi ve kapalı yazıcı uyarısı

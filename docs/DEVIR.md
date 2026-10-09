@@ -253,23 +253,26 @@ curl -s https://okulkitapligi.tr/api/health/
 
 ## 6. Mevcut durum (bu not yazılırken)
 
-- Sürüm: **1.1.15** · commit `5b9dd52` · dal `V2.0` (GitHub'a push edildi)
-- Masaüstü testleri: **117/117** · analyze temiz
+- Sürüm: **1.1.16** · dal `V2.0` (GitHub'a push edildi). Önceki: `5b9dd52` (1.1.15).
+- Masaüstü testleri: **118/118** · analyze temiz (mobil sunucu adresi testleri dahil)
 - Üretim sunucu: `89.252.153.171`, PostgreSQL `kutuphane` (~13 MB), günlük
   şifreli yedek + media arşivi çalışıyor. **Prod'a dokunulmadı.**
-- Alan adı: `okulkitapligi.tr` → Alastyr NS'lerine delege, ancak **DNS bölgesi
-  boş** (`REFUSED`). Panelden `@` ve `www` A kaydı → `89.252.153.171` bekliyor.
-- HTTPS (Let's Encrypt/certbot) henüz kurulmadı; alan adı çözülünce yapılacak.
+- Alan adı: `okulkitapligi.tr` (+`www`) → `89.252.153.171` A kayıtları Alastyr
+  panelinden eklendi; DNS çözümü aktif.
+- **HTTPS tamam:** Let's Encrypt/certbot (`CN=okulkitapligi.tr`, bitiş 2027-01-07,
+  `certbot.timer` otomatik yenileme), nginx `server_name` + HTTP→HTTPS 301, `.env`
+  `ALLOWED_HOSTS` + `CSRF_TRUSTED_ORIGINS` + güvenli çerezler. `https://.../api/health/` 200.
 - Yerel tam sistem testi (backend + DB + istemci) henüz yapılmadı.
-- Bekleyen: A4 rozet → 1.1.15 ile çözüldü; etiket kalibrasyon yönergesi eklendi.
+- Bekleyen: A4 rozet → 1.1.15 ile çözüldü; etiket kalibrasyon yönergesi (1.1.15);
+  HTTPS'e garanti geçiş → 1.1.16 ile çözüldü.
 
 ## 7. Açık işler
 
-1. Alastyr panelinden `okulkitapligi.tr` + `www` A kaydı ekle.
-2. DNS çözülünce sunucuda: nginx `server_name`, certbot HTTPS,
-   `/etc/kutuphane/.env` → `ALLOWED_HOSTS` + `CSRF_TRUSTED_ORIGINS`.
-3. İstemci varsayılan adresini `https://okulkitapligi.tr/api` yapıp yayınla.
+1. ~~DNS kaydı~~ → yapıldı (Alastyr A kayıtları).
+2. ~~HTTPS (nginx `server_name`, certbot, `.env`)~~ → yapıldı.
+3. ~~İstemci adres önceliği `https://okulkitapligi.tr` + yayın~~ → 1.1.16 ile yapıldı.
 4. Yerelde uçtan uca test (Senaryo B kurallarıyla) → sonra geçiş kararı.
+5. Android `usesCleartextTraffic` daraltma + Play hazırlık (K13.12).
 
 ---
 
@@ -278,7 +281,7 @@ curl -s https://okulkitapligi.tr/api/health/
 > Aşağıdaki metni yeni makinede opencode'un **ilk mesajı** olarak yapıştır.
 
 Merhaba. Kütüphane Yönetim Sistemi'ni kütüphanedeki bilgisayarda sürdüreceğiz.
-Monorepo: `~/Okul-Projesi`, dal `V2.0`, son sürüm `1.1.15` (commit `5b9dd52`).
+Monorepo: `~/Okul-Projesi`, dal `V2.0`, son sürüm `1.1.16`.
 **Önce `docs/DEVIR.md`, `AGENTS.md`, `docs/IS_KURALLARI.md` ve
 `docs/DEPLOY_CLOUD.md` dosyalarını oku.** Bu makinede **eski kütüphane sistemi
 çalışıyor**; ona zarar vermeden ilerle. Varsayılan olarak **Senaryo A** (yalnız

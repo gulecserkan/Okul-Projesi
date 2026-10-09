@@ -57,13 +57,21 @@ class _BootstrapHomeState extends State<_BootstrapHome> {
     await _restoreSession();
   }
 
-  /// Açılışta sunucu adresini çöz (K13.11): kayıtlı adres çalışıyorsa bırak;
-  /// yoksa/çökmüşse adayları yokla (alan adı → IP) ve ilk ulaşanı kaydet.
+  /// Açılışta sunucu adresini çöz (K13.11): en öncelikli aday (alan adı)
+  /// çalışıyorsa onu kullan; aksi halde adayları öncelik sırasıyla yokla
+  /// (alan adı → IP). Kayıtlı adres **eski IP** gibi daha düşük öncelikliyse
+  /// alan adına yükseltilir; kullanıcının elle girdiği özel adrese dokunulmaz.
   Future<void> _sunucuAdresiniCoz() async {
+    const adaylar = AppConfig.serverCandidates;
     if (AppConfig.hasSavedBaseUrl) {
-      // Kullanıcının elle girdiği özel adres bizim adaylarımızdan değilse dokunma.
-      if (!AppConfig.serverCandidates.contains(AppConfig.apiBaseUrl)) return;
-      if (await AuthApi().healthCheck()) return;
+      final kayitli = AppConfig.apiBaseUrl;
+      final ozelAdres = !adaylar.contains(kayitli);
+      // Özel adres ya da zaten en öncelikli aday kayıtlıysa sağlığını dene.
+      if (ozelAdres || kayitli == adaylar.first) {
+        if (await AuthApi().healthCheck()) return;
+      }
+      // Özel adres çökmüşse adaylara düşme (kullanıcı seçimine saygı).
+      if (ozelAdres) return;
     }
     final bulunan = await enIyiSunucuAdresiYokla();
     if (bulunan != null) {
