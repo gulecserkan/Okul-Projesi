@@ -5,6 +5,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'api/library_api.dart';
 import 'api/sunucu_adresi.dart';
 import 'app_config.dart';
+import 'bildirim.dart';
 import 'models/auth.dart';
 import 'models/mobil_surum.dart';
 import 'screens/book_list_screen.dart';
@@ -33,6 +34,7 @@ class KutuphaneApp extends StatefulWidget {
 
 class _KutuphaneAppState extends State<KutuphaneApp> with WidgetsBindingObserver {
   final SessionStorage _storage = SessionStorage();
+  final BildirimServisi _bildirim = BildirimServisi();
   final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
   bool _loading = true;
   String? _baseUrl;
@@ -173,6 +175,45 @@ class _KutuphaneAppState extends State<KutuphaneApp> with WidgetsBindingObserver
 
     // Sunucudaki sürümle karşılaştır; yeni sürüm varsa bildir (K13.4).
     await _guncellemeKontrolEt(cozulenAdres);
+
+    // K15: yerleşik oturum varsa bildirim token'ını (yeniden) kaydet.
+    if (refreshedTokens != null) {
+      await _bildirimKaydet(cozulenAdres, refreshedTokens);
+    }
+  }
+
+  /// K15: üye oturumu için bildirim iznini ister ve FCM token'ını sunucuya bağlar.
+  Future<void> _bildirimKaydet(String baseUrl, AuthTokens tokens) async {
+    if (!tokens.isUye) return;
+    final api = LibraryApiClient(
+      baseUrl: baseUrl,
+      tokens: tokens,
+      httpClient: widget.httpClient,
+    );
+    await _bildirim.tokenKaydet(api);
+    _bildirim.yenilenmeyiDinle((yeniToken) async {
+      final guncel = _tokens;
+      if (guncel == null) return;
+      await LibraryApiClient(
+        baseUrl: baseUrl,
+        tokens: guncel,
+        httpClient: widget.httpClient,
+      ).registerBildirimToken(yeniToken);
+    });
+  }
+
+  /// K15: çıkışta cihaz token'ını sunucudan siler (hata olsa da akışı bozmaz).
+  Future<void> _bildirimTokenSil() async {
+    final tokens = _tokens;
+    final baseUrl = _baseUrl;
+    if (tokens == null || baseUrl == null || !tokens.isUye) return;
+    await _bildirim.tokenSil(
+      LibraryApiClient(
+        baseUrl: baseUrl,
+        tokens: tokens,
+        httpClient: widget.httpClient,
+      ),
+    );
   }
 
   /// Kurulu sürümü sunucudaki sürümle karşılaştırır ve gerekirse diyalog açar.
@@ -226,6 +267,11 @@ class _KutuphaneAppState extends State<KutuphaneApp> with WidgetsBindingObserver
       _tokens = tokens;
       _sessionNotice = null;
     });
+    // K15: üye girişinde bildirim izni + token kaydı.
+    final baseUrl = _baseUrl;
+    if (baseUrl != null) {
+      await _bildirimKaydet(baseUrl, tokens);
+    }
   }
 
   /// K9.11: "Beni hatırla" anahtarı değiştirilince hemen pekiştir.
@@ -248,6 +294,7 @@ class _KutuphaneAppState extends State<KutuphaneApp> with WidgetsBindingObserver
   }
 
   Future<void> _logout() async {
+    await _bildirimTokenSil();
     await _storage.clearTokens();
     await _storage.saveLastAuthAt(DateTime.now());
     setState(() {
@@ -259,6 +306,7 @@ class _KutuphaneAppState extends State<KutuphaneApp> with WidgetsBindingObserver
   /// Yetkili bir istek 401 döndüğünde: oturumu kapat ve kullanıcıyı bilgilendir.
   Future<void> _onSessionExpired() async {
     if (_tokens == null) return;
+    await _bildirimTokenSil();
     await _storage.clearTokens();
     await _storage.saveLastAuthAt(DateTime.now());
     if (!mounted) return;

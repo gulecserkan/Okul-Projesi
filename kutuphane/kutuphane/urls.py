@@ -36,6 +36,7 @@ from kutuphane_app.views import (
     AuditLogView,
     InventorySessionViewSet,
     ShelfCodeListView,
+    BildirimTokenView,
 )
 
 from rest_framework_simplejwt.views import TokenRefreshView as BaseTokenRefreshView
@@ -76,6 +77,7 @@ urlpatterns = [
     path('api/uye-ceza/<str:uye_no>/', UyeCezaView.as_view(), name="uye-ceza"),
     path('api/health/', HealthCheckView.as_view(), name="health"),
     path('api/mobil/surum/', MobilSurumView.as_view(), name="mobil-surum"),
+    path('api/mobil/bildirim-token/', BildirimTokenView.as_view(), name="bildirim-token"),
     path('api/masaustu/surum/', MasaustuSurumView.as_view(), name="masaustu-surum"),
     path('api/checkout/', CheckoutView.as_view(), name="checkout"),
     path('api/oduncler/<int:pk>/kapat/', OduncKapatView.as_view(), name="loan-close"),

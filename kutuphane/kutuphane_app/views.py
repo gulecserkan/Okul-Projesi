@@ -43,6 +43,7 @@ from .models import (
     AuditLog,
     InventorySession,
     InventoryItem,
+    CihazBildirim,
 )
 from .turkish import fold
 from .rules import (
@@ -76,6 +77,7 @@ from .serializers import (
     AuditLogSerializer,
     InventorySessionSerializer,
     InventoryItemSerializer,
+    BildirimTokenSerializer,
 )
 from .loan_policy import (
     calculate_penalty,
@@ -1974,6 +1976,46 @@ class KurumAyarlariView(APIView):
             serializer.save()
             return Response(serializer.data, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class BildirimTokenView(APIView):
+    """K15: mobil cihazın FCM token'ını üyeye bağlar (girişte kayıt, çıkışta silme)."""
+
+    permission_classes = [IsAuthenticated]
+
+    def _uye(self, request):
+        return getattr(request.user, "uye", None)
+
+    def post(self, request):
+        uye = self._uye(request)
+        if uye is None:
+            return Response(
+                {"detail": "Bu hesap bir üyeye bağlı değil."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        serializer = BildirimTokenSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        token = serializer.validated_data["token"].strip()
+        platform = serializer.validated_data.get("platform") or "android"
+        if not token:
+            return Response(
+                {"token": ["Boş olamaz."]}, status=status.HTTP_400_BAD_REQUEST
+            )
+        CihazBildirim.objects.update_or_create(
+            fcm_token=token,
+            defaults={"uye": uye, "platform": platform, "aktif": True},
+        )
+        return Response({"ok": True}, status=status.HTTP_200_OK)
+
+    def delete(self, request):
+        uye = self._uye(request)
+        token = str(
+            request.data.get("token") or request.query_params.get("token") or ""
+        ).strip()
+        if uye is not None and token:
+            CihazBildirim.objects.filter(uye=uye, fcm_token=token).delete()
+        return Response({"ok": True}, status=status.HTTP_200_OK)
 
 
 class AuditLogView(APIView):

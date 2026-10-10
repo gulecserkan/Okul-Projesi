@@ -1,4 +1,4 @@
-package com.example.kutuphane
+package tr.okulkitapligi
 
 import io.flutter.embedding.android.FlutterActivity
 

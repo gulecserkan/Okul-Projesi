@@ -27,6 +27,7 @@ from kutuphane_app.models import (
     ArsivBatch,
     ArsivOdunc,
     ArsivUye,
+    CihazBildirim,
     Kategori,
     InventoryItem,
     InventorySession,
@@ -34,6 +35,7 @@ from kutuphane_app.models import (
     KitapNusha,
     KurumAyarlari,
     LoanPolicy,
+    NotificationSettings,
     Uye,
     OduncKaydi,
     Raf,
@@ -1495,7 +1497,7 @@ class K10IsleyisEntegrasyonTests(APITestCase):
         make_policy(
             quiet_hours_enabled=True,
             quiet_hours_start=dtime(0, 0),
-            quiet_hours_end=dtime(23, 59),
+            quiet_hours_end=dtime(23, 59, 59),
         )
         self.assertTrue(_in_quiet_hours(LoanPolicy.get_solo()))
         summary = run_scheduled_jobs()
@@ -2153,6 +2155,144 @@ class R1_6EnvanterAramaTestleri(APITestCase):
         self.assertEqual(len(self._ara("KIT000700")), 1)
         self.assertEqual(len(self._ara("R10")), 1)
         self.assertEqual(len(self._ara("bulunmayan-kitap")), 0)
+
+
+class K15MobilBildirimTests(APITestCase):
+    """K15: mobil FCM token kaydı ve hatırlatma/gecikme hedef seçimi."""
+
+    URL = "/api/mobil/bildirim-token/"
+
+    def setUp(self):
+        make_policy()
+        self.user = User.objects.create_user(username="ogrenci15", password="z1!")
+        self.rol = Rol.objects.create(ad="Öğrenci")
+        self.uye = Uye.objects.create(
+            ad="Mert", soyad="Demir", uye_no="15001", rol=self.rol, user=self.user
+        )
+        self.kitap, self.nusha = make_book_and_copy(barkod="KIT0015001")
+
+    def _loan(self, durum="oduncte", iade_tarihi=None):
+        return OduncKaydi.objects.create(
+            uye=self.uye,
+            kitap_nusha=self.nusha,
+            iade_tarihi=iade_tarihi or (timezone.now() + timedelta(days=1)),
+            durum=durum,
+        )
+
+    # --- token endpoint ---
+    def test_token_kaydi_uyeye_baglanir(self):
+        self.client.force_authenticate(self.user)
+        resp = self.client.post(self.URL, {"token": "abc123"}, format="json")
+        self.assertEqual(resp.status_code, status.HTTP_200_OK, resp.content)
+        kayit = CihazBildirim.objects.get(fcm_token="abc123")
+        self.assertEqual(kayit.uye_id, self.uye.id)
+        self.assertTrue(kayit.aktif)
+
+    def test_ayni_token_tek_satirda_guncellenir(self):
+        self.client.force_authenticate(self.user)
+        self.client.post(self.URL, {"token": "abc123"}, format="json")
+        self.client.post(self.URL, {"token": "abc123"}, format="json")
+        self.assertEqual(CihazBildirim.objects.filter(fcm_token="abc123").count(), 1)
+
+    def test_token_silme(self):
+        CihazBildirim.objects.create(uye=self.uye, fcm_token="abc123")
+        self.client.force_authenticate(self.user)
+        resp = self.client.delete(self.URL, {"token": "abc123"}, format="json")
+        self.assertEqual(resp.status_code, status.HTTP_200_OK, resp.content)
+        self.assertFalse(CihazBildirim.objects.filter(fcm_token="abc123").exists())
+
+    def test_uyeye_bagli_olmayan_hesap_403(self):
+        personel = User.objects.create_user(username="personel15", password="z1!")
+        self.client.force_authenticate(personel)
+        resp = self.client.post(self.URL, {"token": "abc123"}, format="json")
+        self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_kimliksiz_istek_reddedilir(self):
+        resp = self.client.post(self.URL, {"token": "abc123"}, format="json")
+        self.assertIn(
+            resp.status_code,
+            (status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN),
+        )
+
+    # --- hedef seçimi ---
+    def test_hatirlatma_hedefi_secimi(self):
+        from kutuphane_app.jobs import _mobil_hedef_uyeler
+
+        self._loan(durum="oduncte", iade_tarihi=timezone.now() + timedelta(days=1))
+        hedefler = _mobil_hedef_uyeler(timezone.now(), NotificationSettings.get_solo())
+        self.assertIn(self.uye.id, hedefler)
+        self.assertEqual(len(hedefler[self.uye.id]["hatirlatma"]), 1)
+
+    def test_gecikme_hedefi_secimi(self):
+        from kutuphane_app.jobs import _mobil_hedef_uyeler
+
+        self._loan(durum="gecikmis", iade_tarihi=timezone.now() - timedelta(days=3))
+        hedefler = _mobil_hedef_uyeler(timezone.now(), NotificationSettings.get_solo())
+        self.assertIn(self.uye.id, hedefler)
+        self.assertEqual(len(hedefler[self.uye.id]["gecikme"]), 1)
+
+    def test_mobil_kapali_ise_hedef_yok(self):
+        from kutuphane_app.jobs import _mobil_hedef_uyeler
+
+        ayar = NotificationSettings.get_solo()
+        ayar.due_reminder_mobile_enabled = False
+        ayar.overdue_mobile_enabled = False
+        ayar.save()
+        self._loan(durum="gecikmis", iade_tarihi=timezone.now() - timedelta(days=3))
+        hedefler = _mobil_hedef_uyeler(timezone.now(), NotificationSettings.get_solo())
+        self.assertEqual(hedefler, {})
+
+    # --- gönderim ---
+    def test_fcm_yapilandirilmamis_gonderim_atlanir(self):
+        from kutuphane_app.jobs import dispatch_notifications
+
+        self._loan(durum="gecikmis", iade_tarihi=timezone.now() - timedelta(days=3))
+        CihazBildirim.objects.create(uye=self.uye, fcm_token="tok-1")
+        sonuc = dispatch_notifications("mobile", ["overdue"], when=timezone.now())
+        self.assertEqual(sonuc["channel"], "mobile")
+        self.assertEqual(sonuc["sent"], 0)
+        self.assertEqual(sonuc.get("reason"), "fcm-yapilandirilmamis")
+
+    def test_fcm_gonderim_basarili(self):
+        from unittest import mock
+
+        from kutuphane_app import jobs
+
+        self._loan(durum="gecikmis", iade_tarihi=timezone.now() - timedelta(days=3))
+        CihazBildirim.objects.create(uye=self.uye, fcm_token="tok-1")
+
+        fake_sonuc = type(
+            "R", (), {"success_count": 1, "failure_count": 0, "responses": [type("S", (), {"success": True, "exception": None})()]}
+        )()
+        with mock.patch.object(jobs, "_fcm_app", return_value=object()), mock.patch(
+            "firebase_admin.messaging.send_each_for_multicast", return_value=fake_sonuc
+        ) as gonder:
+            sonuc = jobs.dispatch_notifications("mobile", ["overdue"], when=timezone.now())
+        self.assertEqual(sonuc["sent"], 1)
+        self.assertTrue(gonder.called)
+
+    def test_icerik_tipi_gecikme_oncelikli(self):
+        from kutuphane_app.jobs import _mobil_icerik
+
+        loan = self._loan(durum="gecikmis", iade_tarihi=timezone.now() - timedelta(days=3))
+        baslik, govde, tip = _mobil_icerik({"hatirlatma": [loan], "gecikme": [loan]})
+        self.assertEqual(tip, "gecikme")
+        self.assertIn("geçti", govde)
+
+    def test_run_scheduled_jobs_mobil_dali(self):
+        from kutuphane_app.jobs import run_scheduled_jobs
+
+        ayar = NotificationSettings.get_solo()
+        simdi = timezone.localtime()
+        ayar.mobile_enabled = True
+        ayar.mobile_schedule_enabled = True
+        ayar.mobile_schedule_hour = simdi.hour
+        ayar.mobile_schedule_minute = simdi.minute
+        ayar.save()
+        self._loan(durum="gecikmis", iade_tarihi=timezone.now() - timedelta(days=3))
+        CihazBildirim.objects.create(uye=self.uye, fcm_token="tok-1")
+        ozet = run_scheduled_jobs()
+        self.assertIn("mobile_notifications", ozet)
 
 
 

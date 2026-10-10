@@ -22,6 +22,7 @@ from .models import (
     AuditLog,
     InventorySession,
     InventoryItem,
+    CihazBildirim,
 )
 from .rules import rol_degisikligi_izinli
 
@@ -389,6 +390,13 @@ class KurumAyarlariSerializer(serializers.ModelSerializer):
     class Meta:
         model = KurumAyarlari
         exclude = ("singleton_key", "created_at", "updated_at")
+
+
+class BildirimTokenSerializer(serializers.Serializer):
+    """K15: mobil FCM cihaz token kaydı."""
+
+    token = serializers.CharField(max_length=255)
+    platform = serializers.CharField(max_length=20, required=False, default="android")
 
 
 class InventoryItemSerializer(serializers.ModelSerializer):

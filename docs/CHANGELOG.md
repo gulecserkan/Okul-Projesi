@@ -6,6 +6,44 @@ sunucuya yalnızca etiketli sürümler gönderilir (bkz. `docs/DEPLOY_CLOUD.md`)
 
 ## [Unreleased]
 
+## [1.1.17] — 2026-10-11
+
+Üye mobil uygulamasına **iade hatırlatma ve gecikme bildirimi** (push/FCM) eklendi
+(**backend + mobil**; yeni iş kuralı K15). Mobil uygulamanın paket adı
+`com.example.kutuphane` → **`tr.okulkitapligi`** yapıldı (Firebase uyumu).
+
+- **K15 — Push bildirim (sunucudan FCM):** Gönderim mevcut zamanlanmış iş
+  zincirinden yapılır (`cron` → `manage.py run_scheduled_tasks` →
+  `jobs.run_scheduled_jobs` → `jobs.dispatch_notifications`). Mobil kanal
+  `mobile_enabled` + `mobile_schedule_*` ile açılır; **günde bir** (program
+  penceresi), kontrol 15 dk (guard'lar idempotent), K10.7 sessiz saatler uygulanır.
+- **Hedef seçimi (K15.3):** iade hatırlatma → `iade_tarihi` bugünden
+  `due_reminder_days_before` gün sonra olan **aktif** (`oduncte`) ödünçler;
+  gecikme → `gecikmis` durumdaki ödünçler. Gönderim anında DB'den güncel durum
+  okunur; üye başına tek mesajda ödünç özeti gider. Geçersiz/`unregistered`
+  token'lar otomatik pasife alınır.
+- **Cihaz token kaydı (K15.2):** `POST/DELETE /api/mobil/bildirim-token/`
+  (JWT; `CihazBildirim` modeli, üye başına çoklu cihaz). Mobil girişte izin
+  istenir ve token bağlanır; token yenilenince (`onTokenRefresh`) güncellenir,
+  çıkışta silinir.
+- **Android 13+ izni (K15.4):** `POST_NOTIFICATIONS` çalışma zamanı istenir;
+  izin yoksa gönderim gösterilmez, uygulama sessizce çalışır (ekran içi
+  "kaldı/gecikti" satırı korunur).
+- **Sırlar (K15.5):** `google-services.json` (istemci) ve servis hesabı JSON'u
+  (sunucu, `FCM_SERVICE_ACCOUNT`) git'e girmez; tanımsızsa gönderim sessizce
+  atlanır (kurulumsuz ortam bozulmaz).
+- **Sunucu gereksinimi:** `firebase-admin` (`requirements.txt`) + servis hesabı
+  yolu `FCM_SERVICE_ACCOUNT` (deploy ile birlikte). Backend değişti → sunucuya
+  deploy gerekir.
+- **Paket adı değişikliği (operasyonel):** Android farklı paket adını ayrı
+  uygulama saydığından, `com.example.kutuphane` ile kurulu eski APK'lar bu
+  sürümle **üzerine güncellenemez**; kullanıcılar uygulamayı silip yeniden kurar.
+- Backend testleri: **158/158** (K15 token endpoint + hedef seçimi + gönderim).
+  Mobil: analyze temiz, testler yeşil (token uçları dahil).
+- **Düzeltme:** `jobs._schedule_windows` içinde Django 5'te kaldırılan
+  `django.utils.timezone.utc` kullanımı `datetime.timezone.utc` ile değiştirildi
+  (programlanmış bildirim etkinleştirildiğinde `AttributeError` veriyordu).
+
 ## [1.1.16] — 2026-10-10
 
 Sunucu adresi çözümü artık **garanti biçimde alan adını** (`https://okulkitapligi.tr`)

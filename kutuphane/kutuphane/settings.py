@@ -65,6 +65,9 @@ FIELD_ENCRYPTION_KEY = os.environ.get("FIELD_ENCRYPTION_KEY", "") or None
 # K7.5: Google Books API anahtarı (.env; yoksa anonim kotalara düşer -> 429 riski).
 GOOGLE_BOOKS_API_KEY = os.environ.get("GOOGLE_BOOKS_API_KEY", "")
 
+# K15: FCM servis hesabı JSON yolu (repo dışı; tanımsızsa mobil bildirim atlanır).
+FCM_SERVICE_ACCOUNT = os.environ.get("FCM_SERVICE_ACCOUNT", "")
+
 ALLOWED_HOSTS = [
     host.strip()
     for host in os.environ.get("ALLOWED_HOSTS", "127.0.0.1,localhost").split(",")

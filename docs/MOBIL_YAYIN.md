@@ -53,6 +53,21 @@ Android, bir uygulamanın güncellemesini ancak **aynı imza** ile kurar. Bu yü
   yerde (şifre yöneticisi + yedek disk) saklanır. Kaybolursa güncelleme dağıtılamaz.
 - Farklı imza ile kurulum denenirse kullanıcı **uygulamayı silip yeniden kurmalıdır**.
 
+## Push bildirim (K15, FCM)
+
+- İstemci paket adı **`tr.okulkitapligi`**; Firebase projesiyle eşleşir
+  (`android/app/google-services.json`, git dışı). Sunucu, servis hesabı JSON'u ile
+  FCM gönderir (`FCM_SERVICE_ACCOUNT`).
+- **Paket adı yayın sonrası DEĞİŞMEZ.** `com.example.kutuphane` ile kurulu eski
+  APK'lar `tr.okulkitapligi` sürümüyle **üzerine güncellenemez** (Android farklı
+  paket adını ayrı uygulama sayar); kullanıcı silip yeniden kurar.
+- Android 13+ için `POST_NOTIFICATIONS` izni çalışma zamanı istenir; izin yoksa
+  bildirim gösterilmez, uygulama sessizce çalışır (ekran içi "kaldı/gecikti"
+  satırı korunur).
+- Gönderimi test etmek için: admin panelinde Bildirim Ayarları → "Mobil bildirim
+  açık" + "Mobil zamanlama" ve saat ayarlanır; `mobile_schedule_*` + iş kuralları
+  gereği gönderim **günde bir** yapılır.
+
 ## Yayın akışı (yeni mobil sürüm)
 
 1. `mobil/kutuphane/pubspec.yaml` → `version: X.Y.Z+<kod>` (kod +1).
@@ -83,6 +98,22 @@ sudo nginx -t && sudo systemctl reload nginx
 # Django dağıtım dizinini bilsin
 echo 'MOBIL_DIST_DIR=/srv/kutuphane-mobil' | sudo tee -a /etc/kutuphane/.env
 sudo systemctl restart kutuphane-backend
+```
+
+### Push bildirim için sunucu (K15, bir kez)
+
+```bash
+# firebase-admin requirements.txt ile gelir; venv'e kur
+sudo -u kutuphane /srv/kutuphane/venv/bin/pip install -r /srv/kutuphane/kutuphane/requirements.txt
+
+# Servis hesabı JSON'u (Firebase Console → Proje ayarları → Servis hesapları)
+sudo install -o root -g root -m 600 /path/kutuphane-bildirim-firebase-adminsdk-*.json \
+  /etc/kutuphane/fcm-service-account.json
+echo 'FCM_SERVICE_ACCOUNT=/etc/kutuphane/fcm-service-account.json' | sudo tee -a /etc/kutuphane/.env
+sudo systemctl restart kutuphane-backend
+
+# Doğrula: görev günlüğü (her 15 dk çalışır)
+tail -n 20 /var/log/kutuphane/scheduler.log
 ```
 
 ## Geri alma

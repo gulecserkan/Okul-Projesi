@@ -694,3 +694,24 @@ class KurumAyarlari(models.Model):
     def get_solo(cls):
         kurum, _ = cls.objects.get_or_create(singleton_key="default")
         return kurum
+
+
+class CihazBildirim(models.Model):
+    """K15: Mobil uygulamanın FCM cihaz token'ı (üye başına, çoklu cihaz)."""
+
+    uye = models.ForeignKey(
+        Uye, on_delete=models.CASCADE, related_name="bildirim_cihazlari",
+        verbose_name="Üye",
+    )
+    fcm_token = models.CharField(max_length=255, unique=True, verbose_name="FCM token")
+    platform = models.CharField(max_length=20, default="android", verbose_name="Platform")
+    aktif = models.BooleanField(default=True, verbose_name="Aktif")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Oluşturma")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="Güncelleme")
+
+    class Meta:
+        verbose_name = "Bildirim Cihazı"
+        verbose_name_plural = "Bildirim Cihazları"
+
+    def __str__(self):
+        return f"{self.uye_id} · {self.platform} · {self.fcm_token[:12]}…"

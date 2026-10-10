@@ -253,8 +253,8 @@ curl -s https://okulkitapligi.tr/api/health/
 
 ## 6. Mevcut durum (bu not yazılırken)
 
-- Sürüm: **1.1.16** · dal `V2.0` (GitHub'a push edildi). Önceki: `5b9dd52` (1.1.15).
-- Masaüstü testleri: **118/118** · analyze temiz (mobil sunucu adresi testleri dahil)
+- Sürüm: **1.1.17** · dal `V2.0`. Önceki: 1.1.16 (sunucu adresi önceliği).
+- Masaüstü testleri: **118/118** · Backend: **158/158** · Mobil testler yeşil · analyze temiz.
 - Üretim sunucu: `89.252.153.171`, PostgreSQL `kutuphane` (~13 MB), günlük
   şifreli yedek + media arşivi çalışıyor. **Prod'a dokunulmadı.**
 - Alan adı: `okulkitapligi.tr` (+`www`) → `89.252.153.171` A kayıtları Alastyr
@@ -262,17 +262,22 @@ curl -s https://okulkitapligi.tr/api/health/
 - **HTTPS tamam:** Let's Encrypt/certbot (`CN=okulkitapligi.tr`, bitiş 2027-01-07,
   `certbot.timer` otomatik yenileme), nginx `server_name` + HTTP→HTTPS 301, `.env`
   `ALLOWED_HOSTS` + `CSRF_TRUSTED_ORIGINS` + güvenli çerezler. `https://.../api/health/` 200.
+- **Push bildirim (K15) kodlandı:** backend (model/endpoint/jobs FCM) + mobil
+  (Firebase, izin, token kaydı). Mobil paket adı **`tr.okulkitapligi`**; Firebase
+  projesi `kutuphane-bildirim`; servis hesabı `/etc/kutuphane/fcm-service-account.json`
+  (600 root), `.env` `FCM_SERVICE_ACCOUNT`. **Not:** `com.example.kutuphane` ile
+  kurulu eski APK'lar yeni paketle güncellenemez (silip yeniden kurulur).
 - Yerel tam sistem testi (backend + DB + istemci) henüz yapılmadı.
-- Bekleyen: A4 rozet → 1.1.15 ile çözüldü; etiket kalibrasyon yönergesi (1.1.15);
-  HTTPS'e garanti geçiş → 1.1.16 ile çözüldü.
+- Bekleyen: HTTPS'e garanti geçiş → 1.1.16 ile çözüldü; push bildirim → 1.1.17.
 
 ## 7. Açık işler
 
 1. ~~DNS kaydı~~ → yapıldı (Alastyr A kayıtları).
 2. ~~HTTPS (nginx `server_name`, certbot, `.env`)~~ → yapıldı.
 3. ~~İstemci adres önceliği `https://okulkitapligi.tr` + yayın~~ → 1.1.16 ile yapıldı.
-4. Yerelde uçtan uca test (Senaryo B kurallarıyla) → sonra geçiş kararı.
-5. Android `usesCleartextTraffic` daraltma + Play hazırlık (K13.12).
+4. ~~Push bildirim (K15)~~ → 1.1.17 ile kodlandı; **deploy + yayın bekliyor**.
+5. Yerelde uçtan uca test (Senaryo B kurallarıyla) → sonra geçiş kararı.
+6. Android `usesCleartextTraffic` daraltma + Play hazırlık (K13.12).
 
 ---
 
@@ -281,7 +286,7 @@ curl -s https://okulkitapligi.tr/api/health/
 > Aşağıdaki metni yeni makinede opencode'un **ilk mesajı** olarak yapıştır.
 
 Merhaba. Kütüphane Yönetim Sistemi'ni kütüphanedeki bilgisayarda sürdüreceğiz.
-Monorepo: `~/Okul-Projesi`, dal `V2.0`, son sürüm `1.1.16`.
+Monorepo: `~/Okul-Projesi`, dal `V2.0`, son sürüm `1.1.17`.
 **Önce `docs/DEVIR.md`, `AGENTS.md`, `docs/IS_KURALLARI.md` ve
 `docs/DEPLOY_CLOUD.md` dosyalarını oku.** Bu makinede **eski kütüphane sistemi
 çalışıyor**; ona zarar vermeden ilerle. Varsayılan olarak **Senaryo A** (yalnız

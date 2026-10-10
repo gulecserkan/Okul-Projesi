@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import os
+from datetime import timezone as dt_timezone
 from datetime import timedelta
 from decimal import Decimal
 from zoneinfo import ZoneInfo
 
+from django.conf import settings
 from django.db import transaction
 from django.db.models import Sum
 from django.utils import timezone
@@ -19,7 +22,7 @@ from .loan_policy import (
     get_snapshot,
     penalty_delay_for_role,
 )
-from .models import OduncKaydi, NotificationSettings, LoanPolicy
+from .models import OduncKaydi, NotificationSettings, LoanPolicy, CihazBildirim
 
 def iter_open_loans(lock=False):
     qs = (
@@ -215,8 +218,8 @@ def _schedule_windows(schedule: dict | None, reference=None):
         last_target = target
 
     return (
-        last_target.astimezone(timezone.utc),
-        next_target.astimezone(timezone.utc),
+        last_target.astimezone(dt_timezone.utc),
+        next_target.astimezone(dt_timezone.utc),
     )
 
 
@@ -275,14 +278,158 @@ def _channel_message_types(settings: NotificationSettings, channel: str):
     return types
 
 
+def _fcm_app():
+    """K15: firebase-admin uygulamasını temin eder.
+
+    Servis hesabı tanımlı değilse veya firebase-admin kurulu değilse None döner;
+    böylece kurulumsuz geliştirme ortamı bozulmaz (gönderim sessizce atlanır).
+    """
+    path = getattr(settings, "FCM_SERVICE_ACCOUNT", "") or os.environ.get(
+        "FCM_SERVICE_ACCOUNT", ""
+    )
+    if not path or not os.path.exists(path):
+        return None
+    try:
+        import firebase_admin
+        from firebase_admin import credentials
+    except ImportError:
+        return None
+    if not firebase_admin._apps:
+        firebase_admin.initialize_app(credentials.Certificate(path))
+    return firebase_admin
+
+
+def _kitap_adi(loan):
+    nusha = getattr(loan, "kitap_nusha", None)
+    kitap = getattr(nusha, "kitap", None)
+    return (
+        getattr(kitap, "baslik", None)
+        or getattr(kitap, "ad", None)
+        or (getattr(nusha, "barkod", None) if nusha else None)
+        or "Kitap"
+    )
+
+
+def _mobil_hedef_uyeler(now, settings_obj):
+    """K15.3: mobil bildirim gönderilecek üyeleri ve kayıtlarını toplar."""
+    tz = timezone.get_current_timezone()
+    bugun = now.astimezone(tz).date()
+    hedefler: dict[int, dict] = {}
+
+    def ekle(loan, anahtar):
+        hedef = hedefler.setdefault(
+            loan.uye_id, {"uye": loan.uye, "hatirlatma": [], "gecikme": []}
+        )
+        hedef[anahtar].append(loan)
+
+    if settings_obj.due_reminder_enabled and settings_obj.due_reminder_mobile_enabled:
+        hedef_tarih = bugun + timedelta(days=settings_obj.due_reminder_days_before or 0)
+        qs = (
+            OduncKaydi.objects
+            .filter(durum="oduncte", teslim_tarihi__isnull=True, iade_tarihi__date=hedef_tarih)
+            .select_related("uye", "kitap_nusha__kitap")
+        )
+        for loan in qs:
+            ekle(loan, "hatirlatma")
+
+    if settings_obj.due_overdue_enabled and settings_obj.overdue_mobile_enabled:
+        esik = bugun - timedelta(days=settings_obj.due_overdue_days_after or 0)
+        qs = (
+            OduncKaydi.objects
+            .filter(durum="gecikmis", teslim_tarihi__isnull=True, iade_tarihi__date__lte=esik)
+            .select_related("uye", "kitap_nusha__kitap")
+        )
+        for loan in qs:
+            ekle(loan, "gecikme")
+
+    return hedefler
+
+
+def _mobil_icerik(veri):
+    """Üyeye gönderilecek bildirim başlığı/gövdesi ve yönlendirme tipi."""
+    hatirlatma = veri.get("hatirlatma") or []
+    gecikme = veri.get("gecikme") or []
+    if gecikme:
+        adlar = ", ".join(_kitap_adi(l) for l in gecikme)
+        return ("Gecikmiş ödünç", f"{adlar} için iade tarihi geçti. Lütfen iade edin.", "gecikme")
+    adlar = ", ".join(_kitap_adi(l) for l in hatirlatma)
+    return ("İade hatırlatma", f"{adlar} için iade tarihiniz yaklaşıyor.", "hatirlatma")
+
+
+def _mobil_bildirim_gonder(now, settings_obj):
+    """K15: mobil kanal FCM gönderimi. Token/yapılandırma yoksa sessizce atlar."""
+    hedefler = _mobil_hedef_uyeler(now, settings_obj)
+    if not hedefler:
+        return {"channel": "mobile", "sent": 0, "failed": 0, "hedef": 0}
+
+    tokenlar = {
+        uye_id: list(
+            CihazBildirim.objects.filter(uye_id=uye_id, aktif=True).values_list(
+                "fcm_token", flat=True
+            )
+        )
+        for uye_id in hedefler
+    }
+
+    app = _fcm_app()
+    if app is None:
+        return {
+            "channel": "mobile",
+            "sent": 0,
+            "failed": 0,
+            "hedef": len(hedefler),
+            "reason": "fcm-yapilandirilmamis",
+        }
+
+    from firebase_admin import messaging
+
+    sent = 0
+    failed = 0
+    gecersiz_tokenlar = []
+    for uye_id, veri in hedefler.items():
+        uye_tokens = tokenlar.get(uye_id) or []
+        if not uye_tokens:
+            continue
+        title, body, tip = _mobil_icerik(veri)
+        message = messaging.MulticastMessage(
+            tokens=uye_tokens,
+            notification=messaging.Notification(title=title, body=body),
+            data={"tip": tip},
+            android=messaging.AndroidConfig(priority="high"),
+        )
+        try:
+            cevap = messaging.send_each_for_multicast(message)
+        except Exception:
+            failed += len(uye_tokens)
+            continue
+        sent += cevap.success_count
+        failed += cevap.failure_count
+        for idx, sonuc in enumerate(cevap.responses):
+            if not sonuc.success and type(getattr(sonuc, "exception", None)).__name__ in (
+                "UnregisteredError",
+                "SenderIdMismatchError",
+            ):
+                gecersiz_tokenlar.append(uye_tokens[idx])
+
+    if gecersiz_tokenlar:
+        CihazBildirim.objects.filter(fcm_token__in=gecersiz_tokenlar).update(aktif=False)
+
+    return {"channel": "mobile", "sent": sent, "failed": failed, "hedef": len(hedefler)}
+
+
 def dispatch_notifications(channel: str, types: list[str], when=None):
-    """Seçilen kanal için bildirimi tetikleyin. Şimdilik gerçek gönderim değil, yer tutucu."""
-    # TODO: E-posta/SMS/mobil gönderimleri burada uygulanacak.
-    # Şimdilik sadece loglama yapılabilir.
+    """Seçilen kanal için bildirim gönderimini tetikler.
+
+    Mobil kanal (K15) gerçek FCM gönderimi yapar; e-posta/SMS henüz yer tutucudur.
+    """
+    when = when or timezone.now()
+    if channel == "mobile":
+        return _mobil_bildirim_gonder(when, NotificationSettings.get_solo())
+    # TODO: E-posta/SMS gönderimleri burada uygulanacak.
     return {
         "channel": channel,
         "types": types,
-        "timestamp": when.isoformat() if when else timezone.now().isoformat(),
+        "timestamp": when.isoformat(),
     }
 
 

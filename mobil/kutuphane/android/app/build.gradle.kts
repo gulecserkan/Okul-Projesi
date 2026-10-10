@@ -4,6 +4,8 @@ import java.util.Properties
 plugins {
     id("com.android.application")
     id("kotlin-android")
+    // K15: google-services.json'u işleyip Firebase'i bağlar.
+    id("com.google.gms.google-services")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
@@ -16,7 +18,7 @@ if (keystorePropertiesFile.exists()) {
 }
 
 android {
-    namespace = "com.example.kutuphane"
+    namespace = "tr.okulkitapligi"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -30,8 +32,8 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.example.kutuphane"
+        // Uygulama kimliği: yayın sonrası DEĞİŞMEZ (Firebase app id bu değerle eşleşir).
+        applicationId = "tr.okulkitapligi"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion

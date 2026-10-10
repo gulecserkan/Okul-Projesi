@@ -16,7 +16,7 @@ from .models import (
     OduncKaydi, AuditLog,
     ArsivBatch, ArsivUye, ArsivOdunc,
     LoanPolicy, RoleLoanPolicy, NotificationSettings, KurumAyarlari,
-    InventorySession, InventoryItem
+    InventorySession, InventoryItem, CihazBildirim
 )
 from .rules import arsiv_adaylari_queryset
 
@@ -473,6 +473,16 @@ class KurumAyarlariAdmin(admin.ModelAdmin):
 
 
 admin_site.register(KurumAyarlari, KurumAyarlariAdmin)
+
+
+class CihazBildirimAdmin(admin.ModelAdmin):
+    list_display = ("uye", "platform", "aktif", "updated_at")
+    list_filter = ("platform", "aktif")
+    search_fields = ("uye__ad", "uye__soyad", "uye__uye_no", "fcm_token")
+    readonly_fields = ("created_at", "updated_at")
+
+
+admin_site.register(CihazBildirim, CihazBildirimAdmin)
 
 
 admin_site.register(User, UserAdmin)

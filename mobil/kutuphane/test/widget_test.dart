@@ -24,7 +24,7 @@ void main() {
   ) async {
     PackageInfo.setMockInitialValues(
       appName: 'Kutuphane',
-      packageName: 'com.example.kutuphane',
+      packageName: 'tr.okulkitapligi',
       version: '1.1.6',
       buildNumber: '4',
       buildSignature: '',

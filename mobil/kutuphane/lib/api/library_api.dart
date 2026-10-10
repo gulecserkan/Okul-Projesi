@@ -185,6 +185,43 @@ class LibraryApiClient {
     throw ApiException("Beklenmeyen raf kodu yanıtı");
   }
 
+  /// K15: mobil cihazın FCM token'ını üyeye bağlar.
+  Future<void> registerBildirimToken(
+    String token, {
+    String platform = "android",
+  }) async {
+    _ensureAuthorized();
+    final uri = _uri("/api/mobil/bildirim-token/");
+    final response = await _withAuthRetry(
+      () => _client.post(
+        uri,
+        headers: _headers(),
+        body: jsonEncode({"token": token, "platform": platform}),
+      ),
+    );
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return;
+    }
+    _throwError(response);
+  }
+
+  /// K15: token kaydını siler (çıkışta).
+  Future<void> deleteBildirimToken(String token) async {
+    _ensureAuthorized();
+    final uri = _uri("/api/mobil/bildirim-token/");
+    final response = await _withAuthRetry(
+      () => _client.delete(
+        uri,
+        headers: _headers(),
+        body: jsonEncode({"token": token}),
+      ),
+    );
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return;
+    }
+    _throwError(response);
+  }
+
   Future<void> changePassword({
     required String currentPassword,
     required String newPassword,
