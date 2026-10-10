@@ -107,7 +107,8 @@ sudo systemctl restart kutuphane-backend
 sudo -u kutuphane /srv/kutuphane/venv/bin/pip install -r /srv/kutuphane/kutuphane/requirements.txt
 
 # Servis hesabı JSON'u (Firebase Console → Proje ayarları → Servis hesapları)
-sudo install -o root -g root -m 600 /path/kutuphane-bildirim-firebase-adminsdk-*.json \
+# NOT: dosya, .env gibi uygulama kullanıcısı (kutuphane) tarafından okunabilmeli
+sudo install -o root -g kutuphane -m 640 /path/kutuphane-bildirim-firebase-adminsdk-*.json \
   /etc/kutuphane/fcm-service-account.json
 echo 'FCM_SERVICE_ACCOUNT=/etc/kutuphane/fcm-service-account.json' | sudo tee -a /etc/kutuphane/.env
 sudo systemctl restart kutuphane-backend
