@@ -390,7 +390,6 @@ admin_site.register(RoleLoanPolicy, RoleLoanPolicyAdmin)
 
 class NotificationSettingsAdmin(admin.ModelAdmin):
     list_display = (
-        "printer_warning_enabled",
         "due_reminder_enabled",
         "due_overdue_enabled",
         "mobile_enabled",
@@ -407,10 +406,8 @@ class NotificationSettingsAdmin(admin.ModelAdmin):
                            "mobildir (FCM); e-posta/SMS ve mesaj şablonu alanları "
                            "işlevsizdir ve gizlenmiştir (K10.8). Mobil mesaj içeriği "
                            "üye adı, kitap listesi, tarih ve gecikme günü ile koddan "
-                           "üretilir (K15.3.1); buradan düzenlenmez.",
-            "fields": ("printer_warning_enabled",),
-        }),
-        ("İade hatırlatma", {
+                           "üretilir (K15.3.1); buradan düzenlenmez. Yazıcı açılış "
+                           "uyarısı artık masaüstü istemcisinin yerel ayarıdır (K14.6).",
             "fields": ("due_reminder_enabled", "due_reminder_days_before",
                        "due_reminder_mobile_enabled"),
         }),

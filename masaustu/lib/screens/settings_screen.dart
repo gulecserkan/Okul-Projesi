@@ -430,6 +430,18 @@ class _YazicilarTabState extends State<_YazicilarTab> {
               onChanged: (v) => _kaydet(_prefs.copyWith(sifreFisi: v)),
             ),
             const Divider(height: 32),
+            Text('Açılış denetimi', style: theme.textTheme.titleMedium),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Açılışta yazıcı bağlantısını kontrol et'),
+              subtitle: const Text(
+                  'Seçili yazıcı kapalı/bağlı değilse açılışta kapatılabilir '
+                  'bir uyarı gösterilir (K14.6).'),
+              value: _prefs.acilistaYaziciUyarisi,
+              onChanged: (v) =>
+                  _kaydet(_prefs.copyWith(acilistaYaziciUyarisi: v)),
+            ),
+            const Divider(height: 32),
             Row(
               children: [
                 Text('Test basımı', style: theme.textTheme.titleMedium),

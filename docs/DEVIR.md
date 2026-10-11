@@ -253,8 +253,8 @@ curl -s https://okulkitapligi.tr/api/health/
 
 ## 6. Mevcut durum (bu not yazılırken)
 
-- Sürüm: **1.2.0** · dal `V2.0`. Önceki: 1.1.18 (admin CSRF uyarı sayfası).
-- Masaüstü testleri: **118/118** · Backend: **162/162** · Mobil testler yeşil · analyze temiz.
+- Sürüm: **1.2.1** · dal `V2.0`. Önceki: 1.2.0 (dinamik mobil bildirim).
+- Masaüstü testleri: **121/121** · Backend: **162/162** · Mobil testler yeşil · analyze temiz.
 - Üretim sunucu: `89.252.153.171`, PostgreSQL `kutuphane` (~13 MB), günlük
   şifreli yedek + media arşivi çalışıyor. **Prod'a dokunulmadı.**
 - Alan adı: `okulkitapligi.tr` (+`www`) → `89.252.153.171` A kayıtları Alastyr
@@ -276,8 +276,12 @@ curl -s https://okulkitapligi.tr/api/health/
   (üye adı, kitap listesi, sayı, iade tarihi, gecikme günü); ön planda SnackBar,
   dokununca **Ödünçlerim** sekmesi. Bildirim ayarlarında işlevsiz e-posta/SMS ve
   "Mesaj şablonları" alanları admin formundan gizlendi (kolonlar korunur).
+- **K14.6 (1.2.1):** "Açılışta yazıcı uyarısı" sunucudan kaldırıldı; artık
+  masaüstü yerel ayarı (`PrinterPrefs.acilistaYaziciUyarisi`, Ayarlar›Yazıcılar).
+  `NotificationSettings.printer_warning_enabled` alanı silindi (migration 0040).
 - Bekleyen: HTTPS'e garanti geçiş → 1.1.16 ile çözüldü; push bildirim → 1.1.17
-  ile kodlandı; dinamik bildirim + davranış → 1.2.0.
+  ile kodlandı; dinamik bildirim + davranış → 1.2.0; yazıcı uyarısı yerelleştirme
+  → 1.2.1.
 
 ## 7. Açık işler
 
@@ -295,7 +299,7 @@ curl -s https://okulkitapligi.tr/api/health/
 > Aşağıdaki metni yeni makinede opencode'un **ilk mesajı** olarak yapıştır.
 
 Merhaba. Kütüphane Yönetim Sistemi'ni kütüphanedeki bilgisayarda sürdüreceğiz.
-Monorepo: `~/Okul-Projesi`, dal `V2.0`, son sürüm `1.2.0`.
+Monorepo: `~/Okul-Projesi`, dal `V2.0`, son sürüm `1.2.1`.
 **Önce `docs/DEVIR.md`, `AGENTS.md`, `docs/IS_KURALLARI.md` ve
 `docs/DEPLOY_CLOUD.md` dosyalarını oku.** Bu makinede **eski kütüphane sistemi
 çalışıyor**; ona zarar vermeden ilerle. Varsayılan olarak **Senaryo A** (yalnız

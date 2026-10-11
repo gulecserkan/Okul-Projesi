@@ -181,14 +181,11 @@ class _OverviewState extends State<_Overview> {
     _yaziciDenetimi();
   }
 
-  /// K14.6: `printer_warning_enabled` açıksa fiş/etiket yazıcılarını denetler.
+  /// K14.6: yerel ayar (`PrinterPrefs.acilistaYaziciUyarisi`) açıksa
+  /// fiş/etiket yazıcılarını denetler.
   Future<void> _yaziciDenetimi() async {
+    if (!AppConfig.printer.acilistaYaziciUyarisi) return;
     try {
-      final ns = await _api.notificationSettingsGet();
-      final data = ns.data;
-      final acik = !(data?['printer_warning_enabled'] == false);
-      if (!acik) return;
-      if (!mounted) return;
       final svc = PrinterServices.instance;
       if (!await svc.cupsKurulu()) {
         setState(() {

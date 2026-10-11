@@ -579,11 +579,6 @@ class LoanPolicy(models.Model):
 class NotificationSettings(models.Model):
     singleton_key = models.CharField(max_length=50, unique=True, default="default")
 
-    printer_warning_enabled = models.BooleanField(
-        default=True, verbose_name="Açılışta yazıcı uyarısı",
-        help_text="Uygulama açılışında yazıcı sorunu varsa uyarı gösterilir.",
-    )
-
     due_reminder_enabled = models.BooleanField(
         default=True, verbose_name="İade hatırlatma açık",
         help_text="İade tarihi yaklaşan üyelere hatırlatma gönderilir.",

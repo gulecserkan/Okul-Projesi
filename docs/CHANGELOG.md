@@ -6,6 +6,23 @@ sunucuya yalnızca etiketli sürümler gönderilir (bkz. `docs/DEPLOY_CLOUD.md`)
 
 ## [Unreleased]
 
+## [1.2.1] — 2026-10-11
+
+"Açılışta yazıcı uyarısı" seçeneği sunucu/DB'den kaldırılıp **masaüstü
+istemcinin yerel ayarına** taşındı (**backend + masaüstü**; K14.6). Mobil
+etkilenmedi.
+
+- **K14.6 — Yerel açılış denetimi:** `NotificationSettings.printer_warning_enabled`
+  alanı modelden, admin formundan ve API'den kaldırıldı (migration `0040` ile
+  kolon düşürüldü). Ayar artık her makinenin yerel deposunda
+  `PrinterPrefs.acilistaYaziciUyarisi` olarak tutulur; Ayarlar›Yazıcılar
+  sekmesine "Açılışta yazıcı bağlantısını kontrol et" anahtarı eklendi.
+  Açılışta gereksiz `notificationSettingsGet` çağrısı artık yapılmaz.
+- **Not:** Daha önce sunucudan bu ayarı kapatmış makinelerde yerel varsayılan
+  **açık** gelir; istenmeyen makinede Yazıcılar sekmesinden tek tıkla kapatılır.
+- **Sunucu gereksinimi:** Şema değişti → `deploy.sh prod v1.2.1`. Masaüstü
+  yeniden derlenip yayınlanır (`1.2.1`, sürüm kodu 8, min 3).
+
 ## [1.2.0] — 2026-10-11
 
 Mobil bildirimler **dinamik ve kişisel** hale getirildi; bildirim ayarları

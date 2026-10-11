@@ -285,6 +285,9 @@ class PrinterPrefs {
   /// Etiket rulo ölçüleri kurulum diyaloğu bir kez yapıldı mı (K14.11).
   final bool etiketKurulumYapildi;
 
+  /// Açılışta fiş/etiket yazıcı bağlantısı denetlenip uyarı gösterilsin mi (K14.6).
+  final bool acilistaYaziciUyarisi;
+
   /// Termal rulo ölçüleri (mm) — K14.11. Besleme/boşluk ölçümü yazıcının kendi
   /// sensör kalibrasyonuna bırakılır; bu değerler yalnız PDF içerik yerleşimi içindir.
   final double etiketGenislikMm;
@@ -301,6 +304,7 @@ class PrinterPrefs {
     this.rulo = 'tanimsiz',
     this.a4Dosya = false,
     this.etiketKurulumYapildi = false,
+    this.acilistaYaziciUyarisi = true,
     this.etiketGenislikMm = 57,
     this.etiketYukseklikMm = 40,
     this.fisGenislikMm = 70,
@@ -316,6 +320,7 @@ class PrinterPrefs {
     String? rulo,
     bool? a4Dosya,
     bool? etiketKurulumYapildi,
+    bool? acilistaYaziciUyarisi,
     double? etiketGenislikMm,
     double? etiketYukseklikMm,
     double? fisGenislikMm,
@@ -330,6 +335,8 @@ class PrinterPrefs {
         rulo: rulo ?? this.rulo,
         a4Dosya: a4Dosya ?? this.a4Dosya,
         etiketKurulumYapildi: etiketKurulumYapildi ?? this.etiketKurulumYapildi,
+        acilistaYaziciUyarisi:
+            acilistaYaziciUyarisi ?? this.acilistaYaziciUyarisi,
         etiketGenislikMm: etiketGenislikMm ?? this.etiketGenislikMm,
         etiketYukseklikMm: etiketYukseklikMm ?? this.etiketYukseklikMm,
         fisGenislikMm: fisGenislikMm ?? this.fisGenislikMm,
@@ -345,6 +352,7 @@ class PrinterPrefs {
         'rulo': rulo,
         'a4_dosya': a4Dosya,
         'etiket_kurulum_yapildi': etiketKurulumYapildi,
+        'acilista_yazici_uyarisi': acilistaYaziciUyarisi,
         'etiket_genislik_mm': etiketGenislikMm,
         'etiket_yukseklik_mm': etiketYukseklikMm,
         'fis_genislik_mm': fisGenislikMm,
@@ -360,6 +368,7 @@ class PrinterPrefs {
         rulo: json['rulo'] as String? ?? 'tanimsiz',
         a4Dosya: json['a4_dosya'] as bool? ?? false,
         etiketKurulumYapildi: json['etiket_kurulum_yapildi'] as bool? ?? false,
+        acilistaYaziciUyarisi: json['acilista_yazici_uyarisi'] as bool? ?? true,
         etiketGenislikMm: (json['etiket_genislik_mm'] as num?)?.toDouble() ?? 57,
         etiketYukseklikMm: (json['etiket_yukseklik_mm'] as num?)?.toDouble() ?? 40,
         fisGenislikMm: (json['fis_genislik_mm'] as num?)?.toDouble() ?? 70,

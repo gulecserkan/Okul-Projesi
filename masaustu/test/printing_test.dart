@@ -402,6 +402,22 @@ printer DISABLI_Yazici disabled since Jan 01 00:00
       expect(r.message, contains('seçilmemiş'));
     });
   });
+
+  group('PrinterPrefs — açılış yazıcı uyarısı yerel ayarı (K14.6)', () {
+    test('varsayılan açıktır', () {
+      expect(const PrinterPrefs().acilistaYaziciUyarisi, isTrue);
+    });
+
+    test('JSON gidiş-dönüşünde korunur', () {
+      const p = PrinterPrefs(acilistaYaziciUyarisi: false);
+      final q = PrinterPrefs.fromJson(p.toJson());
+      expect(q.acilistaYaziciUyarisi, isFalse);
+    });
+
+    test('eski JSON (alan yok) varsayılan true ile okunur', () {
+      expect(PrinterPrefs.fromJson(const {}).acilistaYaziciUyarisi, isTrue);
+    });
+  });
 }
 
 List<int> _pdfWithMedia(String box) {
