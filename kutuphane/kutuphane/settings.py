@@ -187,6 +187,9 @@ CSRF_TRUSTED_ORIGINS = [
     if origin.strip()
 ]
 
+# CSRF doğrulaması başarısız olduğunda ham 403 yerine Türkçe uyarı sayfası (K16)
+CSRF_FAILURE_VIEW = "kutuphane_app.views.csrf_hatasi"
+
 
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/

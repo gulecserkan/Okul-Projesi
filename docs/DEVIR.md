@@ -253,8 +253,8 @@ curl -s https://okulkitapligi.tr/api/health/
 
 ## 6. Mevcut durum (bu not yazılırken)
 
-- Sürüm: **1.1.17** · dal `V2.0`. Önceki: 1.1.16 (sunucu adresi önceliği).
-- Masaüstü testleri: **118/118** · Backend: **158/158** · Mobil testler yeşil · analyze temiz.
+- Sürüm: **1.1.18** · dal `V2.0`. Önceki: 1.1.17 (mobil push bildirimi).
+- Masaüstü testleri: **118/118** · Backend: **159/159** · Mobil testler yeşil · analyze temiz.
 - Üretim sunucu: `89.252.153.171`, PostgreSQL `kutuphane` (~13 MB), günlük
   şifreli yedek + media arşivi çalışıyor. **Prod'a dokunulmadı.**
 - Alan adı: `okulkitapligi.tr` (+`www`) → `89.252.153.171` A kayıtları Alastyr
@@ -268,6 +268,10 @@ curl -s https://okulkitapligi.tr/api/health/
   (600 root), `.env` `FCM_SERVICE_ACCOUNT`. **Not:** `com.example.kutuphane` ile
   kurulu eski APK'lar yeni paketle güncellenemez (silip yeniden kurulur).
 - Yerel tam sistem testi (backend + DB + istemci) henüz yapılmadı.
+- **K16 — CSRF/çerez uyarı sayfası (1.1.18):** admin girişinde CSRF doğrulaması
+  başarısız olursa ham 403 yerine Türkçe uyarı sayfası (`CSRF_FAILURE_VIEW`).
+  Telefon tarayıcısında **çerezler kapalıyken** oluşan `CSRF cookie not set`
+  durumu için; sunucu tarafında kusur yok (ayarlar doğru).
 - Bekleyen: HTTPS'e garanti geçiş → 1.1.16 ile çözüldü; push bildirim → 1.1.17.
 
 ## 7. Açık işler
@@ -286,7 +290,7 @@ curl -s https://okulkitapligi.tr/api/health/
 > Aşağıdaki metni yeni makinede opencode'un **ilk mesajı** olarak yapıştır.
 
 Merhaba. Kütüphane Yönetim Sistemi'ni kütüphanedeki bilgisayarda sürdüreceğiz.
-Monorepo: `~/Okul-Projesi`, dal `V2.0`, son sürüm `1.1.17`.
+Monorepo: `~/Okul-Projesi`, dal `V2.0`, son sürüm `1.1.18`.
 **Önce `docs/DEVIR.md`, `AGENTS.md`, `docs/IS_KURALLARI.md` ve
 `docs/DEPLOY_CLOUD.md` dosyalarını oku.** Bu makinede **eski kütüphane sistemi
 çalışıyor**; ona zarar vermeden ilerle. Varsayılan olarak **Senaryo A** (yalnız

@@ -10,7 +10,7 @@ from django.db import transaction
 from django.db.models import Count, Sum, Avg, Q, F, Value, Case, When, IntegerField, BooleanField
 from django.contrib.postgres.aggregates import ArrayAgg
 from django.contrib.postgres.search import TrigramSimilarity
-from django.shortcuts import get_object_or_404
+from django.shortcuts import get_object_or_404, render
 from datetime import timedelta
 from decimal import Decimal, InvalidOperation
 from django.utils.timezone import now, make_aware, is_naive
@@ -2217,3 +2217,10 @@ class BookHistoryView(APIView):
             return Response({"error": "Nüsha bulunamadı"}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+# --- CSRF hata sayfası (K16) ---
+# Django'nun ham 403 sayfası yerine, en sık neden olan "tarayıcıda çerezler kapalı"
+# durumunu öne çıkaran Türkçe bir uyarı sayfası gösterilir.
+def csrf_hatasi(request, reason=""):
+    return render(request, "csrf_hata.html", {"reason": reason}, status=403)

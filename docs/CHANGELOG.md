@@ -6,6 +6,23 @@ sunucuya yalnızca etiketli sürümler gönderilir (bkz. `docs/DEPLOY_CLOUD.md`)
 
 ## [Unreleased]
 
+## [1.1.18] — 2026-10-11
+
+Admin paneli girişinde CSRF doğrulaması başarısız olduğunda ham Django 403
+sayfası yerine **Türkçe uyarı sayfası** gösterilir (**yalnızca backend**; yeni
+iş kuralı K16). Mobil/masaüstü değişmedi; sunucuya deploy gerekir.
+
+- **K16 — CSRF/çerez uyarı sayfası:** Telefon tarayıcısında **çerezler kapalıyken**
+  `/admin/login/` POST'u ham `403 Forbidden (CSRF cookie not set)` ile dönüyordu.
+  Artık `CSRF_FAILURE_VIEW` → `views.csrf_hatasi` + `templates/csrf_hata.html`
+  devreye girer; yanıt **403** kalır, sayfa en sık nedeni (çerezler kapalı, sayfa
+  yenileme, gizli pencere) açıklar, JS çerez testini yapar ve "Tekrar dene"
+  bağlantısıyla `/admin/`'e döner.
+- Sunucu tarafında bir kusur yoktu: `CSRF_TRUSTED_ORIGINS`,
+  `CSRF_COOKIE_SECURE=true` vb. doğruydu; sorun istemcide çerezlerin devre dışı
+  olmasıydı. Bu sürüm yalnızca karşılaşma deneyimini iyileştirir.
+- Test: `K16CSRFUyariTests` (token'sız `/admin/login/` POST → 403 + uyarı metni).
+
 ## [1.1.17] — 2026-10-11
 
 Üye mobil uygulamasına **iade hatırlatma ve gecikme bildirimi** (push/FCM) eklendi

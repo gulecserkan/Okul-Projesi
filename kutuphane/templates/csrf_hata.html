@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Güvenlik Doğrulaması Başarısız — Kütüphane</title>
+  <style>
+    :root { color-scheme: light dark; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      background: #f2f4f7;
+      color: #1f2933;
+    }
+    .card {
+      width: 100%;
+      max-width: 34rem;
+      background: #fff;
+      border-radius: 14px;
+      box-shadow: 0 10px 30px rgba(15, 23, 42, .12);
+      overflow: hidden;
+    }
+    .head {
+      background: #b3261e;
+      color: #fff;
+      padding: 1.25rem 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: .75rem;
+    }
+    .head svg { flex: 0 0 auto; }
+    .head h1 { font-size: 1.15rem; margin: 0; font-weight: 600; }
+    .body { padding: 1.5rem; }
+    .body > p { margin: 0 0 1rem; line-height: 1.55; }
+    .highlight {
+      display: none;
+      background: #fff4e5;
+      border: 1px solid #ffcf8f;
+      border-radius: 10px;
+      padding: .85rem 1rem;
+      margin: 0 0 1rem;
+      line-height: 1.5;
+    }
+    .highlight strong { display: block; margin-bottom: .2rem; }
+    ol { margin: 0 0 1.4rem; padding-left: 1.2rem; line-height: 1.6; }
+    ol li { margin-bottom: .5rem; }
+    code {
+      background: #eef1f5;
+      border-radius: 5px;
+      padding: .1rem .4rem;
+      font-size: .92em;
+    }
+    .actions { display: flex; flex-wrap: wrap; gap: .6rem; }
+    .btn {
+      display: inline-block;
+      text-decoration: none;
+      font-weight: 600;
+      padding: .7rem 1.2rem;
+      border-radius: 9px;
+      border: 1px solid transparent;
+    }
+    .btn-primary { background: #1a73e8; color: #fff; }
+    .btn-primary:hover { background: #1666cf; }
+    .btn-ghost { background: #fff; color: #1f2933; border-color: #cbd2dc; }
+    .btn-ghost:hover { background: #f6f8fa; }
+    .meta { margin-top: 1.2rem; font-size: .78rem; color: #7b8794; word-break: break-word; }
+    @media (prefers-color-scheme: dark) {
+      body { background: #16181d; color: #e6e9ee; }
+      .card { background: #1e2128; box-shadow: 0 10px 30px rgba(0,0,0,.5); }
+      .highlight { background: #3a2c14; border-color: #7a5a1e; }
+      code { background: #2b2f38; }
+      .btn-ghost { background: #262a33; color: #e6e9ee; border-color: #3a3f4b; }
+      .btn-ghost:hover { background: #2f343e; }
+      .meta { color: #98a2b3; }
+    }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <div class="head">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M12 3l9 16H3L12 3z" stroke="#fff" stroke-width="1.8" stroke-linejoin="round"/>
+        <path d="M12 10v4.5" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/>
+        <circle cx="12" cy="17.3" r="1" fill="#fff"/>
+      </svg>
+      <h1>Güvenlik doğrulaması başarısız</h1>
+    </div>
+    <div class="body">
+      <div class="highlight" id="cookie-uyari">
+        <strong>Tarayıcınızda çerezler kapalı görünüyor.</strong>
+        Kütüphane yönetim paneline giriş için çerezlerin (cookies) açık olması gerekir.
+      </div>
+
+      <p>
+        Gönderdiğiniz form güvenlik için doğrulanamadı. Bu genellikle
+        <strong>tarayıcıda çerezlerin devre dışı olması</strong> nedeniyle oluşur;
+        gerçek bir güvenlik sorunu değildir.
+      </p>
+
+      <ol>
+        <li>Tarayıcı ayarlarından <strong>çerezleri (cookies) etkinleştirin</strong>.</li>
+        <li>Sayfayı <strong>yenileyip</strong> girişi tekrar deneyin.</li>
+        <li>Sayfa uzun süre açık kaldıysa yeniden giriş yapmayı deneyin.</li>
+        <li>Gizli/özel pencere kullanıyorsanız normal pencereye geçin.</li>
+      </ol>
+
+      <div class="actions">
+        <a class="btn btn-primary" href="/admin/">Tekrar dene</a>
+        <a class="btn btn-ghost" href="/">Ana sayfa</a>
+      </div>
+
+      {% if reason %}<p class="meta">Ayrıntı: {{ reason }}</p>{% endif %}
+    </div>
+  </main>
+  <script>
+    (function () {
+      var kapali = false;
+      try {
+        var test = "kutuphane_csrf_test";
+        document.cookie = test + "=1; SameSite=Lax";
+        kapali = document.cookie.indexOf(test) === -1;
+      } catch (e) {
+        kapali = true;
+      }
+      if (kapali && !navigator.cookieEnabled) kapali = true;
+      if (kapali) {
+        var el = document.getElementById("cookie-uyari");
+        if (el) el.style.display = "block";
+      }
+    })();
+  </script>
+</body>
+</html>

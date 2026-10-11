@@ -2295,4 +2295,15 @@ class K15MobilBildirimTests(APITestCase):
         self.assertIn("mobile_notifications", ozet)
 
 
+class K16CSRFUyariTests(TestCase):
+    """K16 — CSRF doğrulaması başarısız olduğunda ham 403 yerine özel uyarı sayfası."""
+
+    def test_csrf_hatasi_ozel_sayfa_doner(self):
+        client = Client(enforce_csrf_checks=True)
+        resp = client.post("/admin/login/", {"username": "yok", "password": "yok"})
+        self.assertEqual(resp.status_code, 403)
+        self.assertContains(resp, "Güvenlik doğrulaması başarısız", status_code=403)
+        self.assertContains(resp, "Tekrar dene", status_code=403)
+
+
 

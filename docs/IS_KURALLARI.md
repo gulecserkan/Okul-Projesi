@@ -367,3 +367,20 @@ yönetir. Bu, K10 (Ayarlar › Bildirim) mobil kanalının gerçek gönderim kar
 Test: `BildirimTokenTests` (kayıt/mükerrer güncelleme/silme, JWT zorunlu),
 `JobsBildirimTests` (hedef seçimi: hatırlatma penceresi, gecikme, iade edilen
 hariç, sessiz saat ertelemesi) — FCM gönderimi sahte transport ile.
+
+---
+
+## 16. YÖNETİM PANELİ — CSRF / ÇEREZ UYARISI (K16)
+
+Admin paneli girişinde CSRF doğrulaması başarısız olduğunda kullanıcıya ham
+Django 403 sayfası gösterilmez; nedenini açıklayan **Türkçe bir uyarı sayfası**
+gösterilir. (En sık neden: tarayıcıda **çerezlerin devre dışı** olması —
+`csrftoken` çerezi saklanamadığı için form belirteci doğrulanamaz.)
+
+| # | Kural | İşlenir |
+|---|---|---|
+| K16.1 | CSRF doğrulaması başarısız olduğunda `CSRF_FAILURE_VIEW` devreye girer ve `templates/csrf_hata.html` render edilir. Yanıt **HTTP 403** kalır (güvenlik anlamı korunur). Sayfa; olası nedenleri (çerezler kapalı, sayfa yenileme, gizli pencere), JS ile çerez testini ve `/admin/`'e dönen "Tekrar dene" bağlantısını içerir. | `CSRF_FAILURE_VIEW`, `views.csrf_hatasi`, `templates/csrf_hata.html` |
+| K16.2 | Admin oturumu ve CSRF koruması **çerez gerektirir**; üretimde `CSRF_COOKIE_SECURE=true` (yalnız HTTPS). İstemci tarayıcısında çerezler kapalıysa giriş yapılamaz — bu bir tarayıcı ayarıdır, sunucu kusuru değildir. | `settings.py`, tarayıcı |
+
+Test: `K16CSRFUyariTests` (CSRF token'sız `/admin/login/` POST → 403 ve özel
+uyarı sayfası metni).
