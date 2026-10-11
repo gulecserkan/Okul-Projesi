@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
 
@@ -6,6 +7,7 @@ import 'api/library_api.dart';
 import 'api/sunucu_adresi.dart';
 import 'app_config.dart';
 import 'bildirim.dart';
+import 'bildirim_kanali.dart';
 import 'models/auth.dart';
 import 'models/mobil_surum.dart';
 import 'screens/book_list_screen.dart';
@@ -36,6 +38,8 @@ class _KutuphaneAppState extends State<KutuphaneApp> with WidgetsBindingObserver
   final SessionStorage _storage = SessionStorage();
   final BildirimServisi _bildirim = BildirimServisi();
   final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
+  final GlobalKey<ScaffoldMessengerState> _messengerKey =
+      GlobalKey<ScaffoldMessengerState>();
   bool _loading = true;
   String? _baseUrl;
   String? _rememberedBaseUrl;
@@ -200,6 +204,32 @@ class _KutuphaneAppState extends State<KutuphaneApp> with WidgetsBindingObserver
         httpClient: widget.httpClient,
       ).registerBildirimToken(yeniToken);
     });
+    // K15.6: ön plan uyarısı + dokununca Ödünçlerim sekmesi.
+    _bildirim.olaylariDinle(
+      onOnPlan: _bildirimOnPlandaGoster,
+      onDokunma: (_) => bildirimSekmeIstegi.value = kOdunclerimSekmesi,
+    );
+  }
+
+  /// K15.6: Uygulama ön plandayken gelen bildirimi uygulama içi uyarı olarak göster.
+  void _bildirimOnPlandaGoster(RemoteMessage mesaj) {
+    final baslik = mesaj.notification?.title ?? "Kütüphane bildirimi";
+    final govde = mesaj.notification?.body ?? "";
+    _messengerKey.currentState?.showSnackBar(
+      SnackBar(
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (baslik.isNotEmpty)
+              Text(baslik, style: const TextStyle(fontWeight: FontWeight.bold)),
+            if (govde.isNotEmpty) Text(govde),
+          ],
+        ),
+        duration: const Duration(seconds: 6),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
   }
 
   /// K15: çıkışta cihaz token'ını sunucudan siler (hata olsa da akışı bozmaz).
@@ -342,6 +372,7 @@ class _KutuphaneAppState extends State<KutuphaneApp> with WidgetsBindingObserver
   Widget build(BuildContext context) {
     return MaterialApp(
       navigatorKey: _navigatorKey,
+      scaffoldMessengerKey: _messengerKey,
       debugShowCheckedModeBanner: false,
       title: "Kütüphane",
       theme: _buildTheme(),

@@ -240,6 +240,7 @@ Not: Akıllı raf öneri sistemi (rafların program tarafından düzenli tutulma
 | K10.5 | `require_shelf_code` açıkken **yeni nüshada raf kodu zorunlu** (raf seçilmeli); kapalıysa opsiyonel | `KitapNushaSerializer.validate` |
 | K10.6 | `require_damage_note` açıkken **kayıp/hasarlı kapatmada açıklama (not) zorunlu**; not `OduncKaydi.kapanis_notu`'na yazılır | `OduncKapatView`, `ReturnDialog` |
 | K10.7 | `quiet_hours_*` açıkken **sessiz saatlerde bildirim gönderimi ertelenir** (gecikme güncellemesi yine çalışır); aralık gece yarısını aşabilir | `jobs._in_quiet_hours`, `run_scheduled_jobs` |
+| K10.8 | Bildirim ayarlarında **e-posta/SMS alanları ve "Mesaj şablonları" (reminder/overdue) işlevsizdir** (yalnız mobil kanal aktiftir; içerik K15.3.1 ile koddan üretilir). Bu alanlar admin formunda **gizlenir** (kolonlar DB'de korunur, migration yapılmaz; e-posta/SMS gerçekten yazılınca geri açılır). | `admin.NotificationSettingsAdmin` fieldsets |
 
 ---
 
@@ -361,12 +362,14 @@ yönetir. Bu, K10 (Ayarlar › Bildirim) mobil kanalının gerçek gönderim kar
 | K15.1 | Bildirim **sunucudan** gönderilir; mobil uygulama hesaplamaz. Tetikleyici mevcut zamanlanmış iş zinciridir (`cron` → `manage.py run_scheduled_tasks` → `jobs.run_scheduled_jobs`); mobil kanal `mobile_enabled` + `mobile_schedule_*` ile açılır ve **K10.7 sessiz saatler** uygulanır. Gönderim **günde bir** (program penceresi), kontrol sıklığı 15 dk'dır (guard'lar sayesinde idempotent). | `jobs.dispatch_notifications`, `run_scheduled_jobs` |
 | K15.2 | **Cihaz token kaydı:** mobil girişte FCM token'ı `POST /api/mobil/bildirim-token/` ile üyeye bağlanır (JWT ile; `Authorization: Bearer`). Token yenilenince (`onTokenRefresh`) aynı uç günceller; çıkışta `DELETE` ile silinir. Bir üyenin birden çok cihazı olabilir. | `BildirimTokenView`, `CihazBildirim` |
 | K15.3 | **Hedef ve zamanlama:** iade hatırlatma → `iade_tarihi` bugünden `due_reminder_days_before` gün sonra olan **aktif** ödünçler (`oduncte`); gecikme → `gecikmis` durumdaki (veya `iade_tarihi` geçmiş) ödünçler. Gönderim anında DB'den **güncel durum** okunur; iade edilmiş/uzatılmış kayıt hatırlatma almaz. Üye başına tek mesajda ödünç özeti gönderilir. | `jobs._mobil_hedef_uyeler` |
+| K15.3.1 | **Mesaj içeriği dinamik ve sabit-akıllıdır** (`_mobil_icerik`): başlık/gövde üye adı (`Sayın {ad} {soyad}`), kitap adları listesi, kitap sayısı, iade tarihi (`gg.aa.yyyy`) ve gecikme gününü içerir; tek/çok kitap için Türkçe gramer uygulanır. Metin **koddan üretilir, admin'den düzenlenmez** (K10.8). | `jobs._mobil_icerik` |
 | K15.4 | **Android 13+ izni:** `POST_NOTIFICATIONS` çalışma zamanı izni giriş sonrası istenir. Reddedilirse/izin kapalıysa bildirim gönderilmez ve uygulama **sessiz geçer** (ekran içi "kaldı/gecikti" satırı yeterlidir, hata gösterilmez). | `mobil/.../bildirim.dart`, `AndroidManifest.xml` |
 | K15.5 | **Sırlar:** `google-services.json` (istemci) ve servis hesabı JSON'u (sunucu) **git'e girmez** (`.gitignore`). Sunucu anahtar yolunu `FCM_SERVICE_ACCOUNT` ortam değişkeninden okur; tanımsızsa gönderim sessizce atlanır (kurulumsuz ortam bozulmaz). | `/etc/kutuphane/.env` → `FCM_SERVICE_ACCOUNT`, `jobs` |
+| K15.6 | **Bildirim davranışı:** uygulama **ön plandayken** bildirim sistem tepsisine düşmez; **uygulama içi uyarı** (SnackBar) gösterilir. Bildirime **dokununca** üye **Ödünçlerim** sekmesine yönlendirilir (`data.tip` = `hatirlatma`/`gecikme`); uygulama kapalıyken açılış (`getInitialMessage`) da aynı yönlendirmeyi yapar. | `mobil/.../bildirim.dart`, `main.dart`, `uye_home_screen.dart` |
 
-Test: `BildirimTokenTests` (kayıt/mükerrer güncelleme/silme, JWT zorunlu),
-`JobsBildirimTests` (hedef seçimi: hatırlatma penceresi, gecikme, iade edilen
-hariç, sessiz saat ertelemesi) — FCM gönderimi sahte transport ile.
+Test: `K15MobilBildirimTests` (token kaydı/silme/JWT zorunlu, hedef seçimi:
+hatırlatma penceresi, gecikme, sessiz saat ertelemesi, dinamik içerik) — FCM
+gönderimi sahte transport ile.
 
 ---
 

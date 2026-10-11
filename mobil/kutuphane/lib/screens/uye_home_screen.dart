@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../api/library_api.dart';
+import '../bildirim_kanali.dart';
 import '../models/auth.dart';
 import '../models/book.dart';
 import 'book_inspect_screen.dart';
@@ -37,12 +38,14 @@ enum _SortKey { baslik, baslikDesc, yazar, yayinYiliDesc, nushaDesc }
 /// Kitap gezinti görünümü.
 enum _BrowseView { grid, shelf }
 
-class _UyeHomeScreenState extends State<UyeHomeScreen> {
+class _UyeHomeScreenState extends State<UyeHomeScreen>
+    with SingleTickerProviderStateMixin {
   late final LibraryApiClient _api;
   final _scaffoldKey = GlobalKey<ScaffoldState>();
   final _searchController = TextEditingController();
   final _gridController = ScrollController();
   final _shelfController = ScrollController();
+  late final TabController _tabController;
 
   List<BookSummary> _books = [];
   bool _loadingBooks = false;
@@ -73,6 +76,7 @@ class _UyeHomeScreenState extends State<UyeHomeScreen> {
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 3, vsync: this);
     _api =
         widget.api ??
         LibraryApiClient(
@@ -82,14 +86,37 @@ class _UyeHomeScreenState extends State<UyeHomeScreen> {
         );
     _gridController.addListener(_onScroll);
     _shelfController.addListener(_onScroll);
+    // K15.6: Bildirime dokunma isteğini dinle; açılışta bekleyen istek varsa uygula.
+    bildirimSekmeIstegi.addListener(_bildirimSekmeDinle);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _bildirimSekmeyeGec(bildirimSekmeIstegi.value);
+    });
     _loadBooks();
     _loadKategoriler();
     _loadLoans();
     _loadCeza();
   }
 
+  /// K15.6: Bildirim sekmesi isteği geldiğinde ilgili sekmeye geç.
+  void _bildirimSekmeDinle() {
+    _bildirimSekmeyeGec(bildirimSekmeIstegi.value);
+  }
+
+  void _bildirimSekmeyeGec(int? hedef) {
+    if (hedef == null) return;
+    if (mounted && hedef >= 0 && hedef < _tabController.length) {
+      _tabController.animateTo(hedef);
+    }
+    // İsteği tüket (tekrar tetiklenmesin).
+    if (bildirimSekmeIstegi.value != null) {
+      bildirimSekmeIstegi.value = null;
+    }
+  }
+
   @override
   void dispose() {
+    bildirimSekmeIstegi.removeListener(_bildirimSekmeDinle);
+    _tabController.dispose();
     _searchController.dispose();
     _gridController.dispose();
     _shelfController.dispose();
@@ -550,46 +577,45 @@ class _UyeHomeScreenState extends State<UyeHomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return DefaultTabController(
-      length: 3,
-      child: Scaffold(
-        key: _scaffoldKey,
-        drawer: _buildFilterDrawer(),
-        appBar: AppBar(
-          toolbarHeight: 52,
-          titleSpacing: 14,
-          automaticallyImplyLeading: false,
-          title: _buildAppBarTitle(),
-          actions: [
-            _actionButton(
-              icon: _filtreVar
-                  ? Icons.filter_alt
-                  : Icons.filter_alt_outlined,
-              label: 'Filtre',
-              onPressed: () => _scaffoldKey.currentState?.openDrawer(),
-            ),
-            _actionButton(
-              icon: Icons.key_outlined,
-              label: 'Şifre',
-              onPressed: _showChangePasswordDialog,
-            ),
-            _actionButton(
-              icon: Icons.logout,
-              label: 'Çıkış',
-              onPressed: () => widget.onLogout(),
-            ),
-          ],
-          bottom: const TabBar(
-            tabs: [
-              Tab(text: 'Kitaplar'),
-              Tab(text: 'Ödünçlerim'),
-              Tab(text: 'Ceza'),
-            ],
+    return Scaffold(
+      key: _scaffoldKey,
+      drawer: _buildFilterDrawer(),
+      appBar: AppBar(
+        toolbarHeight: 52,
+        titleSpacing: 14,
+        automaticallyImplyLeading: false,
+        title: _buildAppBarTitle(),
+        actions: [
+          _actionButton(
+            icon: _filtreVar
+                ? Icons.filter_alt
+                : Icons.filter_alt_outlined,
+            label: 'Filtre',
+            onPressed: () => _scaffoldKey.currentState?.openDrawer(),
           ),
+          _actionButton(
+            icon: Icons.key_outlined,
+            label: 'Şifre',
+            onPressed: _showChangePasswordDialog,
+          ),
+          _actionButton(
+            icon: Icons.logout,
+            label: 'Çıkış',
+            onPressed: () => widget.onLogout(),
+          ),
+        ],
+        bottom: TabBar(
+          controller: _tabController,
+          tabs: const [
+            Tab(text: 'Kitaplar'),
+            Tab(text: 'Ödünçlerim'),
+            Tab(text: 'Ceza'),
+          ],
         ),
-        body: TabBarView(
-          children: [_buildBooksTab(), _buildLoansTab(), _buildPenaltyTab()],
-        ),
+      ),
+      body: TabBarView(
+        controller: _tabController,
+        children: [_buildBooksTab(), _buildLoansTab(), _buildPenaltyTab()],
       ),
     );
   }

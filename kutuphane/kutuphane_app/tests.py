@@ -2279,6 +2279,42 @@ class K15MobilBildirimTests(APITestCase):
         self.assertEqual(tip, "gecikme")
         self.assertIn("geçti", govde)
 
+    def test_icerik_gecikme_uye_adi_kitap_ve_gun(self):
+        from kutuphane_app.jobs import _mobil_icerik
+
+        loan = self._loan(durum="gecikmis", iade_tarihi=timezone.now() - timedelta(days=3))
+        _, govde, tip = _mobil_icerik({"uye": self.uye, "gecikme": [loan]}, timezone.now())
+        self.assertEqual(tip, "gecikme")
+        self.assertIn("Mert Demir", govde)
+        self.assertIn("Test Kitap", govde)
+        self.assertIn("3 gün", govde)
+
+    def test_icerik_hatirlatma_tarih_ve_uye_adi(self):
+        from kutuphane_app.jobs import _mobil_icerik
+
+        loan = self._loan(durum="oduncte", iade_tarihi=timezone.now() + timedelta(days=2))
+        _, govde, tip = _mobil_icerik({"uye": self.uye, "hatirlatma": [loan]}, timezone.now())
+        self.assertEqual(tip, "hatirlatma")
+        self.assertIn("Mert Demir", govde)
+        beklenen = timezone.localtime(loan.iade_tarihi).strftime("%d.%m.%Y")
+        self.assertIn(beklenen, govde)
+
+    def test_icerik_cok_kitap_sayi_icerir(self):
+        from kutuphane_app.jobs import _mobil_icerik
+
+        kitap2, nusha2 = make_book_and_copy(baslik="İkinci Kitap", barkod="KIT0015002")
+        loan1 = self._loan(durum="gecikmis", iade_tarihi=timezone.now() - timedelta(days=3))
+        loan2 = OduncKaydi.objects.create(
+            uye=self.uye,
+            kitap_nusha=nusha2,
+            iade_tarihi=timezone.now() - timedelta(days=1),
+            durum="gecikmis",
+        )
+        _, govde, _ = _mobil_icerik({"uye": self.uye, "gecikme": [loan1, loan2]}, timezone.now())
+        self.assertIn("2 kitabınız", govde)
+        self.assertIn("Test Kitap", govde)
+        self.assertIn("İkinci Kitap", govde)
+
     def test_run_scheduled_jobs_mobil_dali(self):
         from kutuphane_app.jobs import run_scheduled_jobs
 

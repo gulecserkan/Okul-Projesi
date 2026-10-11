@@ -345,15 +345,62 @@ def _mobil_hedef_uyeler(now, settings_obj):
     return hedefler
 
 
-def _mobil_icerik(veri):
-    """Üyeye gönderilecek bildirim başlığı/gövdesi ve yönlendirme tipi."""
+def _tarih_tr(dt):
+    """datetime'ı yerel saat diliminde gg.aa.yyyy biçimine çevirir."""
+    return timezone.localtime(dt).strftime("%d.%m.%Y")
+
+
+def _mobil_icerik(veri, now=None):
+    """K15.3.1: üyeye gönderilecek dinamik başlık/gövde ve yönlendirme tipi.
+
+    İçerik sabit-akıllıdır: üye adı, kitap adları, kitap sayısı, iade tarihi ve
+    gecikme günü koddan üretilir; admin'den düzenlenmez (K10.8).
+    """
+    now = now or timezone.now()
+    uye = veri.get("uye")
+    ad = " ".join(
+        x for x in [getattr(uye, "ad", ""), getattr(uye, "soyad", "")] if x
+    ).strip()
+    hitap = f"Sayın {ad}, " if ad else ""
+
     hatirlatma = veri.get("hatirlatma") or []
     gecikme = veri.get("gecikme") or []
+
     if gecikme:
-        adlar = ", ".join(_kitap_adi(l) for l in gecikme)
-        return ("Gecikmiş ödünç", f"{adlar} için iade tarihi geçti. Lütfen iade edin.", "gecikme")
-    adlar = ", ".join(_kitap_adi(l) for l in hatirlatma)
-    return ("İade hatırlatma", f"{adlar} için iade tarihiniz yaklaşıyor.", "hatirlatma")
+        adlar = [_kitap_adi(l) for l in gecikme]
+        sayi = len(adlar)
+        gunler = [
+            (now.date() - timezone.localtime(l.iade_tarihi).date()).days
+            for l in gecikme if l.iade_tarihi
+        ]
+        gun = max(gunler) if gunler else 0
+        if sayi == 1:
+            govde = (
+                f"{hitap}{adlar[0]} kitabının iade tarihi {gun} gün geçti. "
+                "Lütfen en kısa sürede iade edin."
+            )
+        else:
+            govde = (
+                f"{hitap}{sayi} kitabınızın iade tarihi geçti ({gun} gün gecikme). "
+                f"Lütfen en kısa sürede iade edin: {', '.join(adlar)}."
+            )
+        return ("Gecikmiş ödünç", govde, "gecikme")
+
+    adlar = [_kitap_adi(l) for l in hatirlatma]
+    sayi = len(adlar)
+    tarihler = [l.iade_tarihi for l in hatirlatma if l.iade_tarihi]
+    tarih = _tarih_tr(max(tarihler)) if tarihler else ""
+    if sayi == 1:
+        govde = (
+            f"{hitap}{adlar[0]} kitabının iade tarihi {tarih}. "
+            "Lütfen zamanında iade edin."
+        )
+    else:
+        govde = (
+            f"{hitap}iade tarihi {tarih} olan {sayi} kitabınız var: "
+            f"{', '.join(adlar)}."
+        )
+    return ("İade hatırlatma", govde, "hatirlatma")
 
 
 def _mobil_bildirim_gonder(now, settings_obj):
@@ -390,11 +437,12 @@ def _mobil_bildirim_gonder(now, settings_obj):
         uye_tokens = tokenlar.get(uye_id) or []
         if not uye_tokens:
             continue
-        title, body, tip = _mobil_icerik(veri)
+        title, body, tip = _mobil_icerik(veri, now)
+        sayi = len(veri.get("gecikme") or veri.get("hatirlatma") or [])
         message = messaging.MulticastMessage(
             tokens=uye_tokens,
             notification=messaging.Notification(title=title, body=body),
-            data={"tip": tip},
+            data={"tip": tip, "sayi": str(sayi)},
             android=messaging.AndroidConfig(priority="high"),
         )
         try:

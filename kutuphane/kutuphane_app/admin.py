@@ -393,60 +393,39 @@ class NotificationSettingsAdmin(admin.ModelAdmin):
         "printer_warning_enabled",
         "due_reminder_enabled",
         "due_overdue_enabled",
-        "email_enabled",
-        "sms_enabled",
         "mobile_enabled",
     )
     readonly_fields = (
         "overdue_last_run",
-        "email_schedule_last_run",
-        "sms_schedule_last_run",
         "mobile_schedule_last_run",
         "created_at",
         "updated_at",
     )
     fieldsets = (
         (None, {
-            "description": "Hatırlatma ve gecikme bildirimleri ile e-posta/SMS/mobil "
-                           "kanallarının ayarları. Kanal ve zamanlama alanlarının anlamı "
-                           "alan altındaki açıklamalarda yazar.",
+            "description": "Hatırlatma ve gecikme bildirimleri. Şu an etkin tek kanal "
+                           "mobildir (FCM); e-posta/SMS ve mesaj şablonu alanları "
+                           "işlevsizdir ve gizlenmiştir (K10.8). Mobil mesaj içeriği "
+                           "üye adı, kitap listesi, tarih ve gecikme günü ile koddan "
+                           "üretilir (K15.3.1); buradan düzenlenmez.",
             "fields": ("printer_warning_enabled",),
         }),
         ("İade hatırlatma", {
             "fields": ("due_reminder_enabled", "due_reminder_days_before",
-                       "due_reminder_email_enabled", "due_reminder_sms_enabled",
                        "due_reminder_mobile_enabled"),
         }),
         ("Gecikme bildirimi", {
             "fields": ("due_overdue_enabled", "due_overdue_days_after",
-                       "overdue_email_enabled", "overdue_sms_enabled",
                        "overdue_mobile_enabled"),
         }),
-        ("E-posta (SMTP)", {
-            "fields": ("email_enabled", "email_sender", "email_smtp_host",
-                       "email_smtp_port", "email_use_tls", "email_username",
-                       "email_password", "email_schedule_enabled",
-                       "email_schedule_hour", "email_schedule_minute",
-                       "email_schedule_timezone"),
-        }),
-        ("SMS", {
-            "fields": ("sms_enabled", "sms_provider", "sms_api_url", "sms_api_key",
-                       "sms_schedule_enabled", "sms_schedule_hour",
-                       "sms_schedule_minute", "sms_schedule_timezone"),
-        }),
-        ("Mobil", {
+        ("Mobil kanal", {
             "fields": ("mobile_enabled", "mobile_schedule_enabled",
                        "mobile_schedule_hour", "mobile_schedule_minute",
                        "mobile_schedule_timezone"),
         }),
-        ("Mesaj şablonları", {
-            "fields": ("reminder_subject", "reminder_body",
-                       "overdue_subject", "overdue_body"),
-        }),
         ("Durum (salt okunur)", {
             "classes": ("collapse",),
-            "fields": ("overdue_last_run", "email_schedule_last_run",
-                       "sms_schedule_last_run", "mobile_schedule_last_run",
+            "fields": ("overdue_last_run", "mobile_schedule_last_run",
                        "created_at", "updated_at"),
         }),
     )

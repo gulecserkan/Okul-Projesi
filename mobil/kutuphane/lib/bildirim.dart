@@ -16,6 +16,7 @@ class BildirimServisi {
   final FirebaseMessaging? _enjekte;
   bool _hazir = false;
   bool _dinleyiciKuruldu = false;
+  bool _olaylarKuruldu = false;
   String? _token;
 
   FirebaseMessaging get _messaging => _enjekte ?? FirebaseMessaging.instance;
@@ -90,5 +91,32 @@ class BildirimServisi {
       _token = token;
       onYeni(token);
     });
+  }
+
+  /// K15.6: Bildirim olaylarını dinler.
+  ///
+  /// [onOnPlan] uygulama **ön plandayken** gelen mesajlar için (uygulama içi
+  /// uyarı gösterilir); [onDokunma] bildirime **dokunulduğunda** (arka plandan
+  /// dönüş veya kapalıyken açılış dahil) çağrılır. Firebase hazır değilse
+  /// sessizce atlanır; bir kez kurulur.
+  void olaylariDinle({
+    void Function(RemoteMessage mesaj)? onOnPlan,
+    void Function(RemoteMessage mesaj)? onDokunma,
+  }) {
+    if (_olaylarKuruldu || !_hazir) return;
+    _olaylarKuruldu = true;
+    try {
+      if (onOnPlan != null) {
+        FirebaseMessaging.onMessage.listen(onOnPlan);
+      }
+      if (onDokunma != null) {
+        FirebaseMessaging.onMessageOpenedApp.listen(onDokunma);
+        _messaging.getInitialMessage().then((m) {
+          if (m != null) onDokunma(m);
+        });
+      }
+    } catch (e) {
+      debugPrint("Bildirim olayları dinlenemedi: $e");
+    }
   }
 }

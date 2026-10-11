@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 
 import 'package:kutuphane/api/library_api.dart';
+import 'package:kutuphane/bildirim_kanali.dart';
 import 'package:kutuphane/models/auth.dart';
 import 'package:kutuphane/screens/uye_home_screen.dart';
 import 'package:kutuphane/screens/yazar_secim_screen.dart';
@@ -453,5 +454,44 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Yeni şifreler uyuşmuyor.'), findsOneWidget);
+  });
+
+  List<Map<String, dynamic>> _gecikmisOdunc() => [
+    {
+      'durum': 'oduncte',
+      'odunc_tarihi': '2026-01-01T10:00:00Z',
+      'iade_tarihi': '2026-01-15T10:00:00Z',
+      'kitap_nusha': {
+        'kitap': {'baslik': 'Sefiller'},
+      },
+    },
+  ];
+
+  testWidgets('bildirime dokunma isteği Ödünçlerim sekmesini açar (K15.6)', (
+    tester,
+  ) async {
+    addTearDown(() => bildirimSekmeIstegi.value = null);
+    await pumpScreen(tester, loans: _gecikmisOdunc());
+
+    // Başlangıçta Kitaplar sekmesi aktif (boş liste).
+    expect(find.text('Sonuç bulunamadı.'), findsOneWidget);
+
+    bildirimSekmeIstegi.value = kOdunclerimSekmesi;
+    await tester.pumpAndSettle();
+
+    expect(find.text('Sefiller'), findsOneWidget);
+    expect(find.text('Ödünçte'), findsOneWidget);
+    expect(bildirimSekmeIstegi.value, isNull); // istek tüketildi
+  });
+
+  testWidgets('açılışta bekleyen bildirim isteği Ödünçlerim sekmesini açar', (
+    tester,
+  ) async {
+    bildirimSekmeIstegi.value = kOdunclerimSekmesi;
+    addTearDown(() => bildirimSekmeIstegi.value = null);
+    await pumpScreen(tester, loans: _gecikmisOdunc());
+
+    expect(find.text('Sefiller'), findsOneWidget);
+    expect(find.text('Ödünçte'), findsOneWidget);
   });
 }

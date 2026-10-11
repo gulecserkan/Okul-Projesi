@@ -6,6 +6,31 @@ sunucuya yalnızca etiketli sürümler gönderilir (bkz. `docs/DEPLOY_CLOUD.md`)
 
 ## [Unreleased]
 
+## [1.2.0] — 2026-10-11
+
+Mobil bildirimler **dinamik ve kişisel** hale getirildi; bildirim ayarları
+sadeleştirildi; ön plan/tıklama davranışı eklendi (**backend + mobil**; K15.3.1,
+K15.6, K10.8).
+
+- **K15.3.1 — Dinamik mesaj içeriği:** Mobil hatırlatma/gecikme mesajları artık
+  **üye adı** (`Sayın Ad Soyad`), **kitap adları listesi**, **kitap sayısı**,
+  **iade tarihi** (`gg.aa.yyyy`) ve **gecikme günü** içerir; tek/çok kitap için
+  Türkçe gramer uygulanır (ör. "3 kitabınızın iade tarihi geçti (2 gün gecikme)").
+  İçerik sabit-akıllıdır ve koddan üretilir; admin'den düzenlenmez.
+- **K15.6 — Bildirim davranışı:** Uygulama **ön plandayken** bildirim sistem
+  tepsisine düşmez, uygulama içi uyarı (SnackBar) gösterilir. Bildirime
+  **dokununca** üye **Ödünçlerim** sekmesine yönlendirilir; uygulama kapalıyken
+  açılış (`getInitialMessage`) da aynı yönlendirmeyi yapar. FCM `data` alanına
+  `tip` yanında `sayi` eklendi.
+- **K10.8 — Ayar sadeleştirme:** Bildirim ayarlarında işlevsiz **e-posta/SMS**
+  alanları ve **"Mesaj şablonları"** (reminder/overdue subject/body) admin
+  formundan gizlendi. Kolonlar DB'de korunur (migration yok); e-posta/SMS
+  gerçekten yazılınca geri açılır. Kalan: yazıcı uyarısı, iade hatırlatma,
+  gecikme, mobil kanal + zamanlama, durum.
+- **Sunucu gereksinimi:** Backend değişti → `deploy.sh prod v1.2.0` gerekir.
+  Mobil yeniden derlenip yayınlanır (`1.2.0+9`).
+- Test: backend `K15MobilBildirimTests` dinamik içerik testleriyle genişletildi.
+
 ## [1.1.18] — 2026-10-11
 
 Admin paneli girişinde CSRF doğrulaması başarısız olduğunda ham Django 403

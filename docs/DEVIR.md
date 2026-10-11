@@ -253,8 +253,8 @@ curl -s https://okulkitapligi.tr/api/health/
 
 ## 6. Mevcut durum (bu not yazılırken)
 
-- Sürüm: **1.1.18** · dal `V2.0`. Önceki: 1.1.17 (mobil push bildirimi).
-- Masaüstü testleri: **118/118** · Backend: **159/159** · Mobil testler yeşil · analyze temiz.
+- Sürüm: **1.2.0** · dal `V2.0`. Önceki: 1.1.18 (admin CSRF uyarı sayfası).
+- Masaüstü testleri: **118/118** · Backend: **162/162** · Mobil testler yeşil · analyze temiz.
 - Üretim sunucu: `89.252.153.171`, PostgreSQL `kutuphane` (~13 MB), günlük
   şifreli yedek + media arşivi çalışıyor. **Prod'a dokunulmadı.**
 - Alan adı: `okulkitapligi.tr` (+`www`) → `89.252.153.171` A kayıtları Alastyr
@@ -272,7 +272,12 @@ curl -s https://okulkitapligi.tr/api/health/
   başarısız olursa ham 403 yerine Türkçe uyarı sayfası (`CSRF_FAILURE_VIEW`).
   Telefon tarayıcısında **çerezler kapalıyken** oluşan `CSRF cookie not set`
   durumu için; sunucu tarafında kusur yok (ayarlar doğru).
-- Bekleyen: HTTPS'e garanti geçiş → 1.1.16 ile çözüldü; push bildirim → 1.1.17.
+- **K15.3.1/K15.6 + K10.8 (1.2.0):** Mobil bildirim mesajları artık dinamik
+  (üye adı, kitap listesi, sayı, iade tarihi, gecikme günü); ön planda SnackBar,
+  dokununca **Ödünçlerim** sekmesi. Bildirim ayarlarında işlevsiz e-posta/SMS ve
+  "Mesaj şablonları" alanları admin formundan gizlendi (kolonlar korunur).
+- Bekleyen: HTTPS'e garanti geçiş → 1.1.16 ile çözüldü; push bildirim → 1.1.17
+  ile kodlandı; dinamik bildirim + davranış → 1.2.0.
 
 ## 7. Açık işler
 
@@ -290,7 +295,7 @@ curl -s https://okulkitapligi.tr/api/health/
 > Aşağıdaki metni yeni makinede opencode'un **ilk mesajı** olarak yapıştır.
 
 Merhaba. Kütüphane Yönetim Sistemi'ni kütüphanedeki bilgisayarda sürdüreceğiz.
-Monorepo: `~/Okul-Projesi`, dal `V2.0`, son sürüm `1.1.18`.
+Monorepo: `~/Okul-Projesi`, dal `V2.0`, son sürüm `1.2.0`.
 **Önce `docs/DEVIR.md`, `AGENTS.md`, `docs/IS_KURALLARI.md` ve
 `docs/DEPLOY_CLOUD.md` dosyalarını oku.** Bu makinede **eski kütüphane sistemi
 çalışıyor**; ona zarar vermeden ilerle. Varsayılan olarak **Senaryo A** (yalnız
